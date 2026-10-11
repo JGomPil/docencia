@@ -11,8 +11,24 @@ summary{cursor:pointer;color:#22d3ee;font-weight:600;min-height:32px}
 .bd{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:9999px;color:#000;font-weight:700;margin-right:.4rem}
 .hd{font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;flex-wrap:wrap;gap:.25rem}
 :focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
-</style></head><body class="p-2 md:p-4 max-w-7xl mx-auto">
-<header class="mb-3"><h1 class="text-xl md:text-2xl font-bold text-white">ERPsim <span class="text-cyan-400 text-sm md:text-base font-normal">Laboratorio de simulación de ERPs</span></h1></header>
+</style><style id="nl-style">
+/* Elementos comunes NeuroLab UVa: fondo de nodos, enlace al índice y pie */
+html{background:radial-gradient(circle at 82% 8%,rgba(34,211,238,.10),transparent 45%),radial-gradient(circle at 12% 88%,rgba(167,139,250,.08),transparent 45%),#070b14;background-attachment:fixed}
+body{background:transparent!important}
+#nl-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block;background:transparent!important;border:0!important;border-radius:0!important}
+.nl-hd{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
+.nl-back{font-size:.72rem;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);border-radius:9999px;padding:.25rem .7rem;text-decoration:none;white-space:nowrap;background:rgba(8,16,36,.55)}
+.nl-back:hover{background:rgba(14,116,144,.35);color:#e0f2fe}
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-bg,#nl-foot,.nl-back{display:none!important}}
+</style>
+</head><body class="p-2 md:p-4 max-w-7xl mx-auto">
+<canvas id="nl-bg" aria-hidden="true"></canvas>
+
+<header class="mb-3 nl-hd"><h1 class="text-xl md:text-2xl font-bold text-white">ERPsim <span class="text-cyan-400 text-sm md:text-base font-normal">Laboratorio de simulación de ERPs</span></h1><a class="nl-back nl-idx" href="../index.html" title="Volver al índice de simuladores">← NeuroLab UVa</a></header>
 <main class="grid lg:grid-cols-3 gap-3">
 <div class="lg:col-span-2 space-y-3">
  <section class="card"><div class="hd"><span class="bd bg-cyan-400">1</span>Potencial evocado (promedio de N trials)<span id="lab" class="text-xs text-slate-400 font-normal ml-1"></span></div>
@@ -37,6 +53,11 @@ summary{cursor:pointer;color:#22d3ee;font-weight:600;min-height:32px}
  <details open class="card"><summary>Filtrado del ERP</summary><div id="fb" class="mt-2"></div><label class="text-sm block">Paso-bajo: <b id="fcv" class="text-emerald-400">12</b> Hz<input id="fc" type="range" min="8" max="20" step="1" value="12"></label><p class="text-xs text-slate-400">Filtro de fase cero sobre el promedio. Gris = sin filtrar.</p></details>
  <details open class="card"><summary>Sujetos (gran promedio)</summary><div class="text-xs mt-2">Variabilidad entre sujetos</div><div id="bv"></div><label class="text-sm block mt-1">Nº de sujetos = <b id="nsv" class="text-emerald-400">10</b><input id="ns" type="range" min="2" max="10" value="10"></label></details>
 </aside></main>
+<footer id="nl-foot">
+<a class="nl-idx" href="../index.html">← NeuroLab UVa · Índice de simuladores</a>
+<div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img data-f="img/UVa.png" alt="Universidad de Valladolid"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img data-f="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)"></a></div>
+<div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
+</footer>
 <script>
 const $=s=>document.querySelector(s),PI=Math.PI,gauss=(x,m,s)=>Math.exp(-(((x-m)/s)**2)/2);
 function cv(id){const c=$(id),r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);return{x,w:r.width,h:r.height}}
@@ -157,4 +178,20 @@ x.strokeStyle='rgba(255,255,255,.5)';x.beginPath();x.moveTo(L+100/700*(w-L),0);x
 $('#tfn').innerHTML=n<10?`<span class="text-slate-400">Con N=${n} el ruido domina las dos vías. Sube N para ver qué sobrevive en cada una.</span>`:`<span class="text-slate-300"><b class="text-violet-300">A</b> solo conserva la actividad <b>ligada en fase</b> al estímulo (el propio ERP, a bajas frecuencias). <b class="text-emerald-300">B</b> conserva además la actividad <b>inducida</b>: la ráfaga β (~20 Hz, 250–450 ms) y el α, cuya fase cambia en cada trial y se cancela al promediar antes.</span>`+(S.lp?`<br><span class="text-amber-300">Filtro paso-bajo a ${S.fc} Hz aplicado a ambas vías: se atenúa lo que queda por encima del corte (con cortes bajos la ráfaga β desaparece).</span>`:'')}
 $('#c0').addEventListener('pointerdown',e=>{const r=e.currentTarget.getBoundingClientRect(),m=-100+((e.clientX-r.left-X0)/(r.width-X0-8))*700;let b=0;CP.forEach((p,i)=>{if(Math.abs(p.m-m)<Math.abs(CP[b].m-m))b=i});S.sel=b;info()});
 addEventListener('resize',()=>{brain();draw()});info();
-</script></body></html>
+</script><script>
+/* NeuroLab UVa: fondo de nodos, enlaces al índice y logos (independiente del resto de la app) */
+(function(){
+var base=/\/apps\/[^\/]*$/i.test(location.pathname)?'../':'';
+document.querySelectorAll('.nl-idx').forEach(function(a){a.href=base+'index.html'});
+document.querySelectorAll('#nl-foot img').forEach(function(im){var f=im.getAttribute('data-f');im.src=base+f;
+ im.onerror=function(){if(!im.dataset.t){im.dataset.t=1;im.src=(base?'':'../')+f}else{im.onerror=null;var sp=document.createElement('span');sp.textContent=im.alt;im.replaceWith(sp)}}});
+var c=document.getElementById('nl-bg');if(!c||!c.getContext)return;var x=c.getContext('2d'),W=0,H=0,P=[],last=0,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function build(){W=c.width=innerWidth;H=c.height=innerHeight;var n=Math.min(60,Math.floor(W*H/20000));P=[];for(var i=0;i<n;i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.4+1})}
+function draw(k){x.clearRect(0,0,W,H);for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx*k;p.y+=p.vy*k;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;x.beginPath();x.arc(p.x,p.y,p.r,0,6.2832);x.fillStyle='rgba(56,189,248,.4)';x.fill();
+ for(var j=i+1;j<P.length;j++){var q=P[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){x.beginPath();x.moveTo(p.x,p.y);x.lineTo(q.x,q.y);x.strokeStyle='rgba(99,102,241,'+((1-d/120)*.18)+')';x.lineWidth=.8;x.stroke()}}}}
+function frame(t){requestAnimationFrame(frame);if(document.hidden||t-last<33)return;var k=Math.min(3,(t-last)/16.7);last=t;draw(k)}
+build();draw(0);if(!still)requestAnimationFrame(frame);
+addEventListener('resize',function(){if(Math.abs(innerWidth-W)>2||Math.abs(innerHeight-H)>150){build();draw(0)}else{c.width=W=innerWidth;c.height=H=innerHeight}});
+})();
+</script>
+</body></html>
