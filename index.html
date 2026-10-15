@@ -364,7 +364,7 @@
         const ctx = canvas.getContext('2d'); let W, H;
         const resize = () => { const r = canvas.getBoundingClientRect(), d = window.devicePixelRatio || 1; W = canvas.width = r.width * d; H = canvas.height = r.height * d; };
         resize(); window.addEventListener('resize', resize);
-        const CL = [{ x: 0.2, y: 0.64, col: '34, 211, 238', name: 'Neurociencia' }, { x: 0.5, y: 0.3, col: '251, 146, 60', name: 'Radionavegación' }, { x: 0.8, y: 0.64, col: '52, 211, 153', name: 'IA y datos' }];
+        const CL = [{ x: 0.2, y: 0.64, col: '34, 211, 238', name: '   ' }, { x: 0.5, y: 0.3, col: '251, 146, 60', name: '   ' }, { x: 0.8, y: 0.64, col: '52, 211, 153', name: '   ' }];
         const nodes = [];
         CL.forEach((c, ci) => { for (let i = 0; i < 26; i++) { const a = Math.random() * 2 * Math.PI, r = Math.sqrt(Math.random()) * 0.15; nodes.push({ ci, a, r, ph: Math.random() * 6.28, sp: 0.4 + Math.random() * 0.6 }); } });
         const edges = [], hubs = CL.map((c, ci) => nodes.findIndex(n => n.ci === ci));
