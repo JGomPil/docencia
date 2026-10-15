@@ -160,8 +160,8 @@ function mark(x,u,v,t,R){const s=R*.06;x.lineWidth=2.5;if(t=='x'){x.strokeStyle=
 function scalp(id,v,sens,vm){const{x,w,h}=cv(id),R=Math.min(w,h)/2-10,cx=w/2,cy=h/2+5,ch=CH[sens],pos=ch.map(i=>toDisk(E3[i])),st=3;x.clearRect(0,0,w,h);
 for(let py=-R;py<=R;py+=st)for(let px=-R;px<=R;px+=st){const a=px/R,b=-py/R;if(a*a+b*b>1)continue;let sw=0,sv=0;for(let k=0;k<pos.length;k++){const d=(a-pos[k][0])**2+(b-pos[k][1])**2,wt=1/Math.pow(d+.02,1.5);sw+=wt;sv+=wt*v[k]}x.fillStyle=div(sv/sw/vm);x.fillRect(cx+px,cy+py,st+.6,st+.6)}
 frame(x,cx,cy,R);ch.forEach((i,k)=>{const d=pos[k];x.fillStyle='#e2e8f0';x.beginPath();x.arc(cx+d[0]*R,cy-d[1]*R,2.2,0,2*PI);x.fill();if(w>230){x.fillStyle='#94a3b8';x.font='9px sans-serif';x.fillText(EL[i][0],cx+d[0]*R+3,cy-d[1]*R-3)}})}
-function plot(id,ser,cols,o={}){const{x,w,h}=cv(id),X0=30,W=w-X0-6,Y0=6,H=h-Y0-18;x.clearRect(0,0,w,h);const vm=o.norm?1:Math.max(...ser.flatMap(s=>Array.from(s,Math.abs)))||1;x.strokeStyle='#334155';x.beginPath();x.moveTo(X0,Y0+H/2);x.lineTo(X0+W,Y0+H/2);x.stroke();
-x.fillStyle='#64748b';x.font='10px sans-serif';for(let t=0;t<=400;t+=100)x.fillText(t,X0+W*t/396-8,h-4);x.fillText('ms',w-18,h-4);
+function plot(id,ser,cols,o={}){const{x,w,h}=cv(id),X0=30,W=w-X0-6,Y0=6,H=h-Y0-32;x.clearRect(0,0,w,h);const vm=o.norm?1:Math.max(...ser.flatMap(s=>Array.from(s,Math.abs)))||1;x.strokeStyle='#334155';x.beginPath();x.moveTo(X0,Y0+H/2);x.lineTo(X0+W,Y0+H/2);x.stroke();
+x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='left';for(let t=0;t<=400;t+=100)x.fillText(t,X0+W*t/396-8,h-18);x.textAlign='center';x.fillText('ms',X0+W/2,h-5);x.textAlign='left';
 ser.forEach((s,k)=>{const m=o.norm?(Math.max(...Array.from(s,Math.abs))||1):vm;x.strokeStyle=cols[k];x.lineWidth=o.lw?o.lw[k]:1;x.beginPath();s.forEach((v,i)=>{const u=X0+W*i/(NT-1),y=Y0+H/2-v/m*H*.46;i?x.lineTo(u,y):x.moveTo(u,y)});x.stroke()});
 if(o.v!=null){x.strokeStyle='#fbbf24';x.setLineDash([4,3]);x.beginPath();x.moveTo(X0+W*o.v/(NT-1),Y0);x.lineTo(X0+W*o.v/(NT-1),Y0+H);x.stroke();x.setLineDash([])}}
 // ---- paneles
