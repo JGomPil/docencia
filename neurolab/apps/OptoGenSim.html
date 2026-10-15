@@ -242,11 +242,12 @@ function updS1(){
 // ====================== sección 2: espectros ======================
 const SP=[['ChR2',P.ChR2,'#38bdf8'],['ChETA',P.ChETA,'#22d3ee'],['Chr',P.Chr,'#fb923c'],['SFO',P.SFO,'#a78bfa'],['NpHR',P.NpHR,'#facc15'],['Arch',P.Arch,'#4ade80'],['GtACR',P.GtACR,'#2dd4bf']];
 function draw2(){
- const{x,w,h}=CV.c2;x.clearRect(0,0,w,h);const L=34,R=8,T=30,B=34,pw=w-L-R,ph=h-T-B,X=l=>L+(l-380)/(720-380)*pw,Y=v=>T+ph*(1-v);
- x.font='10px system-ui';x.strokeStyle='#1e293b';x.fillStyle='#64748b';
+ const{x,w,h}=CV.c2;x.clearRect(0,0,w,h);const L=34,R=8,T=30,B=44,pw=w-L-R,ph=h-T-B,X=l=>L+(l-380)/(720-380)*pw,Y=v=>T+ph*(1-v);
+ x.font='10px system-ui';x.strokeStyle='#1e293b';x.fillStyle='#64748b';x.textAlign='left';
  [0,.5,1].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(w-R,Y(v));x.stroke();x.fillText(v*100+'%',2,Y(v)+3)});
- for(let l=400;l<=700;l+=50){x.fillText(l,X(l)-9,h-18)}x.fillText('nm',w-20,h-18);
- for(let i=0;i<pw;i++){x.fillStyle=wl(380+i/pw*340);x.fillRect(L+i,h-12,1.5,8)}
+ for(let l=400;l<=700;l+=50){x.fillText(l,X(l)-9,h-30)}
+ x.textAlign='center';x.fillText('nm',L+pw/2,h-16);x.textAlign='left';
+ for(let i=0;i<pw;i++){x.fillStyle=wl(380+i/pw*340);x.fillRect(L+i,h-10,1.5,8)}
  const cur=S.hid?[]:OPS[S.ops].parts;
  SP.forEach(([k,p,c])=>{const on=cur.includes(p);x.globalAlpha=on||!cur.length?1:.5;x.strokeStyle=c;x.lineWidth=on?3.5:1.5;
   x.setLineDash(k==='SFO'?[5,3]:[]);x.beginPath();for(let l=380;l<=720;l+=2){const v=sens(p,l);l==380?x.moveTo(X(l),Y(v)):x.lineTo(X(l),Y(v))}x.stroke();
