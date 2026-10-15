@@ -175,7 +175,7 @@ const lin=E.un!='dB',L=46,Bm=36;let mx=lin?1e-6:40;[P1,P2||[]].forEach(A=>A.forE
 BD.forEach(([l,a,b,c])=>{x.fillStyle=c+'22';x.fillRect(X(a),0,X(b)-X(a),h-Bm);x.fillStyle=c;x.fillText(l,X((a+b)/2)-4,12)});
 x.fillStyle='#64748b';x.textAlign='center';[10,20,30,40,50,60].forEach(f=>x.fillText(f,X(f),h-Bm+14));x.fillText('Hz',X(30),h-6);
 x.textAlign='right';[0,1,2,3,4].forEach(k=>{const v=lo+(mx-lo)*k/4;x.strokeStyle='#1e293b';x.lineWidth=1;x.beginPath();x.moveTo(L,Y(v));x.lineTo(w-6,Y(v));x.stroke();x.fillStyle='#64748b';x.fillText(lin?(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2)):v.toFixed(0),L-4,Y(v)+(k?4:0))});
-x.save();x.translate(11,(h-Bm)/2);x.rotate(-PI/2);x.textAlign='center';x.fillStyle='#64748b';x.fillText({'dB':'dB re 1 µV²/Hz','µV²/Hz':'µV²/Hz','µV/√Hz':'µV/√Hz'}[E.un],0,0);x.restore();x.textAlign='left';
+x.save();x.translate(11,(h-Bm)/2);x.rotate(-PI/2);x.textAlign='center';x.fillStyle='#64748b';x.fillText({'dB':'dB(µV²/Hz)','µV²/Hz':'µV²/Hz','µV/√Hz':'µV/√Hz'}[E.un],0,0);x.restore();x.textAlign='left';
 const ln=(P,c)=>{x.strokeStyle=c;x.lineWidth=1.6;x.beginPath();P.forEach((p,i)=>{const px=X(PF[i]),py=Y(db(p));i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()};ln(P1,'#22d3ee');if(P2)ln(P2,'#34d399');
 const tot=P1.reduce((a,b)=>a+b,0)||1;$('#bnd').textContent='Potencia relativa (0,5–60 Hz, original): '+BD.map(([l,a,b])=>l+' '+(PF.reduce((s,f,i)=>s+(f>=a&&f<b?P1[i]:0),0)/tot*100).toFixed(0)+'%').join(' · ')}
 const Q={on:0,ok:0,n:0,done:0,ans:''};
