@@ -1,608 +1,579 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Programa de Mentorización ATENEA - UVa</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        uva: {
-                            red: '#8B0000',
-                            burgundy: '#6B0000',
-                            gold: '#D4AF37',
-                            lightGold: '#FFF9E6',
-                            blue: '#1E3A8A',
-                            accent: '#2563EB',
-                            bg: '#F8FAFC'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #F1F5F9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #CBD5E1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94A3B8;
-        }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NeuroLab UVa · Simuladores docentes de neurociencia</title>
+  <meta name="description" content="Suite de simuladores docentes de neurociencia: EEG, ERPs, conectómica, localización de fuentes y optogenética. Grupo de Ingeniería Biomédica, Universidad de Valladolid.">
+  <meta name="theme-color" content="#020612">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #020612;
+      --panel: rgba(8, 16, 36, 0.75);
+      --panel-border: rgba(45, 80, 140, 0.35);
+      --cy: #22d3ee;
+      --vi: #a78bfa;
+      --em: #34d399;
+      --or: #fb923c;
+      --pk: #f472d0;
+    }
 
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                background: white !important;
-                color: black !important;
-            }
-            .shadow-lg, .shadow-md, .shadow-sm {
-                box-shadow: none !important;
-            }
-            .border {
-                border-color: #cbd5e1 !important;
-            }
-        }
-    </style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: #f0f6ff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Aurora & Particles Background */
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 80% 25%, rgba(34, 211, 238, 0.16), transparent 50%),
+        radial-gradient(circle at 85% 35%, rgba(167, 139, 250, 0.18), transparent 45%),
+        radial-gradient(circle at 15% 75%, rgba(52, 211, 153, 0.08), transparent 45%);
+    }
+
+    canvas#bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Cards Grid Styling */
+    .sim-card {
+      background: linear-gradient(170deg, rgba(10, 20, 42, 0.85) 0%, rgba(4, 10, 24, 0.92) 100%);
+      border: 1px solid rgba(50, 85, 140, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s, box-shadow 0.28s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sim-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--card-color, #22d3ee), transparent 65%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.25;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .sim-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 36px -12px var(--card-glow, rgba(34, 211, 238, 0.35));
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .sim-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Badges */
+    .badge-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      border: 1px solid var(--card-color);
+      color: var(--card-color);
+      background: color-mix(in srgb, var(--card-color) 12%, transparent);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--card-color) 20%, transparent);
+    }
+
+    .preview-container {
+      height: 125px;
+      width: 100%;
+      border-radius: 10px;
+      background: radial-gradient(ellipse at center, rgba(14, 28, 56, 0.7), rgba(2, 6, 18, 0.95));
+      border: 1px solid rgba(45, 80, 135, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-box {
+      background: linear-gradient(180deg, rgba(8, 18, 38, 0.75) 0%, rgba(4, 10, 24, 0.88) 100%);
+      border: 1px solid rgba(45, 80, 135, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+    .pulse-dot {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+<style id="nl-foot-style">
+/* Pie común NeuroLab UVa (mismo que en las apps) */
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-foot{display:none!important}}
+</style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+<body class="relative text-slate-100 min-h-screen">
 
-    <!-- Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-red-800 text-white p-2.5 rounded-xl shadow-inner font-bold text-xl tracking-wider flex items-center justify-center w-12 h-12 border-b-2 border-red-950">
-                        UVa
-                    </div>
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Programa ATENEA</h1>
-                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-200">2026/2027</span>
-                        </div>
-                        <p class="text-xs sm:text-sm text-slate-500 font-medium">Grado en Ingeniería Biomédica &bull; Universidad de Valladolid</p>
-                    </div>
-                </div>
+  <div class="aurora-bg"></div>
+  <canvas id="bg-canvas"></canvas>
 
-                <div class="flex items-center space-x-2 sm:space-x-3 self-end md:self-auto">
-                    <button onclick="window.print()" class="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                        <i class="fa-solid fa-print"></i>
-                        <span class="hidden sm:inline">Imprimir / PDF</span>
-                    </button>
-                    <button id="toggleAllBtn" onclick="toggleExpandAll()" class="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                        <i id="toggleAllIcon" class="fa-solid fa-compress"></i>
-                        <span id="toggleAllText" class="hidden sm:inline">Colapsar Todos</span>
-                    </button>
-                </div>
-            </div>
-        </div>
+  <div class="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+
+    <header class="flex flex-wrap items-center justify-between gap-4 py-3 mb-2 border-b border-slate-800/60">
+      <!-- Logo UVa (Izquierda) -->
+      <a href="https://www.uva.es/" class="flex items-center gap-3">
+          <img src="img/UVa.png" width="200">
+      </a>
+
+      <!-- Logo GIB (Derecha) -->
+      <div class="flex items-center gap-2.5">
+          <a href="https://gib.uva.es/"><img src="img/GIB.png" width="200"></a>
+      </div>
     </header>
 
-    <!-- Filter Bar -->
-    <section class="bg-white border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8 no-print shadow-xs">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-            <div class="relative flex-1">
-                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                </div>
-                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Buscar profesor, mentor o mentorizado por nombre..." 
-                    class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all shadow-inner">
-                <button id="clearSearch" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3">
-                <div class="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                    <span class="text-xs font-semibold text-slate-500 px-2">Curso:</span>
-                    <button onclick="setCourseFilter('ALL')" id="btnCourse-ALL" class="course-btn active px-2.5 py-1 text-xs font-medium rounded-lg bg-white shadow-xs text-slate-800">Todos</button>
-                    <button onclick="setCourseFilter('1º')" id="btnCourse-1º" class="course-btn px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:bg-white/50">1º</button>
-                    <button onclick="setCourseFilter('2º')" id="btnCourse-2º" class="course-btn px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:bg-white/50">2º</button>
-                    <button onclick="setCourseFilter('3º')" id="btnCourse-3º" class="course-btn px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:bg-white/50">3º</button>
-                    <button onclick="setCourseFilter('4º')" id="btnCourse-4º" class="course-btn px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:bg-white/50">4º</button>
-                </div>
-
-                <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                    <button onclick="setViewMode('tree')" id="btnViewTree" class="view-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white shadow-xs text-blue-700 flex items-center space-x-1.5">
-                        <i class="fa-solid fa-diagram-project"></i>
-                        <span>Vista Esquema</span>
-                    </button>
-                    <button onclick="setViewMode('cards')" id="btnViewCards" class="view-btn px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-white/50 flex items-center space-x-1.5">
-                        <i class="fa-solid fa-table-cells-large"></i>
-                        <span>Vista Tarjetas</span>
-                    </button>
-                </div>
-            </div>
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center py-6 sm:py-8">
+      
+      <!-- Lado Izquierdo: Textos principales -->
+      <div class="lg:col-span-6 flex flex-col justify-center">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold tracking-widest uppercase w-fit mb-4">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] pulse-dot"></span>
+          LABORATORIO INTERACTIVO DE NEUROCIENCIA COMPUTACIONAL<br>
         </div>
+
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
+          NeuroLab <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">UVa</span>
+        </h1>
+
+        <h2 class="text-xl sm:text-2xl font-semibold text-slate-200 mb-3">
+          Simuladores docentes de neurociencia
+        </h2>
+
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mb-6">
+          Explora, experimenta y aprende con herramientas de simulación en EEG, ERPs, conectómica, localización de fuentes y optogenética.
+        </p>
+      </div>
+
+      <!-- Lado Derecho: Render 3D del cerebro cibernético con red neuronal -->
+      <div class="lg:col-span-6 relative flex justify-center items-center">
+        <div class="absolute w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/25 to-pink-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <canvas id="hero-brain-canvas" class="w-full max-w-[520px] h-[320px] sm:h-[390px] cursor-grab active:cursor-grabbing relative z-10"></canvas>
+      </div>
     </section>
 
-    <!-- Stats Banner -->
-    <div class="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 no-print">
-        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center space-x-4">
-                <span class="font-bold flex items-center"><i class="fa-solid fa-chart-pie mr-1.5 text-amber-700"></i> Resumen:</span>
-                <span><strong>8</strong> Tutores</span>
-                <span>&bull;</span>
-                <span><strong>27</strong> Mentores (3º/4º)</span>
-                <span>&bull;</span>
-                <span><strong>29</strong> Mentorizados (1º/2º)</span>
-            </div>
-            <div class="flex items-center space-x-3 font-medium">
-                <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block mr-1"></span> Tutoría</span>
-                <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block mr-1"></span> Mentores</span>
-                <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block mr-1"></span> Mentorizados</span>
-            </div>
-        </div>
-    </div>
+    <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 my-6">
 
-    <!-- Main Content Area -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <div id="searchResultsBanner" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-900 flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-info-circle text-blue-600"></i>
-                <span>Mostrando resultados coincidentes para: <strong id="searchKeyword">""</strong></span>
-            </div>
-            <span id="searchMatchCount" class="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">0 coincidencias</span>
+      <!-- TARJETA 1: EEGSim -->
+      <a href="apps/EEGSim.html" class="sim-card p-4 text-left group" style="--card-color:#22d3ee; --card-glow:rgba(34,211,238,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">EEG</span>
         </div>
 
-        <div id="mainContainer" class="space-y-6"></div>
+        <div class="preview-container mb-3">
+          <img src="img/EEG.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">EEGSim</h3>
+        <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">Simulación de señales EEG</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Genera y explora señales EEG reales y sintéticas, con diferentes estados y condiciones experimentales.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-cyan-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 2: ERPSim -->
+      <a href="apps/ERPSim.html" class="sim-card p-4 text-left group" style="--card-color:#a78bfa; --card-glow:rgba(167,139,250,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">ERP</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <img src="img/ERP.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">ERPSim</h3>
+        <h4 class="text-xs font-semibold text-purple-400 uppercase tracking-wide mb-2">Simulación de potenciales evocados</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Analiza la respuesta cerebral a estímulos y experimenta con diferentes paradigmas y condiciones.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 3: GraphSim -->
+      <a href="apps/GraphSim.html" class="sim-card p-4 text-left group" style="--card-color:#34d399; --card-glow:rgba(52,211,153,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">GRAPH</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <img src="img/Graph.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">GraphSim</h3>
+        <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Conectómica y redes cerebrales</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Explora la organización funcional del cerebro mediante redes complejas y métricas de conectividad.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 4: SourceSim -->
+      <a href="apps/SourceSim.html" class="sim-card p-4 text-left group" style="--card-color:#fb923c; --card-glow:rgba(251,146,60,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">SOURCE</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <img src="img/Source.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">SourceSim</h3>
+        <h4 class="text-xs font-semibold text-orange-400 uppercase tracking-wide mb-2">Localización de fuentes</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Simula y analiza la actividad cerebral con técnicas de localización de fuentes en EEG/MEG.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-orange-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 5: OptoGenSim -->
+      <a href="apps/OptoGenSim.html" class="sim-card p-4 text-left group" style="--card-color:#f472d0; --card-glow:rgba(244,114,208,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">OPTOGEN</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <img src="img/Optogen.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-pink-300 transition-colors">OptoGenSim</h3>
+        <h4 class="text-xs font-semibold text-pink-400 uppercase tracking-wide mb-2">Optogenética y circuitos neuronales</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Simula la activación y modulación de circuitos neuronales mediante optogenética.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-pink-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 mt-auto no-print">
-        <div class="max-w-7xl mx-auto px-4">
-            <p class="font-semibold text-slate-700">Programa ATENEA &bull; Facultad de Medicina y Escuela de Ingenierías Industriales / Grado en Ingeniería Biomédica</p>
-            <p class="mt-1 text-slate-400">Universidad de Valladolid (UVa) &bull; Asignación oficial tutor/mentor/mentorizado</p>
+    <section class="feature-box p-6 sm:p-8 my-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Bloque 1: Aprendizaje activo -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Aprendizaje activo</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Experimenta y comprende la neurociencia desde la práctica.
+            </p>
+          </div>
         </div>
+
+        <!-- Bloque 2: Formación de calidad -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Formación de calidad</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Herramientas docentes diseñadas para el aula universitaria.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Tecnología y ciencia -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Tecnología y ciencia</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Simulaciones basadas en la evidencia y en el estado del arte.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Grupo de Ingeniería Biomédica -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-400 shadow-[0_0_15px_rgba(167,139,250,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Grupo de Ingeniería Biomédica</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              GIB-UVa · Universidad de Valladolid.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="nl-foot">
+      <div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img src="img/UVa.png" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img src="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)" onerror="this.replaceWith(document.createTextNode(this.alt))"></a></div>
+      <div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
     </footer>
 
-    <script>
-        // DATOS CON LOS CAMBIOS SOLICITADOS
-        const ateneaData = [
-            {
-                tutor: "Javier Gómez Pilar",
-                role: "Tutor",
-                mentors: [
-                    { name: "Carla Martín García", course: "3º", mentees: [{ name: "Héctor Gutiérrez Atienza", course: "1º" }] },
-                    { name: "Alba Villaverde Diez", course: "3º", mentees: [{ name: "Henar Herguedas Candal", course: "2º" }] },
-                    { name: "Alicia Álvarez Reyero", course: "3º", mentees: [{ name: "Paula Díaz Romero", course: "1º" }] },
-                    { name: "Iria Rego Cuesta", course: "3º", mentees: [{ name: "Hugo Martín Arranz", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "Clara García Vicente",
-                role: "Tutora",
-                mentors: [
-                    { name: "Claudia Chamorro Prieto", course: "3º", mentees: [{ name: "Virginia Pradillos Yáñez", course: "2º" }] },
-                    { name: "Ana Perdomo Cozar", course: "3º", mentees: [{ name: "Tamara Blázquez Blanco", course: "1º" }] },
-                    { name: "Carla Mirón Morón", course: "3º", mentees: [{ name: "Guillermo Díaz Romero", course: "1º" }] },
-                    { name: "Estefanía Salazar del Río", course: "3º", mentees: [{ name: "Alicia Martín González", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "Jesús Poza Crespo",
-                role: "Tutor",
-                mentors: [
-                    { name: "Pedro Lozano Charro", course: "4º", mentees: [{ name: "Álex García Utrilla", course: "2º" }] },
-                    { name: "Juan Pérez Weber", course: "3º", mentees: [{ name: "Daniela Viloria García", course: "1º" }] },
-                    { name: "Juan Jesús Encinas Redondo", course: "3º", mentees: [{ name: "Mara Sancho Berciano", course: "1º" }] },
-                    { name: "Laura Del Campo Giménez", course: "3º", mentees: [{ name: "Emma Anciones de Arriba", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "Carlos Gómez Peña",
-                role: "Tutor",
-                mentors: [
-                    { name: "Mateo Heredero Siado", course: "3º", mentees: [{ name: "Julia Medina Alonso", course: "1º" }, { name: "Eva González Fuentes", course: "1º" }] },
-                    { name: "Marta Montarelo Sebastián", course: "3º", mentees: [{ name: "Sergio Sanz Zamarro", course: "1º" }] },
-                    { name: "Edna Suso Sigüenza", course: "3º", mentees: [{ name: "Sofía Aguilar Cabezas", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "Roberto Hornero Sánchez",
-                role: "Tutor",
-                mentors: [
-                    { name: "Ainhara Ramos Barbudo", course: "3º", mentees: [{ name: "Paula Robles Rodríguez", course: "1º" }] },
-                    { name: "Elena Ekube Segura", course: "3º", mentees: [{ name: "David De Lucas", course: "1º" }] },
-                    { name: "Elisa Navarro Gordo", course: "3º", mentees: [{ name: "Miguel Muñoz González", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "Gonzalo Gutiérrez Tobal",
-                role: "Tutor",
-                mentors: [
-                    { name: "Elvira Anaya Gallego", course: "3º", mentees: [{ name: "Eva Mucientes López", course: "1º" }] },
-                    { name: "Iker Rivas Conde", course: "4º", mentees: [{ name: "Carla Vicente Sánchez-Cabana", course: "1º" }] },
-                    { name: "Laura Gallardo Romero", course: "3º", mentees: [{ name: "Rocío Pérez Gómez", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "Daniel Álvarez González",
-                role: "Tutor",
-                mentors: [
-                    { name: "Natalia Martín Ferrero", course: "3º", mentees: [{ name: "Esmeralda Ruiz Grande", course: "2º" }] },
-                    { name: "Olaya Huerta Reimunde", course: "3º", mentees: [{ name: "Beatriz Ramos Cabezas", course: "1º" }] },
-                    { name: "Paula Afonso García", course: "3º", mentees: [{ name: "Carla Molinero del Canto", course: "1º" }] }
-                ]
-            },
-            {
-                tutor: "María García Gadañón",
-                role: "Tutora",
-                mentors: [
-                    { name: "Samuel Martínez Fernández", course: "3º", mentees: [{ name: "Carmen García Sobrino", course: "1º" }, { name: "Adrián José Santana Medina", course: "1º" }] },
-                    { name: "Sofía Álvarez de Sousa", course: "3º", mentees: [{ name: "Raquel Ruiz Ferrero", course: "1º" }] },
-                    { name: "Patricia Senín Otero", course: "3º", mentees: [{ name: "Leah Eliza Núñez Hayhurst", course: "1º" }] }
-                ]
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+
+      // --- 1. Fondo de Partículas Conectadas ---
+      (function initBgParticles() {
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+
+        function resize() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          const count = Math.min(70, Math.floor((width * height) / 20000));
+          particles = Array.from({ length: count }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            r: Math.random() * 1.4 + 1
+          }));
+        }
+
+        function draw() {
+          ctx.clearRect(0, 0, width, height);
+          for (let i = 0; i < particles.length; i++) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < 0 || p.x > width) p.vx *= -1;
+            if (p.y < 0 || p.y > height) p.vy *= -1;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.fill();
+
+            for (let j = i + 1; j < particles.length; j++) {
+              let p2 = particles[j];
+              let dx = p.x - p2.x, dy = p.y - p2.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 120) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(99, 102, 241, ${(1 - dist / 120) * 0.18})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+              }
             }
-        ];
+          }
+          requestAnimationFrame(draw);
+        }
 
-        let currentViewMode = 'tree';
-        let currentSearchQuery = '';
-        let currentCourseFilter = 'ALL';
-        let expandedGroups = new Set(ateneaData.map((_, i) => i));
+        window.addEventListener('resize', resize);
+        resize();
+        draw();
+      })();
 
-        window.onload = function() {
-            render();
-        };
+      // --- 2. Cerebro 3D Interactivo en el Hero ---
+      (function init3DBrainHero() {
+        const canvas = document.getElementById('hero-brain-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resizeCanvas() {
+          const rect = canvas.getBoundingClientRect();
+          width = canvas.width = rect.width * (window.devicePixelRatio || 1);
+          height = canvas.height = rect.height * (window.devicePixelRatio || 1);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const nodes = [];
+        const numNodes = 400;
+        
+        for (let i = 0; i < numNodes; i++) {
+          const u = Math.random();
+          const v = Math.random();
+          const theta = u * 2.0 * Math.PI;
+          const phi = Math.acos(2.0 * v - 1.0);
+          
+          let r = 1.0 + 0.08 * Math.sin(phi * 6) * Math.cos(theta * 4);
+          let x = r * Math.sin(phi) * Math.cos(theta);
+          let y = r * Math.sin(phi) * Math.sin(theta);
+          let z = r * Math.cos(phi);
+
+          x *= 1.35;
+          if (x > 0) x += 0.12; else x -= 0.12;
+          y *= 0.95;
+          z *= 0.85;
+
+          nodes.push({ x, y, z, size: Math.random() * 2 + 1 });
+        }
+
+        const connections = [];
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            const dz = nodes[i].z - nodes[j].z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 0.42) {
+              connections.push([i, j]);
+            }
+          }
+        }
+
+        let angleX = 0.15;
+        let angleY = 0;
+        let isDragging = false;
+        let lastMouseX = 0, lastMouseY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - lastMouseX;
+          const dy = e.clientY - lastMouseY;
+          angleY += dx * 0.008;
+          angleX += dy * 0.008;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+        });
 
         function render() {
-            const container = document.getElementById('mainContainer');
-            container.innerHTML = '';
-            let filteredCount = 0;
+          ctx.clearRect(0, 0, width, height);
 
-            ateneaData.forEach((group, groupIdx) => {
-                const isGroupMatch = matchesFilter(group);
-                if (!isGroupMatch.visible) return;
+          if (!isDragging) {
+            angleY += 0.005;
+          }
 
-                filteredCount++;
-                const isExpanded = expandedGroups.has(groupIdx);
+          const scale = Math.min(width, height) * 0.33;
+          const cx = width / 2;
+          const cy = height / 2;
 
-                if (currentViewMode === 'tree') {
-                    container.appendChild(createTreeViewGroup(group, groupIdx, isExpanded, isGroupMatch.highlightQuery));
-                } else {
-                    container.appendChild(createCardViewGroup(group, groupIdx, isExpanded, isGroupMatch.highlightQuery));
-                }
-            });
+          const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+          const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
 
-            const banner = document.getElementById('searchResultsBanner');
-            if (currentSearchQuery.trim() !== '') {
-                banner.classList.remove('hidden');
-                document.getElementById('searchKeyword').innerText = `"${currentSearchQuery}"`;
-                document.getElementById('searchMatchCount').innerText = `${filteredCount} tutoría(s) encontradas`;
-            } else {
-                banner.classList.add('hidden');
+          const projected = nodes.map(n => {
+            let x1 = n.x * cosY - n.z * sinY;
+            let z1 = n.x * sinY + n.z * cosY;
+            let y1 = n.y * cosX - z1 * sinX;
+            let z2 = n.y * sinX + z1 * cosX;
+
+            const perspective = 3 / (3 + z2);
+            return {
+              px: cx + x1 * scale * perspective,
+              py: cy - y1 * scale * perspective,
+              pz: z2,
+              scale: perspective
+            };
+          });
+
+          connections.forEach(([i, j]) => {
+            const p1 = projected[i];
+            const p2 = projected[j];
+
+            const alpha = Math.max(0, (1.2 + (p1.pz + p2.pz) / 2) * 0.28);
+            if (alpha > 0.02) {
+              ctx.beginPath();
+              ctx.moveTo(p1.px, p1.py);
+              ctx.lineTo(p2.px, p2.py);
+              
+              const grad = ctx.createLinearGradient(p1.px, p1.py, p2.px, p2.py);
+              grad.addColorStop(0, `rgba(34, 211, 238, ${alpha})`);
+              grad.addColorStop(0.5, `rgba(167, 139, 250, ${alpha * 1.2})`);
+              grad.addColorStop(1, `rgba(244, 114, 208, ${alpha})`);
+              
+              ctx.strokeStyle = grad;
+              ctx.lineWidth = 1.1 * p1.scale;
+              ctx.stroke();
             }
+          });
 
-            if (filteredCount === 0) {
-                container.innerHTML = `
-                    <div class="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
-                        <i class="fa-solid fa-user-slash text-4xl text-slate-300 mb-3"></i>
-                        <h3 class="text-lg font-bold text-slate-700">Sin resultados de búsqueda</h3>
-                        <p class="text-slate-500 text-sm mt-1">No se encontró ningún participante que coincida con "${currentSearchQuery}".</p>
-                        <button onclick="clearSearch()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition">
-                            Limpiar búsqueda
-                        </button>
-                    </div>
-                `;
-            }
+          projected.forEach((p, idx) => {
+            const alpha = Math.max(0.1, (1.2 + p.pz) * 0.45);
+            ctx.beginPath();
+            ctx.arc(p.px, p.py, Math.max(1, nodes[idx].size * p.scale), 0, Math.PI * 2);
+            
+            ctx.fillStyle = idx % 3 === 0 ? `rgba(34, 211, 238, ${alpha})` :
+                           idx % 3 === 1 ? `rgba(167, 139, 250, ${alpha})` : `rgba(251, 146, 60, ${alpha})`;
+            ctx.shadowColor = '#22d3ee';
+            ctx.shadowBlur = p.scale * 6;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          });
+
+          requestAnimationFrame(render);
         }
+        render();
+      })();
 
-        function matchesFilter(group) {
-            const query = currentSearchQuery.toLowerCase().trim();
-            const course = currentCourseFilter;
-
-            let tutorMatch = normalizeStr(group.tutor).includes(query);
-            let mentorMatches = false;
-            let menteeMatches = false;
-
-            group.mentors.forEach(m => {
-                if (normalizeStr(m.name).includes(query) && (course === 'ALL' || m.course === course)) {
-                    mentorMatches = true;
-                }
-                m.mentees.forEach(me => {
-                    if (normalizeStr(me.name).includes(query) && (course === 'ALL' || me.course === course)) {
-                        menteeMatches = true;
-                    }
-                });
-            });
-
-            let isVisible = true;
-            if (query !== '') {
-                isVisible = tutorMatch || mentorMatches || menteeMatches;
-            }
-
-            if (isVisible && course !== 'ALL') {
-                const hasCourse = group.mentors.some(m => 
-                    m.course === course || m.mentees.some(me => me.course === course)
-                );
-                if (!hasCourse) isVisible = false;
-            }
-
-            return { visible: isVisible, highlightQuery: query };
-        }
-
-        function normalizeStr(str) {
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        }
-
-        function highlightText(text, query) {
-            if (!query) return text;
-            const normText = normalizeStr(text);
-            const index = normText.indexOf(query);
-            if (index === -1) return text;
-
-            const start = text.substring(0, index);
-            const match = text.substring(index, index + query.length);
-            const end = text.substring(index + query.length);
-
-            return `${start}<mark class="bg-amber-200 text-amber-900 rounded px-0.5 font-bold">${match}</mark>${end}`;
-        }
-
-        function getBadgeClass(course) {
-            switch(course) {
-                case '1º': return 'bg-blue-100 text-blue-800 border-blue-200';
-                case '2º': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                case '3º': return 'bg-purple-100 text-purple-800 border-purple-200';
-                case '4º': return 'bg-amber-100 text-amber-800 border-amber-200';
-                default: return 'bg-slate-100 text-slate-800 border-slate-200';
-            }
-        }
-
-        function createTreeViewGroup(group, index, isExpanded, query) {
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md";
-
-            const totalMentors = group.mentors.length;
-            const totalMentees = group.mentors.reduce((acc, m) => acc + m.mentees.length, 0);
-
-            card.innerHTML = `
-                <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 flex items-center justify-between border-b border-amber-100 cursor-pointer select-none" onclick="toggleGroup(${index})">
-                    <div class="flex items-center space-x-3.5">
-                        <div class="w-10 h-10 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center shadow-xs text-lg">
-                            <i class="fa-solid fa-chalkboard-user"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs font-bold uppercase tracking-wider text-amber-800">${group.role}</span>
-                                <span class="text-xs bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-medium">
-                                    ${totalMentors} Mentores &bull; ${totalMentees} Mentorizados
-                                </span>
-                            </div>
-                            <h3 class="text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                                ${highlightText(group.tutor, query)}
-                            </h3>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition">
-                            <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            if (isExpanded) {
-                const body = document.createElement('div');
-                body.className = "p-4 sm:p-6 bg-slate-50/50 space-y-4 overflow-x-auto";
-
-                group.mentors.forEach(mentor => {
-                    const mentorBlock = document.createElement('div');
-                    mentorBlock.className = "flex flex-col sm:flex-row items-stretch gap-3 sm:gap-4 bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs";
-
-                    const mentorCol = `
-                        <div class="sm:w-1/2 flex items-center space-x-3 p-3 rounded-lg bg-slate-100/70 border border-slate-200/80">
-                            <div class="w-9 h-9 rounded-lg bg-slate-700 text-white font-bold flex items-center justify-center text-sm shrink-0">
-                                <i class="fa-solid fa-user-graduate"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Mentor</span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBadgeClass(mentor.course)}">
-                                        ${mentor.course}
-                                    </span>
-                                </div>
-                                <div class="text-sm font-semibold text-slate-800 truncate">
-                                    ${highlightText(mentor.name, query)}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    let menteesHtml = '';
-                    mentor.mentees.forEach(mentee => {
-                        menteesHtml += `
-                            <div class="flex-1 flex items-center space-x-3 p-3 rounded-lg bg-blue-50/60 border border-blue-100">
-                                <div class="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
-                                    <i class="fa-solid fa-user"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[11px] font-bold uppercase tracking-wider text-blue-700">Mentorizado</span>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBadgeClass(mentee.course)}">
-                                            ${mentee.course}
-                                        </span>
-                                    </div>
-                                    <div class="text-sm font-semibold text-slate-900 truncate">
-                                        ${highlightText(mentee.name, query)}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    mentorBlock.innerHTML = `
-                        ${mentorCol}
-                        <div class="hidden sm:flex items-center text-slate-300">
-                            <i class="fa-solid fa-arrow-right text-base"></i>
-                        </div>
-                        <div class="flex-1 flex flex-col sm:flex-row gap-2.5">
-                            ${menteesHtml}
-                        </div>
-                    `;
-
-                    body.appendChild(mentorBlock);
-                });
-
-                card.appendChild(body);
-            }
-
-            return card;
-        }
-
-        function createCardViewGroup(group, index, isExpanded, query) {
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200";
-
-            card.innerHTML = `
-                <div class="bg-slate-900 text-white p-4 flex items-center justify-between cursor-pointer select-none" onclick="toggleGroup(${index})">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-base">
-                            <i class="fa-solid fa-chalkboard-user"></i>
-                        </div>
-                        <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">${group.role}</span>
-                            <h3 class="text-base font-bold text-white">${highlightText(group.tutor, query)}</h3>
-                        </div>
-                    </div>
-                    <button class="text-slate-400 hover:text-white transition">
-                        <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
-                    </button>
-                </div>
-            `;
-
-            if (isExpanded) {
-                const body = document.createElement('div');
-                body.className = "p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-50";
-
-                group.mentors.forEach(m => {
-                    const mentorCard = document.createElement('div');
-                    mentorCard.className = "bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex flex-col justify-between";
-
-                    let menteesList = '';
-                    m.mentees.forEach(me => {
-                        menteesList += `
-                            <li class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0 text-xs">
-                                <span class="font-medium text-slate-800 flex items-center">
-                                    <i class="fa-solid fa-caret-right text-blue-500 mr-1.5"></i>
-                                    ${highlightText(me.name, query)}
-                                </span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${getBadgeClass(me.course)}">
-                                    ${me.course}
-                                </span>
-                            </li>
-                        `;
-                    });
-
-                    mentorCard.innerHTML = `
-                        <div>
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-2.5 mb-2.5">
-                                <div class="flex items-center space-x-2">
-                                    <i class="fa-solid fa-user-graduate text-slate-500 text-xs"></i>
-                                    <span class="text-xs font-bold text-slate-900">${highlightText(m.name, query)}</span>
-                                </div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${getBadgeClass(m.course)}">
-                                    ${m.course}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Mentorizados:</span>
-                                <ul>${menteesList}</ul>
-                            </div>
-                        </div>
-                    `;
-
-                    body.appendChild(mentorCard);
-                });
-
-                card.appendChild(body);
-            }
-
-            return card;
-        }
-
-        function toggleGroup(index) {
-            if (expandedGroups.has(index)) {
-                expandedGroups.delete(index);
-            } else {
-                expandedGroups.add(index);
-            }
-            render();
-        }
-
-        function toggleExpandAll() {
-            const btnText = document.getElementById('toggleAllText');
-            const btnIcon = document.getElementById('toggleAllIcon');
-
-            if (expandedGroups.size === ateneaData.length) {
-                expandedGroups.clear();
-                btnText.innerText = 'Desplegar Todos';
-                btnIcon.className = 'fa-solid fa-expand';
-            } else {
-                expandedGroups = new Set(ateneaData.map((_, i) => i));
-                btnText.innerText = 'Colapsar Todos';
-                btnIcon.className = 'fa-solid fa-compress';
-            }
-            render();
-        }
-
-        function setViewMode(mode) {
-            currentViewMode = mode;
-            document.getElementById('btnViewTree').className = `view-btn px-3 py-1.5 text-xs font-medium rounded-lg flex items-center space-x-1.5 ${mode === 'tree' ? 'bg-white shadow-xs text-blue-700' : 'text-slate-600 hover:bg-white/50'}`;
-            document.getElementById('btnViewCards').className = `view-btn px-3 py-1.5 text-xs font-medium rounded-lg flex items-center space-x-1.5 ${mode === 'cards' ? 'bg-white shadow-xs text-blue-700' : 'text-slate-600 hover:bg-white/50'}`;
-            render();
-        }
-
-        function setCourseFilter(course) {
-            currentCourseFilter = course;
-            document.querySelectorAll('.course-btn').forEach(btn => {
-                btn.className = 'course-btn px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:bg-white/50';
-            });
-            const activeBtn = document.getElementById(`btnCourse-${course}`);
-            if (activeBtn) {
-                activeBtn.className = 'course-btn active px-2.5 py-1 text-xs font-medium rounded-lg bg-white shadow-xs text-slate-800';
-            }
-            render();
-        }
-
-        function handleSearch() {
-            const input = document.getElementById('searchInput');
-            const clearBtn = document.getElementById('clearSearch');
-            currentSearchQuery = input.value;
-
-            if (currentSearchQuery.length > 0) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-            }
-            render();
-        }
-
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('clearSearch').classList.add('hidden');
-            currentSearchQuery = '';
-            render();
-        }
-    </script>
+      
+    });
+  </script>
 </body>
 </html>
