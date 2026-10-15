@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>RadioNav UVa · Simuladores docentes de radionavegación</title>
+  <meta name="description" content="Suite de simuladores docentes de radionavegación: navegación por satélite, radiofaros (VOR y DME), sistemas de aterrizaje (ILS y MLS) y radar. Escuela Técnica Superior de Ingenieros de Telecomunicación, Universidad de Valladolid.">
+  <meta name="theme-color" content="#020612">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #020612;
+      --panel: rgba(8, 16, 36, 0.75);
+      --panel-border: rgba(45, 80, 140, 0.35);
+      --cy: #22d3ee;
+      --vi: #a78bfa;
+      --em: #34d399;
+      --or: #fb923c;
+      --pk: #f472d0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: #f0f6ff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Aurora & Particles Background */
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 80% 25%, rgba(34, 211, 238, 0.16), transparent 50%),
+        radial-gradient(circle at 85% 35%, rgba(167, 139, 250, 0.18), transparent 45%),
+        radial-gradient(circle at 15% 75%, rgba(52, 211, 153, 0.08), transparent 45%);
+    }
+
+    canvas#bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Cards Grid Styling */
+    .sim-card {
+      background: linear-gradient(170deg, rgba(10, 20, 42, 0.85) 0%, rgba(4, 10, 24, 0.92) 100%);
+      border: 1px solid rgba(50, 85, 140, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s, box-shadow 0.28s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sim-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--card-color, #22d3ee), transparent 65%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.25;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .sim-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 36px -12px var(--card-glow, rgba(34, 211, 238, 0.35));
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .sim-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Badges */
+    .badge-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      border: 1px solid var(--card-color);
+      color: var(--card-color);
+      background: color-mix(in srgb, var(--card-color) 12%, transparent);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--card-color) 20%, transparent);
+    }
+
+    .preview-container {
+      height: 125px;
+      width: 100%;
+      border-radius: 10px;
+      background: radial-gradient(ellipse at center, rgba(14, 28, 56, 0.7), rgba(2, 6, 18, 0.95));
+      border: 1px solid rgba(45, 80, 135, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-box {
+      background: linear-gradient(180deg, rgba(8, 18, 38, 0.75) 0%, rgba(4, 10, 24, 0.88) 100%);
+      border: 1px solid rgba(45, 80, 135, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+    .pulse-dot {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+  <style>
+    .sim-card.soon{cursor:default;pointer-events:none}
+    .sim-card.soon:hover{transform:none;box-shadow:none}
+    .soon-tag{position:absolute;top:10px;right:12px;font-size:.58rem;font-weight:700;letter-spacing:.1em;padding:2px 8px;border-radius:9999px;color:#94a3b8;border:1px dashed rgba(148,163,184,.5);background:rgba(15,23,42,.7)}
+    .preview-container svg{width:100%;height:100%;display:block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes dash{to{stroke-dashoffset:-24}}
+    @keyframes blip{0%,100%{opacity:.15}50%{opacity:1}}
+    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    .spin{animation:spin 4s linear infinite}.spin-r{animation:spin 3s linear infinite}
+    .dashan{stroke-dasharray:4 4;animation:dash 1s linear infinite}
+    .blip{animation:blip 3s ease-in-out infinite}.bob{animation:bob 2.4s ease-in-out infinite}
+  </style>
+
+<style id="nl-foot-style">
+/* Pie común RadioNav UVa (mismo que en las apps) */
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-foot{display:none!important}}
+</style>
+</head>
+<body class="relative text-slate-100 min-h-screen">
+
+  <div class="aurora-bg"></div>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+
+    <header class="flex flex-wrap items-center justify-between gap-4 py-3 mb-2 border-b border-slate-800/60">
+      <!-- Logo UVa (Izquierda) -->
+      <a href="https://www.uva.es/" class="flex items-center gap-3">
+          <img src="img/UVa.png" width="200">
+      </a>
+
+      <!-- Logo GIB (Derecha) -->
+      <div class="flex items-center gap-2.5">
+          <a href="https://gib.uva.es/"><img src="img/GIB.png" width="200"></a>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center py-6 sm:py-8">
+      <div class="lg:col-span-6 flex flex-col justify-center">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold tracking-widest uppercase w-fit mb-4">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] pulse-dot"></span>
+          LABORATORIO INTERACTIVO DE RADIONAVEGACIÓN<br>
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
+          RadioNav <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">UVa</span>
+        </h1>
+        <h2 class="text-xl sm:text-2xl font-semibold text-slate-200 mb-3">Simuladores docentes de radionavegación</h2>
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mb-6">
+          Explora, experimenta y aprende con herramientas de simulación en navegación por satélite, radiofaros, sistemas de aterrizaje y radar.
+        </p>
+      </div>
+      <div class="lg:col-span-6 relative flex justify-center items-center">
+        <div class="absolute w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/25 to-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <canvas id="hero-globe-canvas" class="w-full max-w-[520px] h-[320px] sm:h-[390px] cursor-grab active:cursor-grabbing relative z-10" aria-label="Tierra con satélites de navegación"></canvas>
+      </div>
+    </section>
+
+    <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-6">
+
+      <a href="apps/GNSSSim.html" class="sim-card p-4 text-left group soon" style="--card-color:#22d3ee; --card-glow:rgba(34,211,238,0.35);" aria-disabled="true" tabindex="-1">
+        <span class="soon-tag">PRÓXIMAMENTE</span>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">GNSS</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <svg viewBox="0 0 240 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<defs><radialGradient id="eg" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#1e4a7a"/><stop offset="1" stop-color="#06122a"/></radialGradient></defs>
+<ellipse cx="120" cy="40" rx="105" ry="30" fill="none" stroke="#22d3ee" stroke-opacity=".25" stroke-dasharray="3 4"/>
+<circle cx="120" cy="215" r="125" fill="url(#eg)" stroke="#22d3ee" stroke-opacity=".6"/>
+<g stroke="#22d3ee" stroke-opacity=".7" stroke-width="1.2" fill="none" class="dashan"><line x1="52" y1="44" x2="120" y2="92"/><line x1="120" y1="26" x2="120" y2="92"/><line x1="188" y1="44" x2="120" y2="92"/></g>
+<g class="bob"><rect x="46" y="39" width="12" height="7" rx="1.5" fill="#22d3ee"/><rect x="37" y="41" width="8" height="3" fill="#22d3ee" fill-opacity=".6"/><rect x="59" y="41" width="8" height="3" fill="#22d3ee" fill-opacity=".6"/></g>
+<g class="bob" style="animation-delay:-.8s"><rect x="114" y="21" width="12" height="7" rx="1.5" fill="#fb923c"/><rect x="105" y="23" width="8" height="3" fill="#fb923c" fill-opacity=".6"/><rect x="127" y="23" width="8" height="3" fill="#fb923c" fill-opacity=".6"/></g>
+<g class="bob" style="animation-delay:-1.6s"><rect x="182" y="39" width="12" height="7" rx="1.5" fill="#a78bfa"/><rect x="173" y="41" width="8" height="3" fill="#a78bfa" fill-opacity=".6"/><rect x="195" y="41" width="8" height="3" fill="#a78bfa" fill-opacity=".6"/></g>
+<circle cx="120" cy="92" r="3.5" fill="#fff"/><circle cx="120" cy="92" r="8" fill="none" stroke="#fff" stroke-opacity=".5"><animate attributeName="r" values="4;12;4" dur="2s" repeatCount="indefinite"/><animate attributeName="stroke-opacity" values=".7;0;.7" dur="2s" repeatCount="indefinite"/></circle>
+<text x="12" y="116" fill="#94a3b8" font-size="8" font-family="system-ui">GPS · GLONASS · Galileo</text></svg>
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">GNSSSim</h3>
+        <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">Navegación por satélite</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Posicionamiento con GPS, GLONASS, Galileo y otros sistemas GNSS: pseudodistancias, geometría de satélites y fuentes de error.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-cyan-400">
+          <span class="text-slate-500">En preparación</span><span class="text-base text-slate-600">…</span>
+        </div>
+      </a>
+
+      <a href="apps/BeaconSim.html" class="sim-card p-4 text-left group" style="--card-color:#a78bfa; --card-glow:rgba(167,139,250,0.35);">
+        
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">VOR · DME</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <svg viewBox="0 0 240 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<g fill="none" stroke="#a78bfa" stroke-opacity=".25"><circle cx="85" cy="68" r="22"/><circle cx="85" cy="68" r="42"/><circle cx="85" cy="68" r="62" stroke-dasharray="3 4"/></g>
+<g transform="translate(85 68) scale(1.4)"><g class="spin" style="transform-origin:0 0"><path d="M34.0,-0.0 L33.7,-3.5 L32.9,-7.0 L31.5,-10.2 L29.7,-13.2 L27.5,-15.9 L24.9,-18.1 L22.0,-19.8 L19.0,-21.1 L15.9,-21.8 L12.8,-22.1 L9.7,-21.8 L6.9,-21.2 L4.3,-20.1 L2.0,-18.7 L0.0,-17.0 L-1.6,-15.1 L-2.8,-13.2 L-3.6,-11.2 L-4.1,-9.2 L-4.2,-7.4 L-4.1,-5.7 L-3.8,-4.2 L-3.2,-2.9 L-2.6,-1.9 L-2.0,-1.1 L-1.3,-0.6 L-0.8,-0.3 L-0.4,-0.1 L-0.1,-0.0 L-0.0,-0.0 L-0.1,0.0 L-0.4,0.1 L-0.8,0.3 L-1.3,0.6 L-2.0,1.1 L-2.6,1.9 L-3.2,2.9 L-3.8,4.2 L-4.1,5.7 L-4.2,7.4 L-4.1,9.2 L-3.6,11.2 L-2.8,13.2 L-1.6,15.1 L-0.0,17.0 L2.0,18.7 L4.3,20.1 L6.9,21.2 L9.7,21.8 L12.8,22.1 L15.9,21.8 L19.0,21.1 L22.0,19.8 L24.9,18.1 L27.5,15.9 L29.7,13.2 L31.5,10.2 L32.9,7.0 L33.7,3.5 L34.0,0.0 Z" fill="#a78bfa" fill-opacity=".25" stroke="#a78bfa" stroke-width="1.5"/></g></g>
+<polygon points="85,62 90.7,66.1 88.5,72.8 81.5,72.8 79.3,66.1" fill="#facc15"/>
+<line x1="85" y1="68" x2="178" y2="30" stroke="#22d3ee" stroke-width="1.4" stroke-dasharray="4 3" class="dashan"/>
+<g transform="translate(178 30) rotate(55)" class="bob"><path d="M0,-9 L2.5,-2 L10,2.5 L10,4 L2.5,2.5 L1.5,7.5 L4,9 L4,10 L0,9 L-4,10 L-4,9 L-1.5,7.5 L-2.5,2.5 L-10,4 L-10,2.5 L-2.5,-2 Z" fill="#f8fafc"/></g>
+<text x="150" y="58" fill="#22d3ee" font-size="9" font-weight="700" font-family="system-ui">α = 053°</text><text x="150" y="70" fill="#fb7185" font-size="9" font-weight="700" font-family="system-ui">38,5 NM</text>
+<text x="12" y="116" fill="#94a3b8" font-size="8" font-family="system-ui">VOR · DVOR · DME/N · DME/P</text></svg>
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">BeaconSim</h3>
+        <h4 class="text-xs font-semibold text-purple-400 uppercase tracking-wide mb-2">Radiofaros: VOR y DME</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Determina el radial y la distancia a una estación: modulación y demodulación de la señal VOR, indicador de cabina y pulsos DME.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <a href="apps/LandSim.html" class="sim-card p-4 text-left group soon" style="--card-color:#34d399; --card-glow:rgba(52,211,153,0.35);" aria-disabled="true" tabindex="-1">
+        <span class="soon-tag">PRÓXIMAMENTE</span>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">ILS · MLS</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <svg viewBox="0 0 240 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<polygon points="26,100 232,38 232,66" fill="#34d399" fill-opacity=".12"/>
+<line x1="26" y1="100" x2="232" y2="48" stroke="#34d399" stroke-width="1.6" stroke-dasharray="5 4" class="dashan"/>
+<line x1="26" y1="100" x2="26" y2="114" stroke="#34d399"/>
+<rect x="0" y="100" width="240" height="25" fill="#0b1a30"/><line x1="0" y1="100" x2="240" y2="100" stroke="#475569"/>
+<rect x="18" y="98.5" width="72" height="3.5" fill="#cbd5e1"/><g stroke="#0f172a" stroke-width="1"><line x1="26" y1="100.2" x2="34" y2="100.2"/><line x1="44" y1="100.2" x2="52" y2="100.2"/><line x1="62" y1="100.2" x2="70" y2="100.2"/><line x1="80" y1="100.2" x2="86" y2="100.2"/></g>
+<rect x="30" y="86" width="2" height="12" fill="#34d399"/><circle cx="31" cy="85" r="2.5" fill="#34d399"/>
+<g class="bob"><g transform="translate(150 60) rotate(-14) scale(-1 1)"><path d="M10,0 L5,-2 L3,-9 L1,-9 L2,-2 L-7,-1.5 L-9,-4 L-10.5,-4 L-9.5,0 L-10.5,4 L-9,4 L-7,1.5 L2,2 L1,9 L3,9 L5,2 Z" fill="#f8fafc"/></g></g>
+<path d="M44,100 A18,18 0 0 0 42,93.5" fill="none" stroke="#e2e8f0" stroke-width=".8"/><text x="48" y="95" fill="#e2e8f0" font-size="8" font-family="system-ui">3°</text>
+<text x="12" y="116" fill="#94a3b8" font-size="8" font-family="system-ui">ILS · MLS · senda de planeo y localizador</text></svg>
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">LandSim</h3>
+        <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Aterrizaje y despegue</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Guiado de aproximación y aterrizaje con ILS y MLS: localizador, senda de planeo y haces de barrido.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
+          <span class="text-slate-500">En preparación</span><span class="text-base text-slate-600">…</span>
+        </div>
+      </a>
+
+      <a href="apps/RadarSim.html" class="sim-card p-4 text-left group soon" style="--card-color:#fb923c; --card-glow:rgba(251,146,60,0.35);" aria-disabled="true" tabindex="-1">
+        <span class="soon-tag">PRÓXIMAMENTE</span>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">RADAR</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <svg viewBox="0 0 240 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<defs><linearGradient id="sw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fb923c" stop-opacity="0"/><stop offset="1" stop-color="#fb923c" stop-opacity=".55"/></linearGradient><clipPath id="cp"><circle cx="120" cy="62" r="56"/></clipPath></defs>
+<circle cx="120" cy="62" r="56" fill="#0a1a12" fill-opacity=".5" stroke="#fb923c" stroke-opacity=".6"/>
+<g fill="none" stroke="#fb923c" stroke-opacity=".25"><circle cx="120" cy="62" r="38"/><circle cx="120" cy="62" r="19"/><line x1="64" y1="62" x2="176" y2="62"/><line x1="120" y1="6" x2="120" y2="118"/></g>
+<g clip-path="url(#cp)"><g transform="translate(120 62)"><g class="spin-r" style="transform-origin:0 0"><path d="M0,0 L56,0 A56,56 0 0 0 48.5,-28 Z" fill="url(#sw)" transform="rotate(30)"/><line x1="0" y1="0" x2="56" y2="0" stroke="#fdba74" stroke-width="1.4"/></g></g></g>
+<g fill="#fdba74"><circle class="blip" cx="148" cy="40" r="2.6"/><circle class="blip" style="animation-delay:-1s" cx="96" cy="84" r="2.6"/><circle class="blip" style="animation-delay:-2s" cx="150" cy="86" r="2.6"/><circle class="blip" style="animation-delay:-.5s" cx="104" cy="36" r="2.2"/></g>
+<text x="10" y="116" fill="#94a3b8" font-size="8" font-family="system-ui">alcance · acimut · Doppler</text></svg>
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">RadarSim</h3>
+        <h4 class="text-xs font-semibold text-orange-400 uppercase tracking-wide mb-2">Radar</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Detección y localización de blancos: ecuación radar, alcance, resolución y efecto Doppler.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-orange-400">
+          <span class="text-slate-500">En preparación</span><span class="text-base text-slate-600">…</span>
+        </div>
+      </a>
+
+    </main>
+
+    <section class="feature-box p-6 sm:p-8 my-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Bloque 1: Aprendizaje activo -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Aprendizaje activo</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Experimenta y comprende la radionavegación desde la práctica.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 2: Formación de calidad -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Formación de calidad</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Herramientas docentes diseñadas para el aula universitaria.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Tecnología y ciencia -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Tecnología y ciencia</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Simulaciones basadas en la teoría y en las especificaciones de los sistemas reales.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Grupo de Ingeniería Biomédica -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-400 shadow-[0_0_15px_rgba(167,139,250,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">ETSIT · Universidad de Valladolid</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              GIB-UVa · Universidad de Valladolid.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer id="nl-foot">
+      <div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img src="img/UVa.png" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img src="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)" onerror="this.replaceWith(document.createTextNode(this.alt))"></a></div>
+      <div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
+    </footer>
+
+  </div>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+
+      // --- 1. Fondo de partículas conectadas ---
+      (function initBgParticles() {
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+        function resize() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          const count = Math.min(70, Math.floor((width * height) / 20000));
+          particles = Array.from({ length: count }, () => ({
+            x: Math.random() * width, y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35, r: Math.random() * 1.4 + 1
+          }));
+        }
+        function draw() {
+          ctx.clearRect(0, 0, width, height);
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > width) p.vx *= -1;
+            if (p.y < 0 || p.y > height) p.vy *= -1;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(56, 189, 248, 0.4)'; ctx.fill();
+            for (let j = i + 1; j < particles.length; j++) {
+              const p2 = particles[j], dx = p.x - p2.x, dy = p.y - p2.y, dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 120) {
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(99, 102, 241, ${(1 - dist / 120) * 0.18})`; ctx.lineWidth = 0.8; ctx.stroke();
+              }
+            }
+          }
+          requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', resize);
+        resize(); draw();
+      })();
+
+      // --- 2. Globo interactivo con constelaciones GNSS y un receptor (Valladolid) ---
+      (function initHeroGlobe() {
+        const canvas = document.getElementById('hero-globe-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        function resizeCanvas() {
+          const rect = canvas.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+          width = canvas.width = rect.width * d; height = canvas.height = rect.height * d;
+        }
+        resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+        // Puntos de la Tierra (esfera de Fibonacci) y sus conexiones
+        const N = 330, earth = [];
+        for (let i = 0; i < N; i++) {
+          const y = 1 - 2 * (i + 0.5) / N, r = Math.sqrt(1 - y * y), th = i * 2.399963;
+          earth.push({ x: r * Math.cos(th), y, z: r * Math.sin(th), size: Math.random() * 1.6 + 0.9 });
+        }
+        const links = [];
+        for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+          const dx = earth[i].x - earth[j].x, dy = earth[i].y - earth[j].y, dz = earth[i].z - earth[j].z;
+          if (dx * dx + dy * dy + dz * dz < 0.075) links.push([i, j]);
+        }
+        // Receptor en Valladolid (41,65° N, 4,72° O); el eje polar es Y
+        const lat = 41.65 * Math.PI / 180, lon = -4.72 * Math.PI / 180;
+        const recv = { x: Math.cos(lat) * Math.cos(lon), y: Math.sin(lat), z: Math.cos(lat) * Math.sin(lon) };
+        // Constelaciones: [color, inclinación, radio, planos, satélites por plano, velocidad]
+        const CONS = [
+          ['34, 211, 238', 55, 1.72, 3, 3, 0.30],   // GPS
+          ['251, 146, 60', 64.8, 1.62, 3, 2, 0.34], // GLONASS
+          ['167, 139, 250', 56, 1.9, 3, 2, 0.26]    // Galileo
+        ];
+        const sats = [];
+        CONS.forEach(([col, inc, rad, P, S, w], c) => {
+          for (let p = 0; p < P; p++) for (let s = 0; s < S; s++)
+            sats.push({ col, inc: inc * Math.PI / 180, rad, node: p * 2 * Math.PI / P + c * 0.5, ph: s * 2 * Math.PI / S + p * 1.1, w });
+        });
+        const satPos = (s, t) => {
+          const a = s.ph + t * s.w, x0 = s.rad * Math.cos(a), z0 = s.rad * Math.sin(a);
+          const y1 = -z0 * Math.sin(s.inc), z1 = z0 * Math.cos(s.inc);
+          return { x: x0 * Math.cos(s.node) + z1 * Math.sin(s.node), y: y1, z: -x0 * Math.sin(s.node) + z1 * Math.cos(s.node) };
+        };
+
+        let viewYaw = 0.4, tilt = 0.35, drag = false, lx = 0, ly = 0, t0 = performance.now();
+        const down = e => { drag = true; const p = e.touches ? e.touches[0] : e; lx = p.clientX; ly = p.clientY; };
+        const move = e => { if (!drag) return; const p = e.touches ? e.touches[0] : e; viewYaw += (p.clientX - lx) * 0.008; tilt = Math.max(-1.2, Math.min(1.2, tilt + (p.clientY - ly) * 0.008)); lx = p.clientX; ly = p.clientY; };
+        canvas.addEventListener('mousedown', down); window.addEventListener('mouseup', () => drag = false); window.addEventListener('mousemove', move);
+        canvas.addEventListener('touchstart', down, { passive: true }); window.addEventListener('touchend', () => drag = false); window.addEventListener('touchmove', move, { passive: true });
+
+        function render(now) {
+          const t = (now - t0) / 1000;
+          ctx.clearRect(0, 0, width, height);
+          if (!drag) viewYaw += 0.002;
+          const earthAng = t * 0.12, ce = Math.cos(earthAng), se = Math.sin(earthAng);
+          const cy = Math.cos(viewYaw), sy = Math.sin(viewYaw), cx = Math.cos(tilt), sx = Math.sin(tilt);
+          const scale = Math.min(width, height) * 0.215, ox = width / 2, oy = height / 2;
+          const rotE = p => ({ x: p.x * ce + p.z * se, y: p.y, z: -p.x * se + p.z * ce });
+          const proj = p => { // vista: giro en Y y luego inclinación en X
+            const x1 = p.x * cy - p.z * sy, z1 = p.x * sy + p.z * cy, y1 = p.y * cx - z1 * sx, z2 = p.y * sx + z1 * cx, k = 3 / (3 + z2);
+            return { px: ox + x1 * scale * k, py: oy - y1 * scale * k, pz: z2, k };
+          };
+          // anillos orbitales tenues
+          sats.forEach((s, i) => {
+            if (i % 3) return;
+            ctx.beginPath();
+            for (let a = 0; a <= 64; a++) {
+              const q = proj(satPos({ ...s, ph: a / 64 * 2 * Math.PI, w: 0 }, 0));
+              a ? ctx.lineTo(q.px, q.py) : ctx.moveTo(q.px, q.py);
+            }
+            ctx.strokeStyle = `rgba(${s.col}, 0.16)`; ctx.lineWidth = 1; ctx.stroke();
+          });
+          // Tierra
+          const pe = earth.map(n => proj(rotE(n)));
+          links.forEach(([i, j]) => {
+            const a = pe[i], b = pe[j], al = Math.max(0, (1 + (a.pz + b.pz) / 2) * 0.18);
+            if (al > 0.01) { ctx.beginPath(); ctx.moveTo(a.px, a.py); ctx.lineTo(b.px, b.py); ctx.strokeStyle = `rgba(99, 160, 255, ${al})`; ctx.lineWidth = 0.9 * a.k; ctx.stroke(); }
+          });
+          pe.forEach((p, i) => {
+            const al = Math.max(0.08, (1 + p.pz) * 0.4);
+            ctx.beginPath(); ctx.arc(p.px, p.py, Math.max(0.8, earth[i].size * p.k), 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(56, 189, 248, ${al})`; ctx.fill();
+          });
+          // receptor y señales de los satélites visibles
+          const rw = rotE(recv), rp = proj(rw), rl = Math.hypot(rw.x, rw.y, rw.z);
+          let vis = 0;
+          sats.forEach((s, i) => {
+            const sp = satPos(s, t), sl = Math.hypot(sp.x, sp.y, sp.z), dot = (rw.x * sp.x + rw.y * sp.y + rw.z * sp.z) / (rl * sl);
+            if (dot > 0.25) {
+              vis++; const q = proj(sp);
+              ctx.beginPath(); ctx.moveTo(rp.px, rp.py); ctx.lineTo(q.px, q.py);
+              ctx.strokeStyle = `rgba(${s.col}, 0.45)`; ctx.lineWidth = 1.1; ctx.setLineDash([4, 4]); ctx.lineDashOffset = -t * 20; ctx.stroke(); ctx.setLineDash([]);
+              const f = (t * 0.5 + i * 0.37) % 1;
+              ctx.beginPath(); ctx.arc(q.px + (rp.px - q.px) * f, q.py + (rp.py - q.py) * f, 2, 0, Math.PI * 2); ctx.fillStyle = `rgba(${s.col}, 0.95)`; ctx.fill();
+            }
+          });
+          // satélites
+          sats.forEach(s => {
+            const q = proj(satPos(s, t)), al = Math.max(0.45, 0.9 + q.pz * 0.2);
+            ctx.save(); ctx.translate(q.px, q.py);
+            ctx.shadowColor = `rgb(${s.col})`; ctx.shadowBlur = 8 * q.k;
+            ctx.fillStyle = `rgba(${s.col}, ${al})`; ctx.fillRect(-2.5 * q.k, -2 * q.k, 5 * q.k, 4 * q.k);
+            ctx.fillRect(-8 * q.k, -0.8 * q.k, 5 * q.k, 1.6 * q.k); ctx.fillRect(3 * q.k, -0.8 * q.k, 5 * q.k, 1.6 * q.k);
+            ctx.restore();
+          });
+          // marcador del receptor (solo si está en el hemisferio visible)
+          if (rp.pz < 0.15) {
+            const pulse = 4 + 4 * (0.5 + 0.5 * Math.sin(t * 3));
+            ctx.beginPath(); ctx.arc(rp.px, rp.py, 3.2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.beginPath(); ctx.arc(rp.px, rp.py, pulse + 3, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+          }
+          requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+      })();
+    });
+  </script>
+</body>
+</html>
