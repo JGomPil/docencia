@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>SimLab UVa · Simuladores docentes de neurociencia, radionavegación e inteligencia artificial</title>
-  <meta name="description" content="Simuladores docentes interactivos de neurociencia, radionavegación e inteligencia artificial y datos. Universidad de Valladolid.">
+  <title>NeuroLab UVa · Simuladores docentes de neurociencia</title>
+  <meta name="description" content="Suite de simuladores docentes de neurociencia: EEG, ERPs, conectómica, localización de fuentes y optogenética. Grupo de Ingeniería Biomédica, Universidad de Valladolid.">
   <meta name="theme-color" content="#020612">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -123,21 +123,6 @@
       animation: pulse-ring 2s infinite ease-in-out;
     }
   </style>
-  <style>
-    .sim-card.soon{cursor:default;pointer-events:none}
-    .sim-card.soon:hover{transform:none;box-shadow:none}
-    .soon-tag{position:absolute;top:10px;right:12px;font-size:.58rem;font-weight:700;letter-spacing:.1em;padding:2px 8px;border-radius:9999px;color:#94a3b8;border:1px dashed rgba(148,163,184,.5);background:rgba(15,23,42,.7)}
-    .preview-container svg{width:100%;height:100%;display:block}
-    .preview-container.tall{height:170px}
-    .chip{font-size:.66rem;font-weight:600;padding:2px 8px;border-radius:9999px;border:1px solid rgba(148,163,184,.35);color:#cbd5e1;background:rgba(15,23,42,.6)}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes dash{to{stroke-dashoffset:-24}}
-    @keyframes blip{0%,100%{opacity:.15}50%{opacity:1}}
-    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-    .spin{animation:spin 6s linear infinite}.spin-r{animation:spin 3s linear infinite}
-    .dashan{stroke-dasharray:4 4;animation:dash 1s linear infinite}
-    .blip{animation:blip 3s ease-in-out infinite}.bob{animation:bob 2.4s ease-in-out infinite}
-  </style>
 <style id="nl-foot-style">
 /* Pie común NeuroLab UVa (mismo que en las apps) */
 #nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
@@ -155,84 +140,159 @@
   <div class="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
 
     <header class="flex flex-wrap items-center justify-between gap-4 py-3 mb-2 border-b border-slate-800/60">
+      <!-- Logo UVa (Izquierda) -->
       <a href="https://www.uva.es/" class="flex items-center gap-3">
-          <img src="img/UVa.png" width="200" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))">
+          <img src="img/UVa.png" width="200">
       </a>
+
+      <!-- Logo GIB (Derecha) -->
       <div class="flex items-center gap-2.5">
-          <a href="https://etsit.uva.es/"><img src="img/ETSIT.png" width="200" alt="ETSIT · Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a>
+          <a href="https://gib.uva.es/"><img src="img/GIB.png" width="200"></a>
       </div>
     </header>
 
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center py-6 sm:py-8">
+      
+      <!-- Lado Izquierdo: Textos principales -->
       <div class="lg:col-span-6 flex flex-col justify-center">
         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold tracking-widest uppercase w-fit mb-4">
           <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] pulse-dot"></span>
-          SIMULADORES DOCENTES INTERACTIVOS<br>
+          LABORATORIO INTERACTIVO DE NEUROCIENCIA COMPUTACIONAL<br>
         </div>
+
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
-          SimLab <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">UVa</span>
+          NeuroLab <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">UVa</span>
         </h1>
-        <h2 class="text-xl sm:text-2xl font-semibold text-slate-200 mb-3">Neurociencia, radionavegación e inteligencia artificial</h2>
+
+        <h2 class="text-xl sm:text-2xl font-semibold text-slate-200 mb-3">
+          Simuladores docentes de neurociencia
+        </h2>
+
         <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mb-6">
-          Tres áreas, una misma idea: aprender experimentando. Elige el área de la asignatura y entra en su laboratorio de simuladores.
+          Explora, experimenta y aprende con herramientas de simulación en EEG, ERPs, conectómica, localización de fuentes y optogenética.
         </p>
       </div>
+
+      <!-- Lado Derecho: Render 3D del cerebro cibernético con red neuronal -->
       <div class="lg:col-span-6 relative flex justify-center items-center">
-        <div class="absolute w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] bg-gradient-to-tr from-cyan-500/20 via-orange-500/20 to-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <canvas id="hero-clusters-canvas" class="w-full max-w-[520px] h-[320px] sm:h-[390px] cursor-grab active:cursor-grabbing relative z-10" aria-label="Tres áreas conectadas: neurociencia, radionavegación e IA y datos"></canvas>
+        <div class="absolute w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/25 to-pink-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <canvas id="hero-brain-canvas" class="w-full max-w-[520px] h-[320px] sm:h-[390px] cursor-grab active:cursor-grabbing relative z-10"></canvas>
       </div>
     </section>
 
-    <main class="grid md:grid-cols-3 gap-4 my-6">
+    <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 my-6">
 
-      <a data-cluster="0" href="neurolab/index.html" class="sim-card p-4 text-left group" style="--card-color:#22d3ee; --card-glow:rgba(34,211,238,0.35);">
-        
+      <!-- TARJETA 1: EEGSim -->
+      <a href="apps/EEGSim.html" class="sim-card p-4 text-left group" style="--card-color:#22d3ee; --card-glow:rgba(34,211,238,0.35);">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-semibold text-slate-400"></span>
-          <span class="badge-tag">5 SIMULADORES</span>
+          <span class="badge-tag">EEG</span>
         </div>
-        <div class="preview-container tall mb-3"><svg viewBox="0 0 240 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><ellipse cx="120" cy="66" rx="82" ry="52" fill="#22d3ee" fill-opacity=".05" stroke="#22d3ee" stroke-opacity=".5"/><g stroke="#22d3ee" stroke-opacity=".35"><line x1="73" y1="82" x2="80" y2="91"/><line x1="73" y1="82" x2="55" y2="52"/><line x1="73" y1="82" x2="72" y2="93"/><line x1="73" y1="82" x2="113" y2="70"/><line x1="73" y1="82" x2="98" y2="65"/><line x1="139" y1="64" x2="163" y2="67"/><line x1="139" y1="64" x2="121" y2="44"/><line x1="139" y1="64" x2="132" y2="30"/><line x1="139" y1="64" x2="161" y2="44"/><line x1="139" y1="64" x2="173" y2="76"/><line x1="139" y1="64" x2="120" y2="34"/><line x1="139" y1="64" x2="183" y2="55"/><line x1="139" y1="64" x2="113" y2="70"/><line x1="139" y1="64" x2="98" y2="65"/><line x1="139" y1="64" x2="171" y2="44"/><line x1="80" y1="91" x2="72" y2="93"/><line x1="80" y1="91" x2="113" y2="70"/><line x1="80" y1="91" x2="98" y2="65"/><line x1="163" y1="67" x2="161" y2="44"/><line x1="163" y1="67" x2="173" y2="76"/><line x1="163" y1="67" x2="183" y2="55"/><line x1="163" y1="67" x2="171" y2="44"/><line x1="121" y1="44" x2="132" y2="30"/><line x1="121" y1="44" x2="161" y2="44"/><line x1="121" y1="44" x2="120" y2="34"/><line x1="121" y1="44" x2="113" y2="70"/><line x1="121" y1="44" x2="98" y2="65"/><line x1="132" y1="30" x2="161" y2="44"/><line x1="132" y1="30" x2="120" y2="34"/><line x1="132" y1="30" x2="113" y2="70"/><line x1="132" y1="30" x2="171" y2="44"/><line x1="161" y1="44" x2="173" y2="76"/><line x1="161" y1="44" x2="120" y2="34"/><line x1="161" y1="44" x2="183" y2="55"/><line x1="161" y1="44" x2="171" y2="44"/><line x1="173" y1="76" x2="183" y2="55"/><line x1="173" y1="76" x2="171" y2="44"/><line x1="55" y1="52" x2="72" y2="93"/><line x1="55" y1="52" x2="98" y2="65"/><line x1="120" y1="34" x2="113" y2="70"/><line x1="120" y1="34" x2="98" y2="65"/><line x1="183" y1="55" x2="171" y2="44"/><line x1="72" y1="93" x2="98" y2="65"/><line x1="113" y1="70" x2="98" y2="65"/></g><circle class="blip" style="animation-delay:-2.3s" cx="73" cy="82" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-0.6s" cx="139" cy="64" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.9s" cx="80" cy="91" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.7s" cx="163" cy="67" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.3s" cx="121" cy="44" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.3s" cx="132" cy="30" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-1.7s" cx="161" cy="44" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.2s" cx="173" cy="76" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-0.4s" cx="55" cy="52" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-1.4s" cx="120" cy="34" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.5s" cx="183" cy="55" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-0.6s" cx="72" cy="93" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.8s" cx="113" cy="70" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.7s" cx="98" cy="65" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-1.2s" cx="171" cy="44" r="3.2" fill="#22d3ee"/><path d="M10,140 L10,142.5 L14,144.0 L18,141.4 L22,144.7 L26,146.7 L30,142.1 L34,135.8 L38,138.3 L42,137.3 L46,134.2 L50,133.4 L54,142.0 L58,142.3 L62,142.2 L66,142.9 L70,148.7 L74,141.9 L78,138.7 L82,136.9 L86,140.0 L90,132.2 L94,134.8 L98,138.1 L102,144.1 L106,138.8 L110,145.0 L114,146.0 L118,146.3 L122,136.7 L126,140.8 L130,137.5 L134,136.2 L138,130.6 L142,140.3 L146,139.6 L150,141.8 L154,140.3 L158,149.6 L162,143.5 L166,141.7 L170,137.6 L174,142.3 L178,133.1 L182,134.1 L186,135.2 L190,142.6 L194,137.1 L198,143.0 L202,145.3 L206,148.1 L210,139.0 L214,142.0 L218,139.7 L222,137.8 L226,130.5 L230,137.7 L234,138.4 L238,139.6" fill="none" stroke="#22d3ee" stroke-width="1.6" class="dashan" style="stroke-dasharray:240 8"/><text x="10" y="164" fill="#94a3b8" font-size="8" font-family="system-ui">EEG · ERP · conectividad · fuentes · optogenética</text></svg></div>
-        <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">Neurociencia</h3>
-        <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">Computacional · Avanzada</h4>
-        <p class="text-xs text-slate-300 leading-relaxed flex-grow">Simuladores de señal EEG, potenciales evocados, conectividad y grafos, localización de fuentes y optogenética.</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="chip">EEGSim</span><span class="chip">ERPSim</span><span class="chip">GraphSim</span><span class="chip">SourceSim</span><span class="chip">OptoGenSim</span></div>
+
+        <div class="preview-container mb-3">
+          <img src="img/EEG.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">EEGSim</h3>
+        <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">Simulación de señales EEG</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Genera y explora señales EEG reales y sintéticas, con diferentes estados y condiciones experimentales.
+        </p>
+
         <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-cyan-400">
-          <span>Entrar en NeuroLab</span>
+          <span>Acceder</span>
           <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
         </div>
       </a>
 
-      <a data-cluster="1" href="radionav/index.html" class="sim-card p-4 text-left group" style="--card-color:#fb923c; --card-glow:rgba(251,146,60,0.35);">
-        
+      <!-- TARJETA 2: ERPSim -->
+      <a href="apps/ERPSim.html" class="sim-card p-4 text-left group" style="--card-color:#a78bfa; --card-glow:rgba(167,139,250,0.35);">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-semibold text-slate-400"></span>
-          <span class="badge-tag">4 TEMAS</span>
+          <span class="badge-tag">ERP</span>
         </div>
-        <div class="preview-container tall mb-3"><svg viewBox="0 0 240 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g transform="translate(92 78)"><circle r="46" fill="#0b1d3a" stroke="#fb923c" stroke-opacity=".7"/><g fill="none" stroke="#fb923c" stroke-opacity=".3"><ellipse rx="46" ry="14"/><ellipse rx="18" ry="46"/><ellipse rx="34" ry="46"/><line x1="-46" y1="0" x2="46" y2="0"/></g>
-<g transform="rotate(-22)"><ellipse rx="84" ry="26" fill="none" stroke="#fb923c" stroke-opacity=".4" stroke-dasharray="3 4"/><circle r="4" fill="#fb923c"><animateMotion dur="9s" repeatCount="indefinite" path="M-84,0 a84,26 0 1,0 168,0 a84,26 0 1,0 -168,0"/></circle></g><circle cx="22" cy="-10" r="3.2" fill="#fff"/></g>
-<g stroke="#fb923c" stroke-width="1.8" fill="none"><path d="M188,140 L196,90 L204,140"/><line x1="191" y1="120" x2="201" y2="120"/></g><circle cx="196" cy="86" r="3" fill="#fb923c"/>
-<g fill="none" stroke="#fb923c"><path class="blip" d="M204,84 A10,10 0 0 1 204,98"/><path class="blip" style="animation-delay:-.8s" d="M212,78 A18,18 0 0 1 212,104"/><path class="blip" style="animation-delay:-1.6s" d="M220,72 A26,26 0 0 1 220,110"/><path class="blip" d="M188,84 A10,10 0 0 0 188,98"/><path class="blip" style="animation-delay:-.8s" d="M180,78 A18,18 0 0 0 180,104"/></g>
-<text x="10" y="164" fill="#94a3b8" font-size="8" font-family="system-ui">GNSS · VOR/DME · ILS/MLS · radar</text></svg></div>
-        <h3 class="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">Radionavegación</h3>
-        <h4 class="text-xs font-semibold text-orange-400 uppercase tracking-wide mb-2">Radiodeterminación</h4>
-        <p class="text-xs text-slate-300 leading-relaxed flex-grow">Navegación por satélite, radiofaros (VOR y DME), sistemas de aterrizaje (ILS y MLS) y radar.</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="chip">GNSS</span><span class="chip">VOR · DME</span><span class="chip">ILS · MLS</span><span class="chip">Radar</span></div>
-        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-orange-400">
-          <span>Entrar en RadioNav</span>
+
+        <div class="preview-container mb-3">
+          <img src="img/ERP.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">ERPSim</h3>
+        <h4 class="text-xs font-semibold text-purple-400 uppercase tracking-wide mb-2">Simulación de potenciales evocados</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Analiza la respuesta cerebral a estímulos y experimenta con diferentes paradigmas y condiciones.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
+          <span>Acceder</span>
           <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
         </div>
       </a>
 
-      <a data-cluster="2" href="datalab/index.html" class="sim-card p-4 text-left group" style="--card-color:#34d399; --card-glow:rgba(52,211,153,0.35);">
-        
+      <!-- TARJETA 3: GraphSim -->
+      <a href="apps/GraphSim.html" class="sim-card p-4 text-left group" style="--card-color:#34d399; --card-glow:rgba(52,211,153,0.35);">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-semibold text-slate-400"></span>
-          <span class="badge-tag">6 TEMAS</span>
+          <span class="badge-tag">GRAPH</span>
         </div>
-        <div class="preview-container tall mb-3"><svg viewBox="0 0 240 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g stroke="#34d399" stroke-opacity=".28"><line x1="34" y1="50" x2="92" y2="36"/><line x1="34" y1="50" x2="92" y2="64"/><line x1="34" y1="50" x2="92" y2="92"/><line x1="34" y1="50" x2="92" y2="120"/><line x1="34" y1="80" x2="92" y2="36"/><line x1="34" y1="80" x2="92" y2="64"/><line x1="34" y1="80" x2="92" y2="92"/><line x1="34" y1="80" x2="92" y2="120"/><line x1="34" y1="110" x2="92" y2="36"/><line x1="34" y1="110" x2="92" y2="64"/><line x1="34" y1="110" x2="92" y2="92"/><line x1="34" y1="110" x2="92" y2="120"/><line x1="92" y1="36" x2="150" y2="36"/><line x1="92" y1="36" x2="150" y2="64"/><line x1="92" y1="36" x2="150" y2="92"/><line x1="92" y1="36" x2="150" y2="120"/><line x1="92" y1="64" x2="150" y2="36"/><line x1="92" y1="64" x2="150" y2="64"/><line x1="92" y1="64" x2="150" y2="92"/><line x1="92" y1="64" x2="150" y2="120"/><line x1="92" y1="92" x2="150" y2="36"/><line x1="92" y1="92" x2="150" y2="64"/><line x1="92" y1="92" x2="150" y2="92"/><line x1="92" y1="92" x2="150" y2="120"/><line x1="92" y1="120" x2="150" y2="36"/><line x1="92" y1="120" x2="150" y2="64"/><line x1="92" y1="120" x2="150" y2="92"/><line x1="92" y1="120" x2="150" y2="120"/><line x1="150" y1="36" x2="206" y2="64"/><line x1="150" y1="36" x2="206" y2="96"/><line x1="150" y1="64" x2="206" y2="64"/><line x1="150" y1="64" x2="206" y2="96"/><line x1="150" y1="92" x2="206" y2="64"/><line x1="150" y1="92" x2="206" y2="96"/><line x1="150" y1="120" x2="206" y2="64"/><line x1="150" y1="120" x2="206" y2="96"/></g><g stroke="#6ee7b7" class="dashan"><line x1="34" y1="80" x2="92" y2="64"/><line x1="92" y1="64" x2="150" y2="92"/><line x1="150" y1="92" x2="206" y2="64"/></g><circle class="blip" style="animation-delay:-2.0s" cx="34" cy="50" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.0s" cx="34" cy="80" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.0s" cx="34" cy="110" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.3s" cx="92" cy="36" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.1s" cx="92" cy="64" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-0.9s" cx="92" cy="92" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-0.7s" cx="92" cy="120" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.0s" cx="150" cy="36" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.8s" cx="150" cy="64" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.6s" cx="150" cy="92" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.4s" cx="150" cy="120" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.5s" cx="206" cy="64" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.7s" cx="206" cy="96" r="4.5" fill="#34d399"/><g fill="#f472b6" fill-opacity=".8"><rect x="30" y="140" width="8" height="12"/><rect x="42" y="134" width="8" height="18"/><rect x="54" y="128" width="8" height="24"/><rect x="66" y="138" width="8" height="14"/></g><text x="84" y="150" fill="#94a3b8" font-size="8" font-family="system-ui">datos · Big Data · deep learning</text></svg></div>
-        <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Inteligencia artificial y datos</h3>
-        <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">IA y Datos Biomédicos · Big Data e IA en Telecom.</h4>
-        <p class="text-xs text-slate-300 leading-relaxed flex-grow">Análisis de datos biomédicos, ciencia de datos y Big Data, aprendizaje profundo y modelos generativos.</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="chip">Datos biomédicos</span><span class="chip">Big Data</span><span class="chip">Deep learning</span><span class="chip">IA en telecom</span></div>
+
+        <div class="preview-container mb-3">
+          <img src="img/Graph.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">GraphSim</h3>
+        <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Conectómica y redes cerebrales</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Explora la organización funcional del cerebro mediante redes complejas y métricas de conectividad.
+        </p>
+
         <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
-          <span>Entrar en DataLab</span>
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 4: SourceSim -->
+      <a href="apps/SourceSim.html" class="sim-card p-4 text-left group" style="--card-color:#fb923c; --card-glow:rgba(251,146,60,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">SOURCE</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <img src="img/Source.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">SourceSim</h3>
+        <h4 class="text-xs font-semibold text-orange-400 uppercase tracking-wide mb-2">Localización de fuentes</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Simula y analiza la actividad cerebral con técnicas de localización de fuentes en EEG/MEG.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-orange-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 5: OptoGenSim -->
+      <a href="apps/OptoGenSim.html" class="sim-card p-4 text-left group" style="--card-color:#f472d0; --card-glow:rgba(244,114,208,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400"></span>
+          <span class="badge-tag">OPTOGEN</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <img src="img/Optogen.png">
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-pink-300 transition-colors">OptoGenSim</h3>
+        <h4 class="text-xs font-semibold text-pink-400 uppercase tracking-wide mb-2">Optogenética y circuitos neuronales</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Simula la activación y modulación de circuitos neuronales mediante optogenética.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-pink-400">
+          <span>Acceder</span>
           <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
         </div>
       </a>
@@ -252,7 +312,7 @@
           <div>
             <h4 class="text-sm font-bold text-white mb-1">Aprendizaje activo</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
-              Experimenta y comprende la neurociencia, la radionavegación y la inteligencia artificial desde la práctica.
+              Experimenta y comprende la neurociencia desde la práctica.
             </p>
           </div>
         </div>
@@ -283,7 +343,7 @@
           <div>
             <h4 class="text-sm font-bold text-white mb-1">Tecnología y ciencia</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
-              Simulaciones basadas en la teoría, en la evidencia y en el estado del arte.
+              Simulaciones basadas en la evidencia y en el estado del arte.
             </p>
           </div>
         </div>
@@ -296,9 +356,9 @@
             </svg>
           </div>
           <div>
-            <h4 class="text-sm font-bold text-white mb-1">Universidad de Valladolid</h4>
+            <h4 class="text-sm font-bold text-white mb-1">Grupo de Ingeniería Biomédica</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
-              ETSIT y Grupo de Ingeniería Biomédica (GIB-UVa).
+              GIB-UVa · Universidad de Valladolid.
             </p>
           </div>
         </div>
@@ -306,11 +366,10 @@
       </div>
     </section>
 
-    
     <!-- Footer -->
     <footer id="nl-foot">
-      <div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img src="img/UVa.png" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a><a href="https://etsit.uva.es/" target="_blank" rel="noopener"><img src="img/ETSIT.png" alt="ETSIT · Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a></div>
-      <div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Universidad de Valladolid</div>
+      <div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img src="img/UVa.png" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img src="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)" onerror="this.replaceWith(document.createTextNode(this.alt))"></a></div>
+      <div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
     </footer>
 
   </div>
@@ -318,72 +377,202 @@
   <script>
     window.addEventListener('DOMContentLoaded', () => {
 
-      // --- 1. Fondo de partículas conectadas ---
+      // --- 1. Fondo de Partículas Conectadas ---
       (function initBgParticles() {
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         let width, height, particles = [];
+
         function resize() {
           width = canvas.width = window.innerWidth;
           height = canvas.height = window.innerHeight;
           const count = Math.min(70, Math.floor((width * height) / 20000));
           particles = Array.from({ length: count }, () => ({
-            x: Math.random() * width, y: Math.random() * height,
-            vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35, r: Math.random() * 1.4 + 1
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            r: Math.random() * 1.4 + 1
           }));
         }
+
         function draw() {
           ctx.clearRect(0, 0, width, height);
           for (let i = 0; i < particles.length; i++) {
-            const p = particles[i];
-            p.x += p.vx; p.y += p.vy;
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
             if (p.x < 0 || p.x > width) p.vx *= -1;
             if (p.y < 0 || p.y > height) p.vy *= -1;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(56, 189, 248, 0.4)'; ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.fill();
+
             for (let j = i + 1; j < particles.length; j++) {
-              const p2 = particles[j], dx = p.x - p2.x, dy = p.y - p2.y, dist = Math.sqrt(dx * dx + dy * dy);
+              let p2 = particles[j];
+              let dx = p.x - p2.x, dy = p.y - p2.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
               if (dist < 120) {
-                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y);
-                ctx.strokeStyle = `rgba(99, 102, 241, ${(1 - dist / 120) * 0.18})`; ctx.lineWidth = 0.8; ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(99, 102, 241, ${(1 - dist / 120) * 0.18})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
               }
             }
           }
           requestAnimationFrame(draw);
         }
+
         window.addEventListener('resize', resize);
-        resize(); draw();
+        resize();
+        draw();
+      })();
+
+      // --- 2. Cerebro 3D Interactivo en el Hero ---
+      (function init3DBrainHero() {
+        const canvas = document.getElementById('hero-brain-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resizeCanvas() {
+          const rect = canvas.getBoundingClientRect();
+          width = canvas.width = rect.width * (window.devicePixelRatio || 1);
+          height = canvas.height = rect.height * (window.devicePixelRatio || 1);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const nodes = [];
+        const numNodes = 400;
+        
+        for (let i = 0; i < numNodes; i++) {
+          const u = Math.random();
+          const v = Math.random();
+          const theta = u * 2.0 * Math.PI;
+          const phi = Math.acos(2.0 * v - 1.0);
+          
+          let r = 1.0 + 0.08 * Math.sin(phi * 6) * Math.cos(theta * 4);
+          let x = r * Math.sin(phi) * Math.cos(theta);
+          let y = r * Math.sin(phi) * Math.sin(theta);
+          let z = r * Math.cos(phi);
+
+          x *= 1.35;
+          if (x > 0) x += 0.12; else x -= 0.12;
+          y *= 0.95;
+          z *= 0.85;
+
+          nodes.push({ x, y, z, size: Math.random() * 2 + 1 });
+        }
+
+        const connections = [];
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            const dz = nodes[i].z - nodes[j].z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 0.42) {
+              connections.push([i, j]);
+            }
+          }
+        }
+
+        let angleX = 0.15;
+        let angleY = 0;
+        let isDragging = false;
+        let lastMouseX = 0, lastMouseY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - lastMouseX;
+          const dy = e.clientY - lastMouseY;
+          angleY += dx * 0.008;
+          angleX += dy * 0.008;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+        });
+
+        function render() {
+          ctx.clearRect(0, 0, width, height);
+
+          if (!isDragging) {
+            angleY += 0.005;
+          }
+
+          const scale = Math.min(width, height) * 0.33;
+          const cx = width / 2;
+          const cy = height / 2;
+
+          const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+          const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+
+          const projected = nodes.map(n => {
+            let x1 = n.x * cosY - n.z * sinY;
+            let z1 = n.x * sinY + n.z * cosY;
+            let y1 = n.y * cosX - z1 * sinX;
+            let z2 = n.y * sinX + z1 * cosX;
+
+            const perspective = 3 / (3 + z2);
+            return {
+              px: cx + x1 * scale * perspective,
+              py: cy - y1 * scale * perspective,
+              pz: z2,
+              scale: perspective
+            };
+          });
+
+          connections.forEach(([i, j]) => {
+            const p1 = projected[i];
+            const p2 = projected[j];
+
+            const alpha = Math.max(0, (1.2 + (p1.pz + p2.pz) / 2) * 0.28);
+            if (alpha > 0.02) {
+              ctx.beginPath();
+              ctx.moveTo(p1.px, p1.py);
+              ctx.lineTo(p2.px, p2.py);
+              
+              const grad = ctx.createLinearGradient(p1.px, p1.py, p2.px, p2.py);
+              grad.addColorStop(0, `rgba(34, 211, 238, ${alpha})`);
+              grad.addColorStop(0.5, `rgba(167, 139, 250, ${alpha * 1.2})`);
+              grad.addColorStop(1, `rgba(244, 114, 208, ${alpha})`);
+              
+              ctx.strokeStyle = grad;
+              ctx.lineWidth = 1.1 * p1.scale;
+              ctx.stroke();
+            }
+          });
+
+          projected.forEach((p, idx) => {
+            const alpha = Math.max(0.1, (1.2 + p.pz) * 0.45);
+            ctx.beginPath();
+            ctx.arc(p.px, p.py, Math.max(1, nodes[idx].size * p.scale), 0, Math.PI * 2);
+            
+            ctx.fillStyle = idx % 3 === 0 ? `rgba(34, 211, 238, ${alpha})` :
+                           idx % 3 === 1 ? `rgba(167, 139, 250, ${alpha})` : `rgba(251, 146, 60, ${alpha})`;
+            ctx.shadowColor = '#22d3ee';
+            ctx.shadowBlur = p.scale * 6;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          });
+
+          requestAnimationFrame(render);
+        }
+        render();
       })();
 
       
-      // --- 2. Tres áreas, una red ---
-      (function initHeroClusters() {
-        const canvas = document.getElementById('hero-clusters-canvas'); if (!canvas) return;
-        const ctx = canvas.getContext('2d'); let W, H;
-        const resize = () => { const r = canvas.getBoundingClientRect(), d = window.devicePixelRatio || 1; W = canvas.width = r.width * d; H = canvas.height = r.height * d; };
-        resize(); window.addEventListener('resize', resize);
-        const CL = [{ x: 0.2, y: 0.64, col: '34, 211, 238', name: 'Neurociencia' }, { x: 0.5, y: 0.3, col: '251, 146, 60', name: 'Radionavegación' }, { x: 0.8, y: 0.64, col: '52, 211, 153', name: 'IA y datos' }];
-        const nodes = [];
-        CL.forEach((c, ci) => { for (let i = 0; i < 26; i++) { const a = Math.random() * 2 * Math.PI, r = Math.sqrt(Math.random()) * 0.15; nodes.push({ ci, a, r, ph: Math.random() * 6.28, sp: 0.4 + Math.random() * 0.6 }); } });
-        const edges = [], hubs = CL.map((c, ci) => nodes.findIndex(n => n.ci === ci));
-        for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) if (nodes[i].ci === nodes[j].ci && Math.hypot(nodes[i].r * Math.cos(nodes[i].a) - nodes[j].r * Math.cos(nodes[j].a), nodes[i].r * Math.sin(nodes[i].a) - nodes[j].r * Math.sin(nodes[j].a)) < 0.085) edges.push([i, j, false]);
-        for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) edges.push([hubs[a], hubs[b], true]);
-        let hl = -1; document.querySelectorAll('[data-cluster]').forEach(el => { el.addEventListener('mouseenter', () => hl = +el.dataset.cluster); el.addEventListener('mouseleave', () => hl = -1); });
-        const t0 = performance.now();
-        (function render(now) {
-          const t = (now - t0) / 1000, m = Math.min(W, H * 1.35); ctx.clearRect(0, 0, W, H);
-          CL.forEach((c, i) => { const g = ctx.createRadialGradient(W * c.x, H * c.y, 0, W * c.x, H * c.y, 0.2 * m); g.addColorStop(0, `rgba(${c.col}, ${hl === i ? 0.22 : 0.09})`); g.addColorStop(1, `rgba(${c.col}, 0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(W * c.x, H * c.y, 0.2 * m, 0, 2 * Math.PI); ctx.fill(); });
-          const pos = nodes.map(n => { const c = CL[n.ci], w = 0.012 * Math.sin(t * n.sp + n.ph); return { x: W * c.x + (n.r * Math.cos(n.a + t * 0.1 * n.sp) + w) * m, y: H * c.y + (n.r * Math.sin(n.a + t * 0.1 * n.sp) + w) * m }; });
-          edges.forEach(([a, b, inter], k) => { const A = pos[a], B = pos[b], on = hl < 0 || nodes[a].ci === hl || nodes[b].ci === hl;
-            ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
-            if (inter) { ctx.setLineDash([5, 6]); ctx.lineDashOffset = -t * 14; ctx.strokeStyle = `rgba(148, 163, 184, ${on ? 0.4 : 0.12})`; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
-              const f = (t * 0.25 + k * 0.31) % 1; ctx.beginPath(); ctx.arc(A.x + (B.x - A.x) * f, A.y + (B.y - A.y) * f, 2.6, 0, 2 * Math.PI); ctx.fillStyle = 'rgba(226, 232, 240, .9)'; ctx.fill(); }
-            else { ctx.strokeStyle = `rgba(${CL[nodes[a].ci].col}, ${on ? 0.38 : 0.14})`; ctx.lineWidth = 1; ctx.stroke(); } });
-          pos.forEach((p, i) => { const n = nodes[i], on = hl < 0 || n.ci === hl, g = 0.5 + 0.5 * Math.sin(t * 2 + n.ph);
-            ctx.save(); ctx.shadowColor = `rgb(${CL[n.ci].col})`; ctx.shadowBlur = on ? 6 + 8 * g : 0; ctx.beginPath(); ctx.arc(p.x, p.y, (n.ci === hl ? 3.6 : 2.6) + g * 0.8, 0, 2 * Math.PI); ctx.fillStyle = `rgba(${CL[n.ci].col}, ${on ? 0.95 : 0.35})`; ctx.fill(); ctx.restore(); });
-          CL.forEach((c, i) => { ctx.font = `600 ${Math.max(11, W / 46)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = `rgba(${c.col}, ${hl < 0 || hl === i ? 1 : 0.4})`; ctx.fillText(c.name, W * c.x, H * c.y + 0.24 * m); });
-          requestAnimationFrame(render);
-        })(performance.now());
-      })();
     });
   </script>
 </body>
