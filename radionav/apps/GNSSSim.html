@@ -1,0 +1,453 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GNSSSim · Navegación por satélite</title><meta name="theme-color" content="#070b14">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#070b14;color:#cbd5e1;font-family:system-ui,sans-serif}
+canvas{width:100%;display:block;background:#0a1020;border-radius:.5rem;border:1px solid #1e293b}
+.ia{touch-action:none;cursor:crosshair}
+.card{background:#0d1424;border:1px solid #1e293b;border-radius:.75rem;padding:.7rem}
+.b{padding:.35rem .7rem;border-radius:.5rem;border:1px solid #334155;background:#111b30;font-size:.82rem;min-height:40px}
+.b.on{border-color:#22d3ee;color:#22d3ee;background:#06323d}
+input[type=range]{width:100%;accent-color:#34d399}
+summary{cursor:pointer;color:#22d3ee;font-weight:600;min-height:32px}
+.bd{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:9999px;color:#000;font-weight:700;margin-right:.4rem}
+.hd{font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;flex-wrap:wrap;gap:.25rem}
+.sub{font-weight:600;color:#e2e8f0;font-size:.9rem;margin:.9rem 0 .3rem;padding-top:.6rem;border-top:1px dashed #1e293b}
+.key{background:#06281f;border:1px solid #047857;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#a7f3d0;margin:.4rem 0}
+.try{background:#2a1a05;border:1px solid #b45309;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#fde68a;margin:.4rem 0}
+.res{background:#0a1020;border:1px solid #1e293b;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;margin:.4rem 0}
+table.cmp{width:100%;font-size:.8rem;border-collapse:collapse}.cmp th,.cmp td{border:1px solid #1e293b;padding:.35rem .5rem;text-align:left;vertical-align:top}.cmp th{background:#111b30;color:#e2e8f0}
+.chip{display:inline-block;border:1px solid #334155;border-radius:9999px;padding:.1rem .6rem;font-size:.75rem;margin:.15rem .15rem .15rem 0;background:#111b30}
+.hidden{display:none!important}
+:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
+main>*{min-width:0}.card{min-width:0}
+</style><style id="nl-style">
+/* Elementos comunes NeuroLab UVa: fondo de nodos, enlace al índice y pie */
+html{background:radial-gradient(circle at 82% 8%,rgba(34,211,238,.10),transparent 45%),radial-gradient(circle at 12% 88%,rgba(167,139,250,.08),transparent 45%),#070b14;background-attachment:fixed}
+body{background:transparent!important}
+#nl-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block;background:transparent!important;border:0!important;border-radius:0!important}
+.nl-hd{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
+.nl-back{font-size:.72rem;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);border-radius:9999px;padding:.25rem .7rem;text-decoration:none;white-space:nowrap;background:rgba(8,16,36,.55)}
+.nl-back:hover{background:rgba(14,116,144,.35);color:#e0f2fe}
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-bg,#nl-foot,.nl-back{display:none!important}}
+</style>
+</head><body class="p-2 md:p-4 max-w-7xl mx-auto">
+<canvas id="nl-bg" aria-hidden="true"></canvas>
+<header class="mb-3"><div class="nl-hd"><h1 class="text-xl md:text-2xl font-bold text-white">GNSSSim <span class="text-cyan-400 text-sm md:text-base font-normal">Navegación por satélite: pseudodistancias, códigos, errores y constelaciones</span></h1><a class="nl-back nl-idx" href="../index.html" title="Volver al índice de simuladores">← RadioNav UVa</a></div>
+<div class="card mt-2 text-sm"><b class="text-white">La idea en 20 segundos.</b> Cada satélite emite un <b class="text-cyan-300">código</b> con su <b class="text-cyan-300">hora de salida</b>. El receptor mide cuánto <b class="text-amber-300">tarda</b> en llegar (y por tanto la <b class="text-amber-300">distancia</b>), pero su reloj no es atómico: todas las distancias salen con el <b class="text-rose-300">mismo error</b>. Por eso hacen falta <b>4 satélites</b>: tres coordenadas y el error de reloj. Los paneles recorren el Tema 1: <b>1</b> cómo se calcula la posición, <b>2</b> cómo se separan los satélites y se mide el retardo, <b>3</b> qué errores hay y cómo la geometría los amplifica (DOP) y <b>4</b> cuántos satélites ve cada constelación.</div></header>
+<main class="grid lg:grid-cols-3 gap-3">
+<div class="lg:col-span-2 space-y-3">
+
+ <section class="card"><div class="hd"><span class="bd bg-cyan-400">1</span>Posición a partir de pseudodistancias</div>
+  <p class="text-sm mb-2">El receptor mide el <b>retardo</b> de la señal de cada satélite y lo multiplica por <i>c</i>. Como su reloj va desfasado un Δt, todas las medidas salen con el mismo error <b>c·Δt</b>: son <b>pseudodistancias</b> ρ<sub>i</sub> = R<sub>i</sub> + c·Δt. Aquí trabajamos en un <b>plano</b> (en 3D es igual, con una incógnita más). <i>Arrastra el receptor y los satélites.</i></p>
+  <p class="text-xs text-slate-400">Vista general (el receptor está en la «superficie»; escala real: los satélites están a unos 20 000 km).</p>
+  <canvas id="g1" class="ia" style="height:290px" aria-label="Satélites y receptor"></canvas>
+  <p class="text-xs text-slate-400 mt-2">Ampliación alrededor del receptor: cada satélite dice «estás en <i>mi</i> circunferencia de radio ρ<sub>i</sub>». Con el reloj mal, las circunferencias <b>no se cortan en un punto</b>.</p>
+  <canvas id="g1z" style="height:300px" aria-label="Ampliación de las circunferencias"></canvas>
+  <div id="sl-q1" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div>
+  <div class="mt-1"><span class="text-xs text-slate-400">Satélites usados:</span> <span id="q1s"></span></div>
+  <div class="flex flex-wrap gap-1 mt-1"><button class="b" id="q1step">▶ Un paso de iteración</button><button class="b" id="q1rst">↺ Empezar de nuevo</button><button class="b" id="q1new">🎲 Otro ruido</button></div>
+  <div id="t1" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> hay <b>tres incógnitas</b> en el plano (x, y y el error de reloj b = c·Δt), así que se necesitan <b>3 satélites</b>; en 3D son <b>cuatro</b> incógnitas (x, y, z, b) y por eso <b>4 satélites</b>. Las ecuaciones (x<sub>i</sub>−u<sub>x</sub>)²+(y<sub>i</sub>−u<sub>y</sub>)² = (ρ<sub>i</sub>−b)² no son lineales: se <b>linealizan</b> (serie de Taylor) alrededor de una posición aproximada y se repite hasta que converge.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> pon Δt = 0: las circunferencias se cortan en el receptor. Sube Δt a 300 µs (b ≈ 90 km): ya no se cortan en un punto, pero la solución de 3 incógnitas lo encuentra a pesar de todo. Mira cuánto se equivocaría el receptor si <i>ignorase</i> el reloj. Con 2 satélites faltan ecuaciones; con 4 sobra una y el sistema se resuelve por mínimos cuadrados.</div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-amber-400">2</span>La señal: códigos, espectro ensanchado y correlación</div>
+  <p class="text-sm mb-2">Todos los satélites GPS emiten <b>a la misma frecuencia</b> (CDMA). Se distinguen porque cada uno modula (BPSK) su portadora con un <b>código pseudoaleatorio propio</b>. El receptor «correla» la señal con una copia del código del satélite que busca.</p>
+  <div class="sub" style="border:0;margin-top:.2rem">a) El código C/A: 1023 chips tipo Gold</div>
+  <p class="text-xs text-slate-400">Primeros 40 chips del código (−1 / +1). Se genera con dos registros de desplazamiento de 10 etapas (G1 y G2) cuyas salidas se combinan con una XOR; la elección de las etapas de G2 da el código de cada satélite (PRN).</p><canvas id="c1a" style="height:70px" aria-label="Chips del código"></canvas>
+  <div id="sl-c1" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div>
+  <p class="text-xs text-slate-400">Autocorrelación del código A (con él mismo desplazado τ chips): un pico muy marcado en τ = 0.</p><canvas id="c1b" style="height:120px" aria-label="Autocorrelación"></canvas>
+  <p class="text-xs text-slate-400 mt-1">Correlación cruzada con el código B: siempre valores bajos (±63, −1, −65 sobre 1023).</p><canvas id="c1c" style="height:100px" aria-label="Correlación cruzada"></canvas>
+  <div id="t2a" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> un buen código tiene un <b>pico muy alto en τ = 0</b> (para medir el retardo) y <b>correlación cruzada muy baja</b> con los demás (para separar satélites). Los códigos Gold cumplen ambas cosas. El C/A dura <b>1 ms</b>: un chip dura 1/1,023 MHz = 977,5 ns, que equivale a unos <b>293 m</b>; el código P es 10 veces más rápido (chip de unos 29,3 m), de ahí su mayor precisión.</div>
+
+  <div class="sub">b) Espectro ensanchado: datos × código (el ejemplo de la pizarra)</div>
+  <p class="text-sm mb-1">Cada bit de datos de navegación (50 bit/s) se multiplica por el código, que va mucho más rápido. El receptor vuelve a multiplicar por el mismo código y <b>suma (integra) durante un bit</b>. Elige los bits, qué código usa el receptor y cuánto ruido hay.</p>
+  <div class="text-xs text-slate-400 mb-1">Bits de datos (pulsa para cambiarlos): <span id="spb"></span></div>
+  <canvas id="sp" style="height:330px" aria-label="Espectro ensanchado"></canvas>
+  <div class="mt-1"><span class="text-xs text-slate-400">Código del receptor:</span> <span id="spm"></span></div>
+  <div id="sl-sp" class="grid sm:grid-cols-3 gap-x-4 mt-1"></div><div id="spi" class="mb-1"></div>
+  <div id="t2b" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> con el código correcto, el producto (código local × señal) devuelve el bit original en <b>todos los chips</b> y la suma crece con N. Con otro código, o con interferencias y ruido, los chips se suman con signos al azar y <b>no se acumulan</b>. Esa ganancia de procesado es 10·log N: en GPS C/A (20 códigos de 1023 chips por bit) son unos <b>43 dB</b>, y por eso la señal puede estar por debajo del ruido.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> sube el ruido hasta 2: el ruido supera a la señal en cada chip, pero con N grande el bit sigue saliendo bien. Ahora reduce N a 6: aparecen errores. Cambia el código del receptor a «otro código»: ya no se recupera nada.</div>
+
+  <div class="sub">c) Adquisición: ¿qué satélites oigo y con qué retardo?</div>
+  <p class="text-sm mb-1">La antena recibe la <b>suma</b> de varios satélites y ruido. El receptor prueba un PRN y busca con qué desplazamiento τ la correlación supera un umbral. Ese τ, en chips, es el <b>retardo</b>, es decir, la pseudodistancia módulo 300 km.</p>
+  <canvas id="acq" style="height:170px" aria-label="Búsqueda por correlación"></canvas>
+  <div id="sl-ac" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div>
+  <div class="flex flex-wrap gap-1"><button class="b" id="acqscan">🔎 Probar los 32 PRN</button></div>
+  <canvas id="acqall" class="mt-2" style="height:130px" aria-label="Pico por PRN"></canvas>
+  <div id="t2c" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> solo aparece un pico cuando el código local es el de un satélite presente, y aparece <b>en el retardo correcto</b>. La medida de tiempo tiene resolución de una fracción de chip, y la distancia no es única: el código se repite cada 1 ms (≈ 300 km), por lo que el mensaje de navegación debe resolver cuál de las repeticiones es.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> con ruido 0 busca los PRN 3, 11, 19 y 24 (los que hay). Sube el ruido y añade satélites: ¿hasta cuándo se distinguen bien los picos? Mueve el retardo del PRN 3 y observa cómo se mueve el pico y cambia la distancia.</div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-rose-400">3</span>Errores, geometría (DOP) y GPS diferencial</div>
+  <p class="text-sm mb-2">El error de posición es el producto de dos cosas: <b>error = UERE × DOP</b>. UERE es lo que se equivoca cada medida de distancia (reloj, órbita, atmósfera, ruido…). DOP es lo que la <b>geometría</b> de los satélites amplifica ese error.</p>
+  <div class="sub" style="border:0;margin-top:.2rem">a) Cielo, DOP y nube de posiciones</div>
+  <p class="text-xs text-slate-400">Cielo visto desde el receptor (centro = cenit, borde = horizonte). <i>Arrastra los satélites.</i> Los grises quedan tapados por la máscara o por los edificios.</p>
+  <div class="grid sm:grid-cols-2 gap-3"><div><canvas id="sky" class="ia" style="height:290px" aria-label="Cielo"></canvas></div><div><p class="text-xs text-slate-400" id="scl">&nbsp;</p><canvas id="scat" style="height:290px" aria-label="Nube de posiciones"></canvas></div></div>
+  <div class="mt-2"><span class="text-xs text-slate-400">Escenario:</span> <span id="scn"></span></div>
+  <div class="mt-1"><span class="text-xs text-slate-400">Opciones:</span> <span id="opt"></span></div>
+  <div id="sl-d1" class="grid sm:grid-cols-2 gap-x-4 mt-1"></div>
+  <div id="t3a" class="res"></div>
+  <p class="text-xs text-slate-400">Presupuesto de errores de cada medida de distancia (UERE, en metros, con los datos del temario):</p><canvas id="ue" style="height:190px" aria-label="Presupuesto de errores"></canvas>
+  <div class="key">💡 <b>Idea clave:</b> con satélites agrupados el DOP se dispara y la misma UERE da un error enorme; con satélites repartidos por todo el cielo el DOP es de 1–2. El DOP no depende del receptor, sino de <b>dónde están los satélites</b>. Lo que sí se corrige: con la <b>doble frecuencia</b> se quita la ionosfera, con <b>DGPS</b> se eliminan los errores comunes (órbita, reloj, atmósfera) y la <b>disponibilidad selectiva</b> (SA) se apagó en el año 2000.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> en «Mala geometría» el HDOP pasa de 3. Arrastra un satélite al lado opuesto del cielo y mira cómo cae el DOP. Activa la SA (C/A): la nube se abre hasta un radio de decenas de metros; luego activa DGPS y observa cómo desaparece. Cambia a código P: el error de ruido baja.</div>
+
+  <div class="sub">b) Ionosfera: por qué dos frecuencias la eliminan</div>
+  <p class="text-sm mb-1">El retardo ionosférico es proporcional a 1/f². Midiendo la misma distancia en L1 (1575,42 MHz) y L2 (1227,60 MHz) se obtienen dos valores distintos; la recta que pasa por ellos, extrapolada a 1/f² = 0 (frecuencia infinita), da la distancia sin ionosfera.</p>
+  <canvas id="io" style="height:230px" aria-label="Ionosfera"></canvas>
+  <div id="sl-io" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div id="t3b" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> R = (f₁²·R<sub>1m</sub> − f₂²·R<sub>2m</sub>)/(f₁² − f₂²). Se elimina el error de propagación ionosférico, pero a cambio el <b>ruido de medida se multiplica por unas 3 veces</b>. Los receptores civiles de una frecuencia usan en cambio un <b>modelo</b> cuyos parámetros llegan en el mensaje de navegación.</div>
+
+  <div class="sub">c) GPS diferencial (DGPS)</div>
+  <p class="text-sm mb-1">Una <b>estación de referencia</b> de posición conocida compara la posición que le da el GPS con la verdadera, y difunde la corrección. Los errores son casi iguales para receptores próximos, así que se cancelan. Pero cuanto más lejos esté la estación, menos parecidos son los errores atmosféricos.</p>
+  <canvas id="dg" style="height:150px" aria-label="DGPS"></canvas>
+  <div id="sl-dg" class="mt-1"></div><div id="t3c" class="res"></div>
+  <div class="try">🧪 <b>Prueba esto:</b> activa DGPS en el apartado (a) y mueve aquí la distancia a la estación. Más allá de unos 200 km (la cobertura típica) el beneficio se va perdiendo.</div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-violet-400">4</span>Constelaciones GPS, GLONASS y Galileo</div>
+  <p class="text-sm mb-2">Cada sistema tiene su propia órbita (altura, inclinación, planos). Con el periodo orbital (3.ª ley de Kepler) y el giro de la Tierra se puede calcular qué satélites ve un receptor en cualquier momento. <b>Combinar constelaciones</b> da más satélites visibles y mejor geometría, sobre todo si el cielo está tapado.</p>
+  <div class="mb-1"><span class="text-xs text-slate-400">Constelaciones activas:</span> <span id="cons"></span></div>
+  <div class="grid sm:grid-cols-2 gap-3"><div><p class="text-xs text-slate-400" id="k4a">&nbsp;</p><canvas id="sk4" style="height:290px" aria-label="Cielo con constelaciones"></canvas></div><div><p class="text-xs text-slate-400">Satélites visibles en 24 h (la línea vertical es la hora elegida)</p><canvas id="vis" style="height:290px" aria-label="Satélites visibles en 24 horas"></canvas></div></div>
+  <div id="sl-k4" class="grid sm:grid-cols-3 gap-x-4 mt-2"></div>
+  <div class="flex flex-wrap gap-1"><button class="b" id="k4play">▶ Reproducir el paso del tiempo</button><button class="b" id="k4vll">📍 Valladolid</button><button class="b" id="k4eq">📍 Ecuador</button><button class="b" id="k4pol">📍 Polo (89°)</button></div>
+  <p class="text-xs text-slate-400 mt-2">PDOP durante 24 h con las constelaciones elegidas (tramos rojos: menos de 4 satélites, no hay posición)</p><canvas id="pd" style="height:120px" aria-label="PDOP en 24 horas"></canvas>
+  <div id="t4" class="res"></div><div class="overflow-x-auto"><table class="cmp" id="orb"></table></div>
+  <div class="key">💡 <b>Idea clave:</b> el periodo sale de la altura: T = 2π√(a³/μ), con a = R<sub>Tierra</sub> + altura. GPS da casi exactamente dos vueltas por día sidéreo (≈ 12 h), así que su geometría se repite cada día; GLONASS (≈ 11 h 15 min) no. La mayor inclinación de GLONASS (64,8°) y de Galileo (56°) mejora la cobertura en latitudes altas. Con la máscara alta (ciudad) una sola constelación puede dejarte sin 4 satélites visibles; con tres, casi nunca.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> sube la máscara a 40° (calles estrechas) con solo GPS, y observa los tramos sin posición. Activa GLONASS y Galileo. Ahora ve al polo: ¿qué constelación se comporta mejor?</div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-orange-400">5</span>🎯 Reto: ¿qué ocurre y por qué?</div>
+  <p class="text-sm mb-2">Lee la situación y elige la respuesta.</p>
+  <p id="qq" class="text-sm font-semibold text-white"></p><div id="qo" class="mt-2"></div><p id="qf" class="text-sm mt-2"></p><button class="b hidden mt-1" id="qn">Siguiente pregunta →</button></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-pink-400">6</span>Comparativa: GPS · GLONASS · Galileo · EGNOS</div>
+  <div class="overflow-x-auto"><table class="cmp"><thead><tr><th></th><th class="text-cyan-300">GPS</th><th class="text-rose-300">GLONASS</th><th class="text-violet-300">Galileo</th><th class="text-amber-300">EGNOS</th></tr></thead><tbody>
+   <tr><th>Responsable</th><td>Dpto. de Defensa de EE. UU.</td><td>Rusia</td><td>Unión Europea / ESA (control civil)</td><td>Europa (aumentación de GPS)</td></tr>
+   <tr><th>Satélites</th><td>24 de diseño (31 operativos en 2022)</td><td>24 de diseño (26 en 2024)</td><td>27 + 3 de reserva (30 MEO)</td><td>3 geoestacionarios (no generan navegación propia)</td></tr>
+   <tr><th>Órbitas</th><td>6 planos · 55° · 20 200 km · 11 h 58 min</td><td>3 planos · 64,8° · 19 100 km · 11 h 15 min</td><td>3 planos · 56° · 23 222 km · 14 h</td><td>Geoestacionaria: INMARSAT (15,5° O y 25° E) y ARTEMIS (21,5° E)</td></tr>
+   <tr><th>Separación de satélites</th><td>CDMA: misma frecuencia, códigos distintos</td><td>FDMA: mismo código, frecuencia distinta</td><td>CDMA (modulación BOC, comparte banda L1 con GPS)</td><td>Señal tipo GPS (L1)</td></tr>
+   <tr><th>Frecuencias</th><td>L1 1575,42 MHz · L2 1227,60 MHz (más L5 1176,45 MHz)</td><td>L1 1602,56–1615,5 MHz · L2 1246,43–1256,5 MHz</td><td>Banda 1,1–1,6 GHz · 10 señales</td><td>L1</td></tr>
+   <tr><th>Mensaje de navegación</th><td>12,5 min · 37 500 bits · 50 bit/s</td><td>2,5 min · 7 500 bits · 50 bit/s</td><td>Canales de datos y canales piloto</td><td>Mensaje de aumentación: correcciones e integridad</td></tr>
+   <tr><th>Referencia de tiempo y coordenadas</th><td>UTC (USNO) · WGS 84</td><td>UTC (SU) · SGS 85 (PZ-90)</td><td>Relojes de rubidio y maser de hidrógeno</td><td>Mejora a GPS: ≤ 1,5 m</td></tr>
+   <tr><th>Efemérides</th><td>Elementos de Kepler modificados</td><td>Coordenadas cartesianas, velocidades y aceleraciones</td><td>—</td><td>—</td></tr>
+   <tr><th>Papel</th><td>Sistema pionero y mayoritario</td><td>Complemento; evolución irregular</td><td>Futuro GNSS-2, independiente de GPS/GLONASS</td><td>GNSS-1: aviación (Safety-of-Life desde 2011)</td></tr></tbody></table></div>
+  <p class="text-xs text-slate-400 mt-3 mb-1">Ideas para recordar:</p>
+  <div><span class="chip">Sistemas hiperbólicos → TRANSIT → GPS</span><span class="chip">≥ 4 satélites: x, y, z y reloj</span><span class="chip">Pseudodistancia = distancia + c·Δt</span><span class="chip">Espectro ensanchado: CDMA (GPS) · FDMA (GLONASS)</span><span class="chip">UERE × DOP</span><span class="chip">DGPS: errores correlados en receptores próximos</span><span class="chip">SBAS: EGNOS · WAAS · MSAS</span></div></section>
+</div>
+<aside class="space-y-2 lg:sticky lg:top-2 self-start lg:max-h-[96vh] lg:overflow-auto">
+ <details open class="card"><summary>Constantes</summary><ul class="text-xs space-y-1 mt-2"><li>c = 3·10⁸ m/s → 1 µs ↔ 300 m</li><li>f<sub>L1</sub> = 154 · 10,23 = <b>1575,42 MHz</b></li><li>f<sub>L2</sub> = 120 · 10,23 = <b>1227,60 MHz</b></li><li>C/A: 1,023 Mchip/s · 1023 chips · <b>1 ms</b> · chip ≈ 293 m</li><li>P: 10,23 Mchip/s · chip ≈ 29,3 m</li><li>Mensaje: 50 bit/s · trama 30 s · subtrama 6 s · palabra 0,6 s</li></ul></details>
+ <details open class="card"><summary>Fórmulas</summary><ul class="text-xs space-y-1 mt-2">
+  <li><b class="text-cyan-300">Pseudodistancia</b><br>R′<sub>i</sub> = ΔT<sub>medido</sub>·c = R<sub>i</sub> + c·τ<br>√((x<sub>i</sub>−u<sub>x</sub>)² + (y<sub>i</sub>−u<sub>y</sub>)² + (z<sub>i</sub>−u<sub>z</sub>)²) = R′<sub>i</sub> − c·τ<br>4 ecuaciones · 4 incógnitas (u<sub>x</sub>, u<sub>y</sub>, u<sub>z</sub>, τ)</li>
+  <li><b class="text-amber-300">Código C/A</b><br>R<sub>max</sub> = c·T<sub>c</sub> ≈ 300 km · R<sub>bit</sub> = c·T ≈ 300 m<br>Autocorrelación: θ<sub>aa</sub>(τ) = Σ a<sub>i</sub>·a<sub>i+τ</sub></li>
+  <li><b class="text-emerald-300">Ganancia de procesado</b><br>G = 10·log<sub>10</sub>(N)</li>
+  <li><b class="text-rose-300">Error de posición</b><br>error = UERE · DOP<br>UERE = √(E₁² + E₂² + … + E<sub>n</sub>²)<br>DOP: GDOP, PDOP, HDOP, VDOP</li>
+  <li><b class="text-sky-300">Doble frecuencia</b><br>R<sub>m</sub> = R + A/f²<br>R = (f₁²R<sub>1m</sub> − f₂²R<sub>2m</sub>)/(f₁² − f₂²)</li>
+  <li><b class="text-violet-300">Reloj del satélite</b><br>Δt<sub>SAT</sub> = a₀ + a₁(t−t<sub>ref</sub>) + a₂(t−t<sub>ref</sub>)² + Δt<sub>r</sub></li>
+  <li><b class="text-violet-300">Periodo orbital</b><br>T = 2π √(a³/μ), μ = 398 600 km³/s²</li></ul></details>
+</aside></main>
+<footer id="nl-foot">
+<a class="nl-idx" href="../index.html">← RadioNav UVa · Índice de simuladores</a>
+<div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img data-f="img/UVa.png" alt="Universidad de Valladolid"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img data-f="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)"></a></div>
+<div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
+</footer>
+<script>
+const $=s=>document.querySelector(s),PI=Math.PI,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),C=3e8,D2R=PI/180;
+let CX={};
+function cv(id){const c=$(id),r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);return{x,w:r.width,h:r.height}}
+function cvc(id){return CX[id]||(CX[id]=cv(id))}
+function mk(el,opts,cur,cb){el.innerHTML='';opts.forEach((o,i)=>{const b=document.createElement('button');b.className='b mr-1 mb-1';b.textContent=o;b.onclick=()=>{[...el.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(o,i)};if(o==cur)b.classList.add('on');el.appendChild(b)})}
+function tg(el,opts,st,cb){el.innerHTML='';opts.forEach((o,i)=>{const b=document.createElement('button');b.className='b mr-1 mb-1'+(st[i]?' on':'');b.textContent=o;b.onclick=()=>{st[i]=!st[i];b.classList.toggle('on',st[i]);cb(i)};el.appendChild(b)})}
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const gauss=r=>{let u=0;for(let i=0;i<12;i++)u+=r();return u-6}; // N(0,1) aprox.
+const nf=(v,d)=>v.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const V={dt:250,sg:3,prn:1,prn2:7,nchip:6,nz:0.8,sprn:3,sdel:200,snz:1.5,sns:3,mask:5,mask4:5,io:30,ion:2,dgd:50,lat:41.65,hr:6,ln:0};
+const FM={},RD={};
+function buildGroup(p,defs){const el=$('#sl-'+p);el.innerHTML=defs.map(([k,l,mn,mx,st,f])=>{FM[k]=f;return`<label class="text-sm block mb-1">${l}: <b class="text-emerald-400 vv" data-k="${k}"></b><input type="range" data-k="${k}" data-p="${p}" min="${mn}" max="${mx}" step="${st}" value="${V[k]}"></label>`}).join('');
+el.querySelectorAll('input').forEach(e=>e.oninput=()=>{V[e.dataset.k]=+e.value;lab();RD[p]()});lab()}
+function lab(){document.querySelectorAll('.vv').forEach(e=>e.textContent=FM[e.dataset.k](V[e.dataset.k]));document.querySelectorAll('input[data-k]').forEach(e=>{if(+e.value!=V[e.dataset.k])e.value=V[e.dataset.k]})}
+const SL={
+q1:[['dt','Error del reloj del receptor Δt',0,1000,10,v=>v+' µs (b = c·Δt = '+nf(v*.3,v*.3<10?2:1)+' km)'],['sg','Ruido de cada medida',0,30,1,v=>v+' m']],
+c1:[['prn','Satélite A (PRN)',1,32,1,v=>v],['prn2','Satélite B (PRN)',1,32,1,v=>v]],
+sp:[['nchip','Chips por bit N',6,63,1,v=>v+' (ganancia '+nf(10*Math.log10(v),1)+' dB)'],['nz','Ruido por chip (σ)',0,4,.1,v=>nf(v,1)]],
+ac:[['sprn','PRN que busca el receptor',1,32,1,v=>v],['sdel','Retardo del PRN 3',0,1022,1,v=>v+' chips'],['snz','Ruido (σ por chip)',0,8,.5,v=>nf(v,1)],['sns','Satélites en la señal',1,4,1,v=>v]],
+d1:[['mask','Máscara de elevación',0,50,1,v=>v+'°']],
+io:[['io','Retardo ionosférico en L1',0,60,1,v=>v+' m'],['ion','Ruido de cada medida',0,5,.5,v=>nf(v,1)+' m']],
+dg:[['dgd','Distancia a la estación de referencia',0,500,10,v=>v+' km']],
+k4:[['mask4','Máscara de elevación (ciudad: sube)',0,50,1,v=>v+'°'],['lat','Latitud del receptor',-90,90,.5,v=>nf(v,1)+'°'],['hr','Hora del día',0,24,.25,v=>{const h=Math.floor(v),m=Math.round((v-h)*60);return String(h).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}]]};
+const E=(e,col)=>`<b style="color:${col||'#34d399'}">${e}</b>`;
+function arrowLine(x,x1,y1,x2,y2,col){x.strokeStyle=col;x.fillStyle=col;x.beginPath();x.moveTo(x1,y1);x.lineTo(x2,y2);x.stroke();const a=Math.atan2(y2-y1,x2-x1);x.beginPath();x.moveTo(x2,y2);x.lineTo(x2-8*Math.cos(a-.4),y2-8*Math.sin(a-.4));x.lineTo(x2-8*Math.cos(a+.4),y2-8*Math.sin(a+.4));x.fill()}
+function sat(x,px,py,col,lbl){x.save();x.translate(px,py);x.fillStyle=col;x.fillRect(-4,-3,8,6);x.fillRect(-13,-1.2,8,2.4);x.fillRect(5,-1.2,8,2.4);x.restore();if(lbl){x.font='11px sans-serif';x.fillStyle=col;x.textAlign='left';x.fillText(lbl,px+9,py-8)}}
+// ================= Panel 1: pseudodistancias (en un plano) =================
+const SC=['#22d3ee','#fbbf24','#a78bfa','#fb7185'];
+const P1={sats:[[-14500,21500],[2500,24500],[15500,19500],[-3500,17800]],u:[600,500],ns:3,seed:1,it:[],k:0,drag:null};
+function p1noise(){const r=rng(P1.seed*977+13);return[0,0,0,0].map(()=>gauss(r))}
+function p1meas(){const b=V.dt*C*1e-6/1000,ns=p1noise();return P1.sats.slice(0,P1.ns).map((s,i)=>{const R=Math.hypot(s[0]-P1.u[0],s[1]-P1.u[1]);return{s,R,rho:R+b+ns[i]*V.sg/1000}})}
+function solve3(ms,est,fixb){ // Gauss-Newton: incógnitas (x,y,b) o (x,y) con b fijo
+  const it=[est.slice()];let e=est.slice();
+  for(let k=0;k<8;k++){const n=fixb?2:3;let A=Array.from({length:n},()=>Array(n).fill(0)),B=Array(n).fill(0);
+    ms.forEach(m=>{const dx=e[0]-m.s[0],dy=e[1]-m.s[1],r=Math.hypot(dx,dy),res=m.rho-(r+e[2]),h=fixb?[dx/r,dy/r]:[dx/r,dy/r,1];for(let i=0;i<n;i++){B[i]+=h[i]*res;for(let j=0;j<n;j++)A[i][j]+=h[i]*h[j]}});
+    const d=lin(A,B);if(!d)break;e[0]+=d[0];e[1]+=d[1];if(!fixb)e[2]+=d[2];it.push(e.slice())}
+  return it}
+function lin(A,B){const n=B.length,M=A.map((r,i)=>[...r,B[i]]);for(let i=0;i<n;i++){let p=i;for(let r=i+1;r<n;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;if(Math.abs(M[p][i])<1e-12)return null;[M[i],M[p]]=[M[p],M[i]];for(let r=0;r<n;r++)if(r!=i){const f=M[r][i]/M[i][i];for(let c=i;c<=n;c++)M[r][c]-=f*M[i][c]}}return M.map((r,i)=>r[n]/r[i])}
+function p1(){
+  const ms=p1meas(),b=V.dt*C*1e-6/1000,hw=Math.max(25,2.2*b+6*V.sg/1000);
+  // vista general
+  {const{x,w,h}=cvc('#g1');x.clearRect(0,0,w,h);const sc=Math.min(w/50000,(h-36)/29000),ox=w/2,oy=h-26,X=v=>ox+v*sc,Y=v=>oy-v*sc;
+   x.fillStyle='#0f1a2e';x.fillRect(0,oy,w,h-oy);x.strokeStyle='#334155';x.beginPath();x.moveTo(0,oy);x.lineTo(w,oy);x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='left';x.fillText('superficie terrestre (corte plano)',6,oy+14);
+   [10000,20000].forEach(a=>{x.strokeStyle='#1e293b';x.setLineDash([3,5]);x.beginPath();x.moveTo(0,Y(a));x.lineTo(w,Y(a));x.stroke();x.setLineDash([]);x.fillStyle='#475569';x.textAlign='right';x.fillText(a/1000+' 000 km',w-4,Y(a)-3)});
+   P1.sats.forEach((s,i)=>{const on=i<P1.ns,col=on?SC[i]:'#334155';if(on){x.strokeStyle=col;x.setLineDash([5,4]);x.beginPath();x.moveTo(X(s[0]),Y(s[1]));x.lineTo(X(P1.u[0]),Y(P1.u[1]));x.stroke();x.setLineDash([]);const mx=(X(s[0])+X(P1.u[0]))/2,my=(Y(s[1])+Y(P1.u[1]))/2;x.fillStyle=col;x.font='10px sans-serif';x.textAlign='left';x.fillText('ρ'+(i+1)+' = '+nf(ms[i].rho,1)+' km',mx+4,my)}sat(x,X(s[0]),Y(s[1]),col,'S'+(i+1))});
+   const ux=X(P1.u[0]),uy=Y(P1.u[1]);x.fillStyle='#fff';x.beginPath();x.arc(ux,uy,5,0,2*PI);x.fill();x.strokeStyle='#fff';x.beginPath();x.arc(ux,uy,9,0,2*PI);x.stroke();x.font='11px sans-serif';x.textAlign='left';x.fillText('receptor',ux+12,uy-6);
+   P1.map={X,Y,sc,ox,oy}}
+  // ampliación
+  const fix=solve3(ms,[P1.u[0]+hw*.8,P1.u[1]+hw*.5,0],false),fixIgn=solve3(ms,[P1.u[0]+hw*.8,P1.u[1]+hw*.5,0],true);
+  P1.fix=fix;P1.fixIgn=fixIgn;P1.hw=hw;
+  const sol=ms.length>=3?fix[fix.length-1]:null,solI=ms.length>=3?fixIgn[fixIgn.length-1]:null;
+  {const{x,w,h}=cvc('#g1z'),sc=Math.min(w,h)/2/hw*.92,cx=w/2,cy=h/2,X=v=>cx+(v-P1.u[0])*sc,Y=v=>cy-(v-P1.u[1])*sc;x.clearRect(0,0,w,h);
+   x.strokeStyle='#1e293b';for(let g=-3;g<=3;g++){x.beginPath();x.moveTo(cx+g*hw/3*sc,0);x.lineTo(cx+g*hw/3*sc,h);x.moveTo(0,cy+g*hw/3*sc);x.lineTo(w,cy+g*hw/3*sc);x.stroke()}
+   x.fillStyle='#475569';x.font='10px sans-serif';x.textAlign='left';x.fillText('escala: cuadrícula = '+nf(hw/3,hw/3<10?1:0)+' km',6,h-6);
+   ms.forEach((m,i)=>{const s=m.s,th0=Math.atan2(P1.u[1]-s[1],P1.u[0]-s[0]);x.strokeStyle=SC[i];x.lineWidth=1.6;x.beginPath();for(let k=-40;k<=40;k++){const t=k/40*hw*2.2/m.rho,px=s[0]+m.rho*Math.cos(th0+t),py=s[1]+m.rho*Math.sin(th0+t);k==-40?x.moveTo(X(px),Y(py)):x.lineTo(X(px),Y(py))}x.stroke();x.lineWidth=1;x.fillStyle=SC[i];x.font='11px sans-serif';x.textAlign='left';const lx=w-70,lyk=Y(s[1]+m.rho*Math.sin(th0+(P1.u[0]-hw*1.8-P1.u[0])*0));x.fillText('S'+(i+1),6,18+i*14)});
+   // iteraciones
+   const its=fix.slice(0,P1.k+1);x.strokeStyle='#fff';x.setLineDash([3,3]);x.beginPath();its.forEach((e,i)=>{i?x.lineTo(X(e[0]),Y(e[1])):x.moveTo(X(e[0]),Y(e[1]))});x.stroke();x.setLineDash([]);
+   its.forEach((e,i)=>{x.fillStyle=i==its.length-1?'#34d399':'#94a3b8';x.beginPath();x.arc(X(e[0]),Y(e[1]),i==its.length-1?5:3,0,2*PI);x.fill()});
+   if(solI&&P1.ns>=3){const px=X(solI[0]),py=Y(solI[1]);x.strokeStyle='#fb7185';x.lineWidth=2;x.beginPath();x.moveTo(px-6,py-6);x.lineTo(px+6,py+6);x.moveTo(px+6,py-6);x.lineTo(px-6,py+6);x.stroke();x.lineWidth=1;x.fillStyle='#fb7185';x.textAlign='left';x.font='10px sans-serif';x.fillText('ignorando el reloj',px+9,py+4)}
+   x.fillStyle='#fff';x.beginPath();x.arc(cx,cy,4,0,2*PI);x.fill();x.strokeStyle='#fff';x.beginPath();x.arc(cx,cy,8,0,2*PI);x.stroke();x.font='11px sans-serif';x.textAlign='left';x.fillText('posición real',cx+11,cy-6);
+   x.fillStyle='#34d399';x.fillText('● estimación (iteración '+P1.k+')',w-170,16)}
+  // texto
+  let t='';ms.forEach((m,i)=>{t+=`<span style="color:${SC[i]}">S${i+1}</span>: R = ${nf(m.R,1)} km · ρ = ${nf(m.rho,2)} km (exceso ${nf((m.rho-m.R)*1000,0)} m)<br>`});
+  if(ms.length<3)t+=`<b class="text-rose-300">Con ${ms.length} satélites hay más incógnitas (x, y, b) que ecuaciones: la posición queda indeterminada.</b>`;
+  else{const e=solI,f=sol,k=Math.min(P1.k,fix.length-1),cur=fix[k],err=Math.hypot(cur[0]-P1.u[0],cur[1]-P1.u[1])*1000,errF=Math.hypot(f[0]-P1.u[0],f[1]-P1.u[1])*1000,errI=Math.hypot(e[0]-P1.u[0],e[1]-P1.u[1])*1000;
+   t+=`Iteración ${k}: error de posición ${E(nf(err,err<10?2:0)+' m','#34d399')} · b estimado ${nf(cur[2]*1000/1000,2)} km (real ${nf(b,2)} km → Δt = ${nf(cur[2]/C*1e9,1)} µs)<br>Solución final (3 incógnitas): error ${E(nf(errF,1)+' m',errF>20?'#fbbf24':'#34d399')} · Si se <b>ignorase</b> el reloj: error ${E(nf(errI,0)+' m','#fb7185')}${P1.ns==4?' <span class="text-xs text-slate-400">(4 satélites: mínimos cuadrados)</span>':''}`}
+  $('#t1').innerHTML=t}
+RD.q1=p1;
+{const cvs=$('#g1');let gp=p=>{const r=cvs.getBoundingClientRect();return[p.clientX-r.left,p.clientY-r.top]};
+ cvs.addEventListener('pointerdown',e=>{const[px,py]=gp(e),m=P1.map;if(!m)return;let best=null,bd=26;P1.sats.forEach((s,i)=>{const d=Math.hypot(m.X(s[0])-px,m.Y(s[1])-py);if(d<bd){bd=d;best={t:'s',i}}});const d=Math.hypot(m.X(P1.u[0])-px,m.Y(P1.u[1])-py);if(d<bd)best={t:'u'};P1.drag=best;if(best)cvs.setPointerCapture(e.pointerId)});
+ cvs.addEventListener('pointermove',e=>{if(!P1.drag)return;const[px,py]=gp(e),m=P1.map,wx=(px-m.ox)/m.sc,wy=(m.oy-py)/m.sc;if(P1.drag.t=='u')P1.u=[clamp(wx,-9000,9000),clamp(wy,0,3000)];else P1.sats[P1.drag.i]=[clamp(wx,-24000,24000),clamp(wy,12000,27500)];P1.k=0;p1()});
+ cvs.addEventListener('pointerup',()=>P1.drag=null)}
+mk($('#q1s'),['2 satélites','3 satélites','4 satélites'],'3 satélites',(o,i)=>{P1.ns=i+2;P1.k=0;p1()});
+$('#q1step').onclick=()=>{P1.k=Math.min(P1.k+1,P1.fix.length-1);p1()};$('#q1rst').onclick=()=>{P1.k=0;p1()};$('#q1new').onclick=()=>{P1.seed++;P1.k=0;p1()};
+// ================= Panel 2: códigos =================
+const TAPS=[null,[2,6],[3,7],[4,8],[5,9],[1,9],[2,10],[1,8],[2,9],[3,10],[2,3],[3,4],[5,6],[6,7],[7,8],[8,9],[9,10],[1,4],[2,5],[3,6],[4,7],[5,8],[6,9],[1,3],[4,6],[5,7],[6,8],[7,9],[8,10],[1,6],[2,7],[3,8],[4,9]];
+const CA={};function ca(p){if(CA[p])return CA[p];let g1=Array(10).fill(1),g2=Array(10).fill(1),o=[];const[a,b]=TAPS[p];for(let i=0;i<1023;i++){o.push(1-2*(g1[9]^g2[a-1]^g2[b-1]));const f1=g1[2]^g1[9],f2=g2[1]^g2[2]^g2[5]^g2[7]^g2[8]^g2[9];g1.unshift(f1);g1.pop();g2.unshift(f2);g2.pop()}return CA[p]=o}
+function xcorr(a,b){const n=1023,r=new Float32Array(n);for(let t=0;t<n;t++){let s=0;for(let i=0;i<n;i++)s+=a[i]*b[(i+t)%n];r[t]=s}return r}
+function bars(x,L,T,W,H,B,vals,ymin,ymax,col){const Y=v=>H-B-(v-ymin)/(ymax-ymin)*(H-B-T),n=vals.length,bw=(W-L-6)/n;x.fillStyle=col;for(let i=0;i<n;i++){const y0=Y(0),y1=Y(vals[i]);x.fillRect(L+i*bw,Math.min(y0,y1),Math.max(bw*.8,1),Math.max(Math.abs(y1-y0),1))}}
+function c1(){const A=ca(V.prn),B=ca(V.prn2);
+ {const{x,w,h}=cvc('#c1a');x.clearRect(0,0,w,h);const n=40,L=28,bw=(w-L-6)/n;x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';x.fillText('+1',L-4,16);x.fillText('−1',L-4,h-8);
+  x.strokeStyle='#22d3ee';x.lineWidth=1.6;x.beginPath();for(let i=0;i<n;i++){const y=A[i]>0?10:h-14;i?x.lineTo(L+i*bw,y):x.moveTo(L,y);x.lineTo(L+(i+1)*bw,y)}x.stroke();x.lineWidth=1;
+  x.strokeStyle='#1e293b';for(let i=0;i<=n;i+=10){x.beginPath();x.moveTo(L+i*bw,0);x.lineTo(L+i*bw,h);x.stroke()}x.fillStyle='#475569';x.textAlign='center';for(let i=0;i<=n;i+=10)x.fillText(i,L+i*bw,h-1)}
+ const ra=xcorr(A,A),rc=xcorr(A,B);let mxs=0,vs=new Set(),cs=new Set();for(let t=1;t<1023;t++){mxs=Math.max(mxs,Math.abs(ra[t]));vs.add(ra[t])}let mxc=0;for(let t=0;t<1023;t++){mxc=Math.max(mxc,Math.abs(rc[t]));cs.add(rc[t])}
+ const plot=(id,r,col,hl)=>{const{x,w,h}=cvc(id),L=40,Bm=16,T=8;x.clearRect(0,0,w,h);const Y=v=>h-Bm-(v+150)/1250*(h-Bm-T);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,Y(0));x.lineTo(w-6,Y(0));x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';[1023,500,0,-65].forEach(v=>x.fillText(v,L-4,Y(v)+3));x.textAlign='center';[0,256,512,768,1022].forEach(t=>x.fillText(t,L+t/1022*(w-L-6),h-3));
+  x.strokeStyle=col;x.beginPath();for(let t=0;t<1023;t++){const px=L+t/1022*(w-L-6);t?x.lineTo(px,Y(r[t])):x.moveTo(px,Y(r[t]))}x.stroke();x.strokeStyle='rgba(251,191,36,.6)';x.setLineDash([3,3]);[63,-65].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(w-6,Y(v));x.stroke()});x.setLineDash([])};
+ plot('#c1b',ra,'#34d399');plot('#c1c',rc,'#a78bfa');
+ const same=V.prn==V.prn2;
+ $('#t2a').innerHTML=`Código A (PRN ${V.prn}): pico = <b class="text-emerald-300">${ra[0]}</b> en τ = 0; lóbulos secundarios = ${[...vs].sort((a,b)=>a-b).join(', ')} (máx. ${E(mxs,'#fbbf24')}). Relación pico / lóbulo mayor = ${nf(1023/mxs,1)} (${nf(20*Math.log10(1023/mxs),1)} dB).<br>${same?'<b class="text-rose-300">A y B son el mismo código: la «correlación cruzada» vale 1023.</b>':`Correlación cruzada A–B (PRN ${V.prn2}): valores ${[...cs].sort((a,b)=>a-b).join(', ')} → máx. ${E(mxc,'#a78bfa')} frente al pico ${ra[0]}: un satélite apenas «molesta» a otro.`}<br>Con 1,023 Mchip/s: chip = 977,5 ns = 293 m; el código dura 1 ms = 300 km.`}
+RD.c1=c1;
+// -------- b) espectro ensanchado --------
+const SPB={bits:[1,0,1],mode:'Código correcto',int:false,ns:null};
+function spCodes(N){const w=N==6?[1,-1,1,1,-1,1]:ca(1).slice(0,N),o=N==6?[1,1,-1,-1,1,-1]:ca(2).slice(0,N),o2=N==6?[-1,1,1,-1,-1,1]:ca(3).slice(0,N);return{w,o,o2}}
+function sp(){const N=V.nchip,{w,o,o2}=spCodes(N),bits=SPB.bits.map(b=>b?1:-1),R=rng(7),noise=[];for(let i=0;i<3*N;i++)noise.push(gauss(R)*V.nz);
+ const intd=[-1,1,1],loc=SPB.mode=='Código correcto'?w:SPB.mode=='Otro código'?o2:null,tx=[],rx=[];
+ for(let b=0;b<3;b++)for(let c=0;c<N;c++){const t=bits[b]*w[c],i2=SPB.int?intd[b]*o[c]:0;tx.push(t);rx.push(t+i2+noise[b*N+c])}
+ const prod=rx.map((v,i)=>loc?v*loc[i%N]:v),sums=[0,1,2].map(b=>prod.slice(b*N,(b+1)*N).reduce((a,c)=>a+c,0)),dec=sums.map(s=>s>=0?1:0),okc=dec.filter((d,i)=>d==SPB.bits[i]).length;
+ const{x,w:W,h:H}=cvc('#sp');x.clearRect(0,0,W,H);const L=64,n=3*N,cw=(W-L-8)/n,rows=[['Datos D(t)',0],['Código C(t)',1],['Transmitida D·C',2],['Recibida (con ruido)',3],['× código local',4]],rh=(H-60)/5;
+ const wave=(row,vals,col,amp)=>{const y0=24+row*rh+rh/2,k=rh*.38/amp;x.strokeStyle=col;x.lineWidth=1.5;x.beginPath();vals.forEach((v,i)=>{const yy=y0-v*k;i?x.lineTo(L+i*cw,yy):x.moveTo(L+i*cw,yy);x.lineTo(L+(i+1)*cw,yy)});x.stroke();x.lineWidth=1;x.strokeStyle='#1e293b';x.beginPath();x.moveTo(L,y0);x.lineTo(W-8,y0);x.stroke();x.fillStyle='#94a3b8';x.font='10px sans-serif';x.textAlign='right';x.fillText(rows[row][0].split(' ')[0],L-6,y0+3);x.fillStyle='#475569';x.font='9px sans-serif';x.fillText(rows[row][0].split(' ').slice(1).join(' '),L-6,y0+13)};
+ wave(0,Array.from({length:n},(_,i)=>bits[Math.floor(i/N)]),'#e2e8f0',1);wave(1,Array.from({length:n},(_,i)=>w[i%N]),'#22d3ee',1);wave(2,tx,'#fbbf24',1);wave(3,rx,'#fb7185',Math.max(2,...rx.map(Math.abs)));wave(4,prod,'#a78bfa',Math.max(2,...prod.map(Math.abs)));
+ x.strokeStyle='#334155';x.setLineDash([2,3]);for(let b=0;b<=3;b++){x.beginPath();x.moveTo(L+b*N*cw,14);x.lineTo(L+b*N*cw,H-46);x.stroke()}x.setLineDash([]);
+ for(let b=0;b<3;b++){const px=L+(b+.5)*N*cw,s=sums[b],g=dec[b]==SPB.bits[b];x.textAlign='center';x.font='11px sans-serif';x.fillStyle='#94a3b8';x.fillText('bit '+(b+1)+': dato '+SPB.bits[b],px,10);x.fillStyle=g?'#34d399':'#fb7185';x.font='bold 12px sans-serif';x.fillText('Σ = '+nf(s,1)+' → '+dec[b]+(g?' ✓':' ✗'),px,H-24);x.fillStyle='#64748b';x.font='10px sans-serif';x.fillText('(máx. ±'+N+')',px,H-10)}
+ $('#t2b').innerHTML=`Con ${N} chips por bit, la suma del producto vale <b>±${N}</b> si todo va bien (el código local cancela al código transmitido). Bits recuperados: <b class="${okc==3?'text-emerald-300':'text-rose-300'}">${okc} de 3</b>.${SPB.mode!='Código correcto'?'<br>'+(loc?'<b class="text-amber-300">Código equivocado:</b> el producto no cancela el código y las sumas son pequeñas y sin relación con los datos.':'<b class="text-amber-300">Sin código local:</b> la señal ensanchada tiene espectro tan ancho como el ruido y los bits no se pueden decodificar.'):''}${SPB.int?'<br>Hay <b>otro satélite</b> con su propio código y datos: sus chips se suman con signos al azar y casi no afectan.':''}<br>Ganancia de procesado = 10·log₁₀(${N}) = <b>${nf(10*Math.log10(N),1)} dB</b>.`}
+RD.sp=sp;
+(function(){const el=$('#spb');el.innerHTML='';[0,1,2].forEach(i=>{const b=document.createElement('button');b.className='b mr-1 mb-1';const u=()=>{b.textContent='Bit '+(i+1)+' = '+SPB.bits[i];b.classList.toggle('on',!!SPB.bits[i])};u();b.onclick=()=>{SPB.bits[i]=SPB.bits[i]?0:1;u();sp()};el.appendChild(b)})})();
+mk($('#spm'),['Código correcto','Otro código','Sin código'],'Código correcto',o=>{SPB.mode=o;sp()});
+tg($('#spi'),['Añadir interferencia de otro satélite'],[false],()=>{SPB.int=!SPB.int;sp()});
+// -------- c) adquisición --------
+const ACQ={ids:[3,11,19,24],amps:[1,.9,.8,.7],dels:[0,480,777,31],scan:null,seed:5};
+function acqSig(){const R=rng(ACQ.seed*31+7),n=1023,s=new Float32Array(n),ns=V.sns;ACQ.dels[0]=V.sdel;for(let k=0;k<ns;k++){const c=ca(ACQ.ids[k]),d=ACQ.dels[k];for(let i=0;i<n;i++)s[i]+=ACQ.amps[k]*c[(i-d+n*2)%n]}for(let i=0;i<n;i++)s[i]+=gauss(R)*V.snz;return s}
+function acq(){const sig=acqSig(),loc=ca(V.sprn),r=new Float32Array(1023);for(let t=0;t<1023;t++){let s=0;for(let i=0;i<1023;i++)s+=sig[(i+t)%1023]*loc[i];r[t]=s/1023}
+ let pk=0,pi=0,sum2=0;r.forEach((v,i)=>{sum2+=v*v;if(Math.abs(v)>Math.abs(pk)){pk=v;pi=i}});const rms=Math.sqrt(sum2/1023);
+ const ex=ACQ.ids.slice(0,V.sns).indexOf(V.sprn),nstd=V.snz/Math.sqrt(1023),thr=Math.max(.2,5*Math.sqrt(nstd*nstd+ (V.sns*.063)**2/3));
+ const det=Math.abs(pk)>thr;
+ const{x,w,h}=cvc('#acq'),L=40,Bm=16,T=8;x.clearRect(0,0,w,h);const ymax=1.15,Y=v=>h-Bm-(v+.2)/(ymax+.2)*(h-Bm-T),X=t=>L+t/1022*(w-L-8);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,Y(0));x.lineTo(w-8,Y(0));x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';[1,.5,0].forEach(v=>x.fillText(nf(v,1),L-4,Y(v)+3));x.textAlign='center';[0,256,512,768,1022].forEach(t=>x.fillText(t,X(t),h-3));
+ x.strokeStyle='#fbbf24';x.setLineDash([4,3]);x.beginPath();x.moveTo(L,Y(thr));x.lineTo(w-8,Y(thr));x.stroke();x.setLineDash([]);x.fillStyle='#fbbf24';x.textAlign='left';x.fillText('umbral',L+4,Y(thr)-3);
+ x.strokeStyle='#22d3ee';x.beginPath();for(let t=0;t<1023;t++)t?x.lineTo(X(t),Y(r[t])):x.moveTo(X(t),Y(r[t]));x.stroke();x.textAlign='right';x.fillStyle='#94a3b8';x.fillText('desplazamiento τ (chips)',w-8,Y(0)-4);
+ if(det){x.fillStyle='#34d399';x.beginPath();x.arc(X(pi),Y(pk),4,0,2*PI);x.fill();x.textAlign=pi>700?'right':'left';x.fillText('τ = '+pi+' chips',X(pi)+(pi>700?-8:8),Y(pk)+(pk>0.7?12:-6))}
+ const R0=pi*C*977.5e-9/1000;let tx=`Buscando el PRN ${V.sprn}: pico = ${E(nf(pk,2),det?'#34d399':'#94a3b8')} en τ = ${pi} chips · umbral ${nf(thr,2)} → ${det?'<b class="text-emerald-300">satélite detectado</b>':'<b class="text-slate-300">no se detecta</b>'}.`;
+ if(det)tx+=`<br>Retardo = ${pi} chips × 977,5 ns = ${nf(pi*977.5,0)} ns → pseudodistancia ≡ ${E(nf(R0,1)+' km','#fbbf24')} (módulo 300 km: la distancia real puede ser esa más un número entero de veces 299,8 km).`;
+ else if(ex<0)tx+=` <span class="text-xs text-slate-400">(el PRN ${V.sprn} no está en la señal: la correlación es solo ruido y lóbulos de otros satélites)</span>`;
+ else tx+=' <span class="text-xs text-rose-300">(el satélite está pero el ruido tapa el pico: hay que integrar más tiempo)</span>';
+ $('#t2c').innerHTML=tx;ACQ.cur={pk,pi}}
+RD.ac=acq;
+function acqScan(){const sig=acqSig(),res=[];for(let p=1;p<=32;p++){const loc=ca(p);let pk=0;for(let t=0;t<1023;t++){let s=0;for(let i=0;i<1023;i++)s+=sig[(i+t)%1023]*loc[i];if(Math.abs(s)>Math.abs(pk))pk=s}res.push(Math.abs(pk)/1023)}
+ const nstd=V.snz/Math.sqrt(1023),thr=Math.max(.2,5*Math.sqrt(nstd*nstd+(V.sns*.063)**2/3));
+ const{x,w,h}=cvc('#acqall'),L=34,Bm=18,T=8,bw=(w-L-6)/32,Y=v=>h-Bm-v/1.15*(h-Bm-T);x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,h-Bm);x.lineTo(w-6,h-Bm);x.stroke();
+ x.strokeStyle='#fbbf24';x.setLineDash([4,3]);x.beginPath();x.moveTo(L,Y(thr));x.lineTo(w-6,Y(thr));x.stroke();x.setLineDash([]);
+ const found=[];res.forEach((v,i)=>{const p=i+1,pre=ACQ.ids.slice(0,V.sns).includes(p),det=v>thr;x.fillStyle=det?(pre?'#34d399':'#fb7185'):(pre?'#fbbf24':'#475569');x.fillRect(L+i*bw+1,Y(v),bw-2,h-Bm-Y(v));if(det)found.push(p);x.fillStyle='#94a3b8';x.font='9px sans-serif';x.textAlign='center';if(p%2||bw>16)x.fillText(p,L+(i+.5)*bw,h-5)});
+ x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';x.fillText('1,0',L-3,Y(1)+3);x.fillText('0',L-3,h-Bm+3);
+ const real=ACQ.ids.slice(0,V.sns),miss=real.filter(p=>!found.includes(p)),fal=found.filter(p=>!real.includes(p));
+ $('#t2c').innerHTML+=`<br><b>Barrido de los 32 PRN:</b> detectados ${found.length?found.join(', '):'ninguno'} · en la señal hay: ${real.join(', ')} · ${miss.length?'<b class="text-amber-300">no detectados: '+miss.join(', ')+'</b>':'<span class="text-emerald-300">todos detectados</span>'}${fal.length?' · <b class="text-rose-300">falsas alarmas: '+fal.join(', ')+'</b>':''}. <span class="text-xs text-slate-400">(verde = presente y detectado, ámbar = presente pero perdido, rojo = falsa alarma)</span>`}
+$('#acqscan').onclick=acqScan;
+// ================= Panel 3: DOP, errores, DGPS =================
+function inv(A){const n=A.length,M=A.map((r,i)=>[...r,...Array.from({length:n},(_,j)=>+(i==j))]);for(let i=0;i<n;i++){let p=i;for(let r=i+1;r<n;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;if(Math.abs(M[p][i])<1e-10)return null;[M[i],M[p]]=[M[p],M[i]];const d=M[i][i];for(let c=0;c<2*n;c++)M[i][c]/=d;for(let r=0;r<n;r++)if(r!=i){const f=M[r][i];for(let c=0;c<2*n;c++)M[r][c]-=f*M[i][c]}}return M.map(r=>r.slice(n))}
+function dop(list){if(list.length<4)return null;const G=list.map(s=>{const e=s.el*D2R,a=s.az*D2R;return[Math.cos(e)*Math.sin(a),Math.cos(e)*Math.cos(a),Math.sin(e),1]});const A=Array.from({length:4},(_,i)=>Array.from({length:4},(_,j)=>G.reduce((t,g)=>t+g[i]*g[j],0)));const Q=inv(A);if(!Q||Q.some(r=>r.some(v=>!isFinite(v)))||Q[0][0]<0)return null;return{Q,G:Math.sqrt(Q[0][0]+Q[1][1]+Q[2][2]+Q[3][3]),P:Math.sqrt(Q[0][0]+Q[1][1]+Q[2][2]),H:Math.sqrt(Q[0][0]+Q[1][1]),V:Math.sqrt(Q[2][2]),T:Math.sqrt(Q[3][3])}}
+const SCN={'Cielo abierto':{s:[[0,80],[45,55],[100,35],[150,62],[200,28],[255,48],[300,22],[335,58]],cy:false},
+ 'Cañón urbano':{s:[[0,80],[45,55],[100,35],[150,62],[200,28],[255,48],[300,22],[335,58]],cy:true},
+ 'Mala geometría':{s:[[25,55],[40,40],[55,58],[65,38],[35,48],[50,30]],cy:false},
+ 'Solo 4 satélites':{s:[[10,60],[100,30],[200,45],[290,25]],cy:false}};
+const SK={s:SCN['Cielo abierto'].s.map(a=>({az:a[0],el:a[1]})),cy:false,drag:-1,z:null};
+const OP=[false,false,false,false]; // P, SA, DGPS, doble frecuencia
+const blocked=(s)=>SK.cy&&((s.az>50&&s.az<130)||(s.az>230&&s.az<310))&&s.el<62;
+const visS=()=>SK.s.filter(s=>s.el>=V.mask&&!blocked(s));
+function uere(){const P=OP[0],sa=OP[1]&&!P&&!OP[2],dg=OP[2],du=OP[3];const t=[];
+ t.push(['Reloj satélite',dg?0:3.3]);t.push(['Efemérides',dg?0:4.2]);
+ t.push(['Ionosfera',dg?0:(P||du?2.3:7.5)]);t.push(['Troposfera',dg?0:2.0]);
+ t.push(['Ruido receptor',P?1.5:7.5]);t.push(['Multitrayecto',1.2]);
+ t.push(['Otros',dg?.5:Math.sqrt(.25+1+.25+.81+.25)]);
+ t.push(['Disp. selectiva',sa?35.5:0]);
+ t.push(['Decorrelación DGPS',dg?.02*V.dgd:0]);
+ const tot=Math.sqrt(t.reduce((a,b)=>a+b[1]*b[1],0));return{t,tot}}
+const ZN=(()=>{const r=rng(11),a=[];for(let i=0;i<300;i++)a.push([gauss(r),gauss(r)]);return a})();
+function d1(){
+ const vs=visS(),D=dop(vs),U=uere();
+ // cielo
+ {const{x,w,h}=cvc('#sky'),cx=w/2,cy=h/2,R=Math.min(w,h)/2-22;SK.g={cx,cy,R};x.clearRect(0,0,w,h);
+  if(SK.cy){x.fillStyle='rgba(251,113,133,.18)';[[50,130],[230,310]].forEach(([a,b])=>{x.beginPath();x.moveTo(cx,cy);for(let k=a;k<=b;k+=2){const ra=R*(1-62/90);x.lineTo(cx+R*Math.sin(k*D2R),cy-R*Math.cos(k*D2R))}x.closePath();x.fill();x.fillStyle='rgba(7,11,20,.0)'});
+   // zona libre central (el > 62°) por encima de los edificios
+   x.fillStyle='#0a1020';x.beginPath();x.arc(cx,cy,R*(1-62/90),0,2*PI);x.fill();x.fillStyle='rgba(251,113,133,.0)'}
+  x.strokeStyle='#1e293b';[0,30,60].forEach(e=>{x.beginPath();x.arc(cx,cy,R*(1-e/90),0,2*PI);x.stroke()});x.beginPath();x.moveTo(cx-R,cy);x.lineTo(cx+R,cy);x.moveTo(cx,cy-R);x.lineTo(cx,cy+R);x.stroke();
+  if(V.mask>0){x.strokeStyle='rgba(251,191,36,.7)';x.setLineDash([4,4]);x.beginPath();x.arc(cx,cy,R*(1-V.mask/90),0,2*PI);x.stroke();x.setLineDash([])}
+  x.fillStyle='#475569';x.font='10px sans-serif';x.textAlign='center';[['N',0],['E',90],['S',180],['O',270]].forEach(([n,a])=>x.fillText(n,cx+(R+11)*Math.sin(a*D2R),cy-(R+11)*Math.cos(a*D2R)+3));x.fillText('30°',cx+R*(1-30/90)*.71+8,cy-R*(1-30/90)*.71);x.fillText('60°',cx+R*(1-60/90)*.71+8,cy-R*(1-60/90)*.71);
+  SK.s.forEach((s,i)=>{const r=R*(1-s.el/90),px=cx+r*Math.sin(s.az*D2R),py=cy-r*Math.cos(s.az*D2R),ok=s.el>=V.mask&&!blocked(s);x.fillStyle=ok?'#22d3ee':'#475569';x.beginPath();x.arc(px,py,ok?7:5,0,2*PI);x.fill();x.fillStyle=ok?'#001018':'#0a1020';x.font='bold 9px sans-serif';x.textAlign='center';if(ok)x.fillText(i+1,px,py+3)});
+  x.fillStyle='#94a3b8';x.font='10px sans-serif';x.textAlign='left';x.fillText(vs.length+' visibles de '+SK.s.length,6,12)}
+ // texto DOP y nube
+ const{x,w,h}=cvc('#scat');x.clearRect(0,0,w,h);const sl=$('#scl');
+ if(!D){sl.textContent='Posiciones calculadas con la UERE y el DOP actuales';x.fillStyle='#fb7185';x.font='13px sans-serif';x.textAlign='center';x.fillText('Con menos de 4 satélites visibles',w/2,h/2-6);x.fillText('(o geometría degenerada) no hay posición',w/2,h/2+12);
+  $('#t3a').innerHTML=`<b class="text-rose-300">No hay solución:</b> ${vs.length} satélite(s) visible(s). Hacen falta al menos 4 con geometría no degenerada.`}
+ else{const Q=D.Q,l11=Math.sqrt(Q[0][0]),l21=Q[0][1]/l11,l22=Math.sqrt(Math.max(Q[1][1]-l21*l21,1e-12)),s=U.tot;
+  const pts=ZN.map(z=>[s*l11*z[0],s*(l21*z[0]+l22*z[1])]),rr=pts.map(p=>Math.hypot(p[0],p[1])).sort((a,b)=>a-b),r50=rr[149],r95=rr[284],vert95=1.96*s*D.V;
+  const rmax=Math.max(r95*1.25,1),nice=[1,2,5,10,20,50,100,200,500,1000,2000],sc0=nice.find(v=>v>=rmax)||2000,sc=Math.min(w,h)/2*.9/sc0,cx=w/2,cy=h/2;
+  x.strokeStyle='#1e293b';[.25,.5,.75,1].forEach(f=>{x.beginPath();x.arc(cx,cy,sc0*f*sc,0,2*PI);x.stroke()});x.beginPath();x.moveTo(0,cy);x.lineTo(w,cy);x.moveTo(cx,0);x.lineTo(cx,h);x.stroke();x.fillStyle='#475569';x.font='10px sans-serif';x.textAlign='left';x.fillText(sc0/4+' m por anillo',6,h-6);
+  x.fillStyle='rgba(34,211,238,.55)';pts.forEach(p=>{x.beginPath();x.arc(cx+p[0]*sc,cy-p[1]*sc,1.8,0,2*PI);x.fill()});
+  x.strokeStyle='#34d399';x.lineWidth=1.5;x.beginPath();x.arc(cx,cy,r50*sc,0,2*PI);x.stroke();x.strokeStyle='#fbbf24';x.beginPath();x.arc(cx,cy,r95*sc,0,2*PI);x.stroke();x.lineWidth=1;x.fillStyle='#34d399';x.fillText('50 %: '+nf(r50,1)+' m',cx+4,cy-r50*sc-4);x.fillStyle='#fbbf24';x.fillText('95 %: '+nf(r95,1)+' m',cx+4,cy-r95*sc-4);x.fillStyle='#fff';x.beginPath();x.arc(cx,cy,2.5,0,2*PI);x.fill();
+  sl.textContent='Posiciones horizontales (300 medidas; el centro es la posición real)';
+  const gc=v=>v<3?'#34d399':v<6?'#fbbf24':'#fb7185';
+  $('#t3a').innerHTML=`<b>DOP:</b> GDOP ${E(nf(D.G,2),gc(D.G))} · PDOP ${E(nf(D.P,2),gc(D.P))} · HDOP ${E(nf(D.H,2),gc(D.H))} · VDOP ${E(nf(D.V,2),gc(D.V))} · TDOP ${E(nf(D.T,2),gc(D.T))}<br><b>UERE</b> = ${E(nf(U.tot,1)+' m','#fbbf24')} → error horizontal típico = UERE × HDOP = ${E(nf(U.tot*D.H,1)+' m','#fb7185')} · error 3D = UERE × PDOP = ${nf(U.tot*D.P,1)} m<br>Precisión (radio que contiene el 50 % de las medidas): <b class="text-emerald-300">${nf(r50,1)} m</b> · 95 %: <b class="text-amber-300">${nf(r95,1)} m</b> · vertical (95 %): ${nf(vert95,1)} m`}
+ // presupuesto
+ {const{x,w,h}=cvc('#ue'),L=118,R0=70,T=6,n=U.t.length,bh=(h-T-4)/n,mx=Math.max(40,...U.t.map(a=>a[1]))*1.05;x.clearRect(0,0,w,h);
+  U.t.forEach((a,i)=>{const y=T+i*bh,bw=a[1]/mx*(w-L-R0);x.fillStyle='#94a3b8';x.font='11px sans-serif';x.textAlign='right';x.fillText(a[0],L-6,y+bh*.62);x.fillStyle=a[0]=='Disp. selectiva'?'#fb7185':a[0]=='Decorrelación DGPS'?'#a78bfa':'#22d3ee';x.fillRect(L,y+2,Math.max(bw,a[1]>0?1:0),bh-5);x.fillStyle='#e2e8f0';x.textAlign='left';x.fillText(nf(a[1],1)+' m',L+bw+5,y+bh*.62)});
+  x.fillStyle='#fbbf24';x.font='bold 12px sans-serif';x.textAlign='right';x.fillText('UERE = '+nf(U.tot,1)+' m',w-6,h-6)}
+}
+RD.d1=d1;
+{const cvs=$('#sky');const upd=e=>{const r=cvs.getBoundingClientRect(),g=SK.g;if(!g)return;const px=e.clientX-r.left-g.cx,py=e.clientY-r.top-g.cy,rad=Math.hypot(px,py);SK.s[SK.drag].el=clamp(90*(1-rad/g.R),1,90);SK.s[SK.drag].az=(Math.atan2(px,-py)/D2R+360)%360;d1()};
+ cvs.addEventListener('pointerdown',e=>{const r=cvs.getBoundingClientRect(),g=SK.g;let bi=-1,bd=24;SK.s.forEach((s,i)=>{const rr=g.R*(1-s.el/90),px=g.cx+rr*Math.sin(s.az*D2R),py=g.cy-rr*Math.cos(s.az*D2R),d=Math.hypot(px-(e.clientX-r.left),py-(e.clientY-r.top));if(d<bd){bd=d;bi=i}});SK.drag=bi;if(bi>=0){cvs.setPointerCapture(e.pointerId);upd(e)}});
+ cvs.addEventListener('pointermove',e=>{if(SK.drag>=0)upd(e)});cvs.addEventListener('pointerup',()=>SK.drag=-1)}
+mk($('#scn'),Object.keys(SCN),'Cielo abierto',o=>{SK.s=SCN[o].s.map(a=>({az:a[0],el:a[1]}));SK.cy=SCN[o].cy;d1()});
+tg($('#opt'),['Código P (en vez de C/A)','Disponibilidad selectiva (SA)','GPS diferencial (DGPS)','Doble frecuencia (L1+L2)'],OP,()=>{d1();dgp()});
+// ---- b) ionosfera ----
+function io(){const f1=1575.42,f2=1227.6,u1=1/(f1*f1),u2=1/(f2*f2),d1_=V.io,A=d1_/u1,d2_=A*u2,R=rng(21),n1=gauss(R)*V.ion,n2=gauss(R)*V.ion,m1=d1_+n1,m2=d2_+n2,a1=f1*f1/(f1*f1-f2*f2),a2=f2*f2/(f1*f1-f2*f2),e=a1*m1-a2*m2,g=Math.sqrt(a1*a1+a2*a2);
+ const{x,w,h}=cvc('#io'),L=52,B=30,T=14,mx=Math.max(80,d2_+n2+10),X=u=>L+u/(7.2e-7)*(w-L-14),Y=v=>h-B-(v+8)/(mx+8)*(h-B-T);x.clearRect(0,0,w,h);
+ x.strokeStyle='#334155';x.beginPath();x.moveTo(L,Y(-8));x.lineTo(L,T);x.moveTo(L,Y(0));x.lineTo(w-8,Y(0));x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';[0,20,40,60,80].filter(v=>v<mx).forEach(v=>x.fillText(v+' m',L-4,Y(v)+3));x.textAlign='center';x.fillText('1/f²  (f → ∞ a la izquierda: sin ionosfera)',(L+w)/2,h-4);
+ x.fillText('f→∞',X(0),Y(0)+13);[[u1,'L1'],[u2,'L2']].forEach(([u,n])=>{x.fillText(n,X(u),Y(0)+13)});
+ x.strokeStyle='#475569';x.setLineDash([4,4]);x.beginPath();x.moveTo(X(0),Y(0));x.lineTo(X(7e-7),Y(A*7e-7));x.stroke();x.setLineDash([]);
+ const sl=(m2-m1)/(u2-u1);x.strokeStyle='#fbbf24';x.lineWidth=1.6;x.beginPath();x.moveTo(X(0),Y(m1-sl*u1));x.lineTo(X(u2*1.04),Y(m1+sl*(u2*1.04-u1)));x.stroke();x.lineWidth=1;
+ [[u1,m1,'#22d3ee','R₁ₘ'],[u2,m2,'#a78bfa','R₂ₘ']].forEach(([u,m,c,l])=>{x.fillStyle=c;x.beginPath();x.arc(X(u),Y(m),5,0,2*PI);x.fill();x.textAlign='left';x.fillText(l+' − R = '+nf(m,1)+' m',X(u)+8,Y(m)-6)});
+ x.fillStyle=Math.abs(e)<1?'#34d399':'#fb7185';x.beginPath();x.arc(X(0),Y(e),5,0,2*PI);x.fill();x.textAlign='left';x.fillText('R corregida − R = '+nf(e,1)+' m',X(0)+8,Y(e)-8);
+ $('#t3b').innerHTML=`Retardo ionosférico: ${nf(d1_,1)} m en L1 y ${nf(d2_,1)} m en L2 (= ${nf(d1_,1)}·(f₁/f₂)² = ${nf(d1_*(f1/f2)**2,1)}). Con una sola frecuencia el receptor se equivoca ${E(nf(m1,1)+' m','#fb7185')} (o lo que quede tras aplicar el modelo).<br>Con dos frecuencias: R = ${nf(a1,3)}·R<sub>1m</sub> − ${nf(a2,3)}·R<sub>2m</sub>. Error restante = ${E(nf(e,1)+' m','#34d399')}, pero el ruido se amplifica ×${nf(g,2)} (√(${nf(a1,2)}² + ${nf(a2,2)}²)).`}
+RD.io=io;
+// ---- c) DGPS ----
+function dgp(){const{x,w,h}=cvc('#dg'),L=40,B=22,T=10,maxd=500;x.clearRect(0,0,w,h);
+ const Pm=OP[0],base=U=>0;const f=(d,dg)=>{const o=OP.slice();o[2]=dg;const sv=V.dgd;V.dgd=d;const t=uere2(o);V.dgd=sv;return t};
+ function uere2(o){const P=o[0],dg=o[2],du=o[3],t=[dg?0:3.3,dg?0:4.2,dg?0:(P||du?2.3:7.5),dg?0:2,P?1.5:7.5,1.2,dg?.5:Math.sqrt(2.5),(o[1]&&!P&&!dg)?35.5:0,dg?.02*V.dgd:0];return Math.sqrt(t.reduce((a,b)=>a+b*b,0))}
+ const sa0=uere2([OP[0],OP[1],false,OP[3]]),mx=Math.ceil(Math.max(sa0,uere2([OP[0],OP[1],true,OP[3]]))*1.3/5)*5,st=mx>40?20:mx>20?10:5;const X=d=>L+d/maxd*(w-L-8),Y=v=>h-B-v/mx*(h-B-T);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,T);x.lineTo(L,h-B);x.lineTo(w-8,h-B);x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';for(let v=0;v<=mx;v+=st)x.fillText(v+' m',L-4,Y(v)+3);x.textAlign='center';[0,100,200,300,400,500].forEach(d=>x.fillText(d+' km',X(d),h-8));
+ x.fillStyle='rgba(52,211,153,.08)';x.fillRect(X(0),T,X(200)-X(0),h-B-T);x.fillStyle='#34d399';x.fillText('cobertura típica',X(100),T+10);
+ const o0=OP.slice();const sa=uere2([o0[0],o0[1],false,o0[3]]),dgv=d=>{const sv=V.dgd;V.dgd=d;const r=uere2([o0[0],o0[1],true,o0[3]]);V.dgd=sv;return r};
+ x.strokeStyle='#fb7185';x.setLineDash([5,4]);x.beginPath();x.moveTo(L,Y(sa));x.lineTo(w-8,Y(sa));x.stroke();x.setLineDash([]);x.fillStyle='#fb7185';x.textAlign='right';x.fillText('sin DGPS: '+nf(sa,1)+' m',w-10,Y(sa)-4);
+ x.strokeStyle='#22d3ee';x.lineWidth=2;x.beginPath();for(let d=0;d<=maxd;d+=10){d?x.lineTo(X(d),Y(dgv(d))):x.moveTo(X(d),Y(dgv(d)))}x.stroke();x.lineWidth=1;
+ const cur=dgv(V.dgd);x.fillStyle='#fff';x.beginPath();x.arc(X(V.dgd),Y(cur),5,0,2*PI);x.fill();x.fillStyle='#22d3ee';x.textAlign='left';x.fillText('DGPS: '+nf(cur,1)+' m',X(V.dgd)+8,Y(cur)-6);
+ $('#t3c').innerHTML=`Con la estación de referencia a <b>${V.dgd} km</b>, la UERE pasa de ${E(nf(sa,1)+' m','#fb7185')} (sin DGPS) a ${E(nf(cur,1)+' m','#34d399')}. Se anulan los errores de segmento espacial y de control, la SA y casi toda la atmósfera; quedan el <b>ruido del receptor</b> y el <b>multitrayecto</b>, que son locales y no se corrigen.${V.dgd>200?' <b class="text-amber-300">Más allá de ~200 km los errores atmosféricos ya no están correlados.</b>':''}`}
+RD.dg=dgp;
+// ================= Panel 4: constelaciones =================
+const MU=398600.4418,RE=6378,WE=7.2921159e-5;
+const CON=[{n:'GPS',col:'#22d3ee',a:26560,inc:55,P:6,S:4,F:1,alt:20200},{n:'GLONASS',col:'#fb7185',a:25510,inc:64.8,P:3,S:8,F:1,alt:19100},{n:'Galileo',col:'#a78bfa',a:29600,inc:56,P:3,S:9,F:1,alt:23222}];
+const CS=[true,false,false];
+function period(c){return 2*PI*Math.sqrt(c.a**3/MU)}
+function satsAt(c,t,lat,lon){const n=Math.sqrt(MU/c.a**3),th=WE*t,ph=lat*D2R,la=lon*D2R,o=[RE*Math.cos(ph)*Math.cos(la),RE*Math.cos(ph)*Math.sin(la),RE*Math.sin(ph)],e=[-Math.sin(la),Math.cos(la),0],nn=[-Math.sin(ph)*Math.cos(la),-Math.sin(ph)*Math.sin(la),Math.cos(ph)],up=[Math.cos(ph)*Math.cos(la),Math.cos(ph)*Math.sin(la),Math.sin(ph)],ci=Math.cos(c.inc*D2R),si=Math.sin(c.inc*D2R),out=[];
+ for(let p=0;p<c.P;p++){const Om=2*PI*p/c.P;for(let s=0;s<c.S;s++){const u=2*PI*(s/c.S+c.F*p/(c.P*c.S))+n*t,x=c.a*(Math.cos(Om)*Math.cos(u)-Math.sin(Om)*ci*Math.sin(u)),y=c.a*(Math.sin(Om)*Math.cos(u)+Math.cos(Om)*ci*Math.sin(u)),z=c.a*si*Math.sin(u),xe=x*Math.cos(th)+y*Math.sin(th),ye=-x*Math.sin(th)+y*Math.cos(th),d=[xe-o[0],ye-o[1],z-o[2]],r=Math.hypot(...d),E=(d[0]*e[0]+d[1]*e[1]+d[2]*e[2]),N=(d[0]*nn[0]+d[1]*nn[1]+d[2]*nn[2]),U=(d[0]*up[0]+d[1]*up[1]+d[2]*up[2]);out.push({az:(Math.atan2(E,N)/D2R+360)%360,el:Math.asin(U/r)/D2R,c})}}
+ return out}
+let K4={tl:null,key:''};
+function k4tl(){const key=V.lat+'|'+CS.join();K4.tl=[];for(let m=0;m<=144;m++){const t=m*600,all=CON.map(c=>satsAt(c,t,V.lat,0));K4.tl.push(all)}K4.key=key}
+function k4(){const lat=V.lat;if(!K4.tl||K4.latd!==lat){k4tl();K4.latd=lat}
+ const mask=V.mask4,sel=i=>CS[i],at=m=>K4.tl[m].map((a,i)=>a.filter(s=>s.el>=mask)),vc=(m)=>at(m).map(a=>a.length);
+ const tt=V.hr*3600,m=Math.round(tt/600),cur=CON.map(c=>satsAt(c,tt,lat,0));
+ {const{x,w,h}=cvc('#sk4'),cx=w/2,cy=h/2,R=Math.min(w,h)/2-22;x.clearRect(0,0,w,h);x.strokeStyle='#1e293b';[0,30,60].forEach(e=>{x.beginPath();x.arc(cx,cy,R*(1-e/90),0,2*PI);x.stroke()});x.beginPath();x.moveTo(cx-R,cy);x.lineTo(cx+R,cy);x.moveTo(cx,cy-R);x.lineTo(cx,cy+R);x.stroke();
+  if(mask>0){x.strokeStyle='rgba(251,191,36,.7)';x.setLineDash([4,4]);x.beginPath();x.arc(cx,cy,R*(1-mask/90),0,2*PI);x.stroke();x.setLineDash([])}
+  x.fillStyle='#475569';x.font='10px sans-serif';x.textAlign='center';[['N',0],['E',90],['S',180],['O',270]].forEach(([n,a])=>x.fillText(n,cx+(R+11)*Math.sin(a*D2R),cy-(R+11)*Math.cos(a*D2R)+3));
+  cur.forEach((a,i)=>{if(!CS[i])return;a.forEach(s=>{if(s.el<0)return;const r=R*(1-s.el/90),px=cx+r*Math.sin(s.az*D2R),py=cy-r*Math.cos(s.az*D2R),ok=s.el>=mask;x.fillStyle=ok?CON[i].col:'#475569';x.beginPath();x.arc(px,py,ok?5.5:4,0,2*PI);x.fill()})}); }
+ const vis=cur.map((a,i)=>CS[i]?a.filter(s=>s.el>=mask):[]),all=vis.flat(),D=dop(all);
+ $('#k4a').innerHTML=`Cielo a las ${$('.vv[data-k="hr"]').textContent} · ${all.length} satélites utilizables`;
+ // 24 h
+ {const{x,w,h}=cvc('#vis'),L=30,B=22,T=10,X=t=>L+t/144*(w-L-8),mxv=Math.max(14,...Array.from({length:145},(_,k)=>vc(k).reduce((s,v,i)=>s+(CS[i]?v:0),0)))+1,Y=v=>h-B-v/mxv*(h-B-T);x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,T);x.lineTo(L,h-B);x.lineTo(w-8,h-B);x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';for(let v=0;v<=mxv;v+=4)x.fillText(v,L-4,Y(v)+3);x.textAlign='center';for(let hh=0;hh<=24;hh+=4)x.fillText(hh+' h',Math.min(X(hh*6),w-14),h-8);
+  x.strokeStyle='#fb7185';x.setLineDash([4,4]);x.beginPath();x.moveTo(L,Y(4));x.lineTo(w-8,Y(4));x.stroke();x.setLineDash([]);x.fillStyle='#fb7185';x.textAlign='left';x.fillText('mínimo 4',L+4,Y(4)-3);
+  const line=(f,col,lw)=>{x.strokeStyle=col;x.lineWidth=lw;x.beginPath();for(let k=0;k<=144;k++){k?x.lineTo(X(k),Y(f(k))):x.moveTo(X(k),Y(f(k)))}x.stroke();x.lineWidth=1};
+  CON.forEach((c,i)=>{if(CS[i])line(k=>vc(k)[i],c.col,1.3)});line(k=>vc(k).reduce((s,v,i)=>s+(CS[i]?v:0),0),'#e2e8f0',2.4);
+  x.strokeStyle='#fff';x.setLineDash([2,3]);x.beginPath();x.moveTo(X(tt/600),T);x.lineTo(X(tt/600),h-B);x.stroke();x.setLineDash([]);x.fillStyle='#e2e8f0';x.textAlign='right';x.fillText('total',w-10,Y(vc(0).reduce((s,v,i)=>s+(CS[i]?v:0),0))-5)}
+ // PDOP 24 h
+ const pdl=[];let nofix=0,mxp=0;for(let k=0;k<=144;k++){const l=at(k).flatMap((a,i)=>CS[i]?a:[]),d=dop(l);pdl.push(d?d.P:null);if(!d)nofix++;else mxp=Math.max(mxp,Math.min(d.P,10))}
+ {const{x,w,h}=cvc('#pd'),L=30,B=20,T=8,X=t=>L+t/144*(w-L-8),Y=v=>h-B-v/10*(h-B-T);x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,T);x.lineTo(L,h-B);x.lineTo(w-8,h-B);x.stroke();x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='right';[0,2,4,6,8,10].forEach(v=>x.fillText(v,L-4,Y(v)+3));x.textAlign='center';for(let hh=0;hh<=24;hh+=4)x.fillText(hh+' h',Math.min(X(hh*6),w-14),h-6);
+  x.strokeStyle='rgba(251,191,36,.5)';x.setLineDash([3,4]);x.beginPath();x.moveTo(L,Y(3));x.lineTo(w-8,Y(3));x.stroke();x.setLineDash([]);
+  x.strokeStyle='#34d399';x.lineWidth=1.8;x.beginPath();let pen=false;pdl.forEach((v,k)=>{if(v==null){pen=false;return}const yy=Y(Math.min(v,10));pen?x.lineTo(X(k),yy):x.moveTo(X(k),yy);pen=true});x.stroke();x.lineWidth=1;
+  x.fillStyle='rgba(251,113,133,.45)';pdl.forEach((v,k)=>{if(v==null)x.fillRect(X(k)-1.5,T,3.5,h-B-T)});
+  x.strokeStyle='#fff';x.setLineDash([2,3]);x.beginPath();x.moveTo(X(tt/600),T);x.lineTo(X(tt/600),h-B);x.stroke();x.setLineDash([])}
+ const nv=CON.map((c,i)=>CS[i]?vis[i].length:'—');
+ $('#t4').innerHTML=`Ahora: ${CON.map((c,i)=>CS[i]?`<span style="color:${c.col}">${c.n} ${vis[i].length}</span>`:'').filter(Boolean).join(' · ')||'<i>ninguna constelación elegida</i>'} → <b>${all.length}</b> satélites utilizables${D?` · PDOP ${E(nf(D.P,2),D.P<3?'#34d399':D.P<6?'#fbbf24':'#fb7185')} · HDOP ${nf(D.H,2)}`:` · <b class="text-rose-300">sin posición</b>`}.<br>En 24 h: ${nofix?`<b class="text-rose-300">${nf(nofix/145*100,0)} % del tiempo sin posición</b> (menos de 4 satélites o geometría degenerada)`:'<b class="text-emerald-300">siempre hay posición</b>'}.${mxp?` PDOP máximo con posición: ${nf(mxp,1)}${mxp>=10?'+':''}.`:''}`}
+RD.k4=k4;
+tg($('#cons'),CON.map(c=>c.n),CS,()=>k4());
+(function(){const el=$('#cons');[...el.children].forEach((b,i)=>b.style.borderColor=CON[i].col)})();
+$('#k4vll').onclick=()=>{V.lat=41.65;lab();k4()};$('#k4eq').onclick=()=>{V.lat=0;lab();k4()};$('#k4pol').onclick=()=>{V.lat=89;lab();k4()};
+let k4pl=0,k4t=0;$('#k4play').onclick=()=>{k4pl=!k4pl;$('#k4play').textContent=k4pl?'⏸ Pausar':'▶ Reproducir el paso del tiempo';$('#k4play').classList.toggle('on',!!k4pl)};
+function orbTab(){$('#orb').innerHTML='<thead><tr><th></th>'+CON.map(c=>`<th style="color:${c.col}">${c.n}</th>`).join('')+'</tr></thead><tbody>'+[['Altura sobre la Tierra',c=>nf(c.alt,0)+' km'],['Radio orbital a (≈ R<sub>T</sub> + altura)',c=>nf(c.a,0)+' km'],['Inclinación',c=>c.inc+'°'],['Planos × satélites por plano',c=>c.P+' × '+c.S+' = '+c.P*c.S],['Periodo T = 2π√(a³/μ)',c=>{const T=period(c)/3600,h=Math.floor(T),m=Math.round((T-h)*60);return h+' h '+m+' min'}],['Vueltas por día sidéreo',c=>nf(86164/period(c),2)]].map(([l,f])=>`<tr><th>${l}</th>${CON.map(c=>`<td>${f(c)}</td>`).join('')}</tr>`).join('')+'</tbody>'}
+orbTab();
+// ================= Reto =================
+const QS=[
+['Un receptor con reloj de cuarzo recibe solo 3 satélites. Si el usuario introduce su altura, ¿qué puede conseguir?',['Una posición 2D (latitud y longitud)','Una posición 3D y la hora exacta','Nada: con 3 satélites no hay solución','Solo la hora'],0,'Hay 3 incógnitas (dos coordenadas horizontales y el error de reloj) si se conoce la altura. Sin altura se necesitan 4 satélites (x, y, z, τ).'],
+['¿Por qué se habla de «pseudo»distancias y no de distancias?',['Porque incluyen el mismo error c·τ del reloj del receptor','Porque el satélite no está donde se supone','Porque están medidas con Doppler','Porque se miden en chips y no en metros'],0,'ρ = R + c·τ: el reloj del receptor es de cuarzo y su desfase suma el mismo término a todas las distancias; es la cuarta incógnita.'],
+['Los 24 satélites GPS emiten en la misma frecuencia y no se interfieren. ¿Por qué?',['Cada uno usa un código pseudoaleatorio propio, casi ortogonal a los demás (CDMA)','Cada uno usa una frecuencia distinta','Emiten por turnos','Usan antenas muy directivas'],0,'La correlación cruzada entre códigos Gold es muy baja (±63, −1, −65 sobre 1023), así que el receptor separa cada satélite correlando con su código.'],
+['GLONASS separa a los satélites con un método distinto al de GPS. ¿Cuál?',['FDMA: mismo código y portadora distinta para cada satélite','CDMA con códigos más largos','TDMA con ranuras de tiempo','No los separa: usa un solo satélite a la vez'],0,'En GLONASS todos los satélites usan el mismo código y se distinguen por la frecuencia (f = 1602 MHz + n·0,5625 MHz).'],
+['Con UERE = 6 m y HDOP = 8, ¿qué error horizontal cabe esperar, aproximadamente?',['Unos 48 m','Unos 6 m','Unos 14 m','Unos 0,75 m'],0,'error = UERE × DOP. Una mala geometría (DOP alto) multiplica el error de cada medida.'],
+['Un receptor está a 30 km de una estación DGPS y otro a 800 km. ¿Qué ocurre?',['El próximo se corrige bien; el lejano pierde la correlación de errores atmosféricos','Los dos se corrigen igual','Solo se corrige el lejano','Ninguno: el DGPS solo funciona en el mar'],0,'DGPS aprovecha que los errores son casi iguales en receptores próximos. Por encima de unos 200 km la atmósfera ya no es la misma.'],
+['¿Cómo elimina un receptor el error ionosférico sin usar un modelo?',['Midiendo en dos frecuencias (L1 y L2), pues el retardo depende de 1/f²','Girando la antena','Promediando muchas medidas','Usando solo el código C/A'],0,'R = (f₁²R₁ₘ − f₂²R₂ₘ)/(f₁² − f₂²). Se paga con un ruido unas 3 veces mayor.'],
+['El código C/A dura 1 ms y se repite continuamente. ¿Qué limitación impone?',['La distancia solo se conoce módulo ≈ 300 km; el mensaje de navegación resuelve la ambigüedad','Solo se pueden usar 24 satélites','El código no se puede correlar','El receptor solo funciona a menos de 300 km del satélite'],0,'R<sub>max</sub> = c·T<sub>c</sub> ≈ 300 km. La medida del código da el retardo dentro de un milisegundo; el resto lo aporta el tiempo del mensaje.'],
+['¿Qué aporta EGNOS a GPS en Europa?',['Correcciones e información de integridad retransmitidas por satélites geoestacionarios','Una constelación propia de 30 satélites MEO','Más frecuencias L5','La eliminación del reloj del receptor'],0,'EGNOS (3 satélites geoestacionarios) difunde correcciones y la fiabilidad de las medidas GPS: precisión ≲ 1,5 m y servicio de seguridad de vida para aviación.']];
+const Q={ord:[],i:0,ok:0,n:0,done:0};
+function qnew(){if(Q.i>=Q.ord.length){Q.ord=QS.map((_,i)=>i).sort(()=>Math.random()-.5);Q.i=0}const q=QS[Q.ord[Q.i]],idx=q[1].map((_,i)=>i).sort(()=>Math.random()-.5);Q.done=0;$('#qq').textContent=q[0];$('#qf').innerHTML='';$('#qn').classList.add('hidden');const el=$('#qo');el.innerHTML='';
+ idx.forEach(i=>{const b=document.createElement('button');b.className='b mr-1 mb-1 block text-left';b.textContent=q[1][i];b.onclick=()=>{if(Q.done)return;Q.done=1;Q.n++;const ok=i==q[2];Q.ok+=ok;b.classList.add('on');$('#qf').innerHTML=`${ok?'✓ <b class="text-emerald-300">Correcto.</b>':'✗ <b class="text-rose-300">Era: «'+q[1][q[2]]+'».</b>'} ${q[3]} <span class="text-xs text-slate-400">(${Q.ok}/${Q.n})</span>`;$('#qn').classList.remove('hidden')};el.appendChild(b)})}
+$('#qn').onclick=()=>{Q.i++;qnew()};
+// ================= arranque =================
+function all(){CX={};p1();c1();sp();acq();d1();io();dgp();k4()}
+buildGroup('q1',SL.q1);buildGroup('c1',SL.c1);buildGroup('sp',SL.sp);buildGroup('ac',SL.ac);buildGroup('d1',SL.d1);buildGroup('io',SL.io);buildGroup('dg',SL.dg);buildGroup('k4',SL.k4);
+RD.k4=()=>{if(K4.latd!==V.lat)K4.tl=null;k4()};
+// la máscara es común a los paneles 3 y 4
+
+
+qnew();all();acqScan();
+let lt=0;function loop(now){requestAnimationFrame(loop);if(!k4pl||document.hidden){lt=now;return}const dtt=Math.min(.1,(now-lt)/1000);lt=now;V.hr=(V.hr+dtt*1.2)%24;lab();k4()}
+requestAnimationFrame(loop);addEventListener('resize',all);
+</script>
+<script>
+/* NeuroLab UVa: fondo de nodos, enlaces al índice y logos (independiente del resto de la app) */
+(function(){
+var base=/\/apps\/[^\/]*$/i.test(location.pathname)?'../':'';
+document.querySelectorAll('.nl-idx').forEach(function(a){a.href=base+'index.html'});
+document.querySelectorAll('#nl-foot img').forEach(function(im){var f=im.getAttribute('data-f');im.src=base+f;
+ im.onerror=function(){if(!im.dataset.t){im.dataset.t=1;im.src=(base?'':'../')+f}else{im.onerror=null;var sp=document.createElement('span');sp.textContent=im.alt;im.replaceWith(sp)}}});
+var c=document.getElementById('nl-bg');if(!c||!c.getContext)return;var x=c.getContext('2d'),W=0,H=0,P=[],last=0,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function build(){W=c.width=innerWidth;H=c.height=innerHeight;var n=Math.min(60,Math.floor(W*H/20000));P=[];for(var i=0;i<n;i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.4+1})}
+function draw(k){x.clearRect(0,0,W,H);for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx*k;p.y+=p.vy*k;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;x.beginPath();x.arc(p.x,p.y,p.r,0,6.2832);x.fillStyle='rgba(56,189,248,.4)';x.fill();
+ for(var j=i+1;j<P.length;j++){var q=P[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){x.beginPath();x.moveTo(p.x,p.y);x.lineTo(q.x,q.y);x.strokeStyle='rgba(99,102,241,'+((1-d/120)*.18)+')';x.lineWidth=.8;x.stroke()}}}}
+function frame(t){requestAnimationFrame(frame);if(document.hidden||t-last<33)return;var k=Math.min(3,(t-last)/16.7);last=t;draw(k)}
+build();draw(0);if(!still)requestAnimationFrame(frame);
+addEventListener('resize',function(){if(Math.abs(innerWidth-W)>2||Math.abs(innerHeight-H)>150){build();draw(0)}else{c.width=W=innerWidth;c.height=H=innerHeight}});
+})();
+</script>
+</body></html>
