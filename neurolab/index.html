@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NeuroLab UVa · Simuladores docentes de neurociencia</title>
+  <meta name="description" content="Suite de simuladores docentes de neurociencia: EEG, ERPs, conectómica, localización de fuentes y optogenética. Grupo de Ingeniería Biomédica, Universidad de Valladolid.">
+  <meta name="theme-color" content="#020612">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #020612;
+      --panel: rgba(8, 16, 36, 0.75);
+      --panel-border: rgba(45, 80, 140, 0.35);
+      --cy: #22d3ee;
+      --vi: #a78bfa;
+      --em: #34d399;
+      --or: #fb923c;
+      --pk: #f472d0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: #f0f6ff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Aurora & Particles Background */
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 80% 25%, rgba(34, 211, 238, 0.16), transparent 50%),
+        radial-gradient(circle at 85% 35%, rgba(167, 139, 250, 0.18), transparent 45%),
+        radial-gradient(circle at 15% 75%, rgba(52, 211, 153, 0.08), transparent 45%);
+    }
+
+    canvas#bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Cards Grid Styling */
+    .sim-card {
+      background: linear-gradient(170deg, rgba(10, 20, 42, 0.85) 0%, rgba(4, 10, 24, 0.92) 100%);
+      border: 1px solid rgba(50, 85, 140, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s, box-shadow 0.28s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sim-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--card-color, #22d3ee), transparent 65%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.25;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .sim-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 36px -12px var(--card-glow, rgba(34, 211, 238, 0.35));
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .sim-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Badges */
+    .badge-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      border: 1px solid var(--card-color);
+      color: var(--card-color);
+      background: color-mix(in srgb, var(--card-color) 12%, transparent);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--card-color) 20%, transparent);
+    }
+
+    .preview-container {
+      height: 125px;
+      width: 100%;
+      border-radius: 10px;
+      background: radial-gradient(ellipse at center, rgba(14, 28, 56, 0.7), rgba(2, 6, 18, 0.95));
+      border: 1px solid rgba(45, 80, 135, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-box {
+      background: linear-gradient(180deg, rgba(8, 18, 38, 0.75) 0%, rgba(4, 10, 24, 0.88) 100%);
+      border: 1px solid rgba(45, 80, 135, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+    .pulse-dot {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  
+    /* --- ajustes: previews con proporción fija, tarjetas uniformes y centradas --- */
+    .preview-container{height:auto!important;aspect-ratio:240/125}
+    .preview-container.tall{aspect-ratio:240/170}
+    .preview-container svg,.preview-container canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+    .soon-tag{position:static!important;white-space:nowrap}
+    .cards{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin:1.5rem 0}
+    .cards>.sim-card{width:calc((100% - (var(--n) - 1) * 1rem) / var(--n));min-width:0}
+    .cards>.sim-card .flex-grow{flex-grow:1}
+    .nl-back{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .95rem;border-radius:9999px;border:1px solid rgba(100,116,139,.55);background:rgba(15,23,42,.7);color:#cbd5e1;font-size:.78rem;font-weight:600;text-decoration:none;white-space:nowrap;transition:border-color .2s,color .2s,transform .2s}
+    .nl-back:hover{border-color:#22d3ee;color:#fff;transform:translateX(-2px)}
+.cards{--n:1}
+@media(min-width:640px){.cards{--n:2}}
+@media(min-width:900px){.cards{--n:3}}
+@media(min-width:1180px){.cards{--n:5}}
+  </style>
+<style id="nl-foot-style">
+/* Pie común NeuroLab UVa (mismo que en las apps) */
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-foot{display:none!important}}
+</style>
+</head>
+<body class="relative text-slate-100 min-h-screen">
+
+  <div class="aurora-bg"></div>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+
+    <header class="flex flex-wrap items-center justify-between gap-4 py-3 mb-2 border-b border-slate-800/60">
+      <!-- Logo UVa (Izquierda) -->
+      <a href="https://www.uva.es/" class="flex items-center gap-3">
+          <img src="img/UVa.png" width="200">
+      </a>
+
+      <!-- Logo GIB (Derecha) -->
+      <a href="../index.html" class="nl-back" aria-label="Volver al índice principal SimuLab UVa">← SimuLab UVa</a>
+
+      <div class="flex items-center gap-2.5">
+          <a href="https://gib.uva.es/"><img src="img/GIB.png" width="200"></a>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center py-6 sm:py-8">
+      
+      <!-- Lado Izquierdo: Textos principales -->
+      <div class="lg:col-span-6 flex flex-col justify-center">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold tracking-widest uppercase w-fit mb-4">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] pulse-dot"></span>
+          LABORATORIO INTERACTIVO DE NEUROCIENCIA COMPUTACIONAL<br>
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
+          NeuroLab <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">UVa</span>
+        </h1>
+
+        <h2 class="text-xl sm:text-2xl font-semibold text-slate-200 mb-3">
+          Simuladores docentes de neurociencia
+        </h2>
+
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mb-6">
+          Explora, experimenta y aprende con herramientas de simulación en EEG, ERPs, conectómica, localización de fuentes y optogenética.
+        </p>
+      </div>
+
+      <!-- Lado Derecho: Render 3D del cerebro cibernético con red neuronal -->
+      <div class="lg:col-span-6 relative flex justify-center items-center">
+        <div class="absolute w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/25 to-pink-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <canvas id="hero-brain-canvas" class="w-full max-w-[520px] h-[320px] sm:h-[390px] cursor-grab active:cursor-grabbing relative z-10"></canvas>
+      </div>
+    </section>
+
+     <main class="cards">
+
+      <!-- TARJETA 1: EEGSim -->
+      <a href="apps/EEGSim.html" class="sim-card p-4 text-left group" style="--card-color:#22d3ee; --card-glow:rgba(34,211,238,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">EEG</span>
+        </div>
+
+        <div class="preview-container mb-3"><canvas class="pv" data-pv="eeg"></canvas></div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">EEGSim</h3>
+        <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">Simulación de señales EEG</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Genera y explora señales EEG reales y sintéticas, con diferentes estados y condiciones experimentales.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-cyan-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 2: ERPSim -->
+      <a href="apps/ERPSim.html" class="sim-card p-4 text-left group" style="--card-color:#a78bfa; --card-glow:rgba(167,139,250,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">ERP</span>
+        </div>
+
+        <div class="preview-container mb-3">
+          <svg viewBox="0 0 240 125" aria-hidden="true"><g stroke="#a78bfa" stroke-opacity=".12"><path d="M16,66H232"/><path d="M52,10V116"/></g><path d="M16.0,68.9 L18.0,71.9 L20.0,73.2 L22.0,71.9 L24.0,66.9 L26.0,66.2 L28.0,66.9 L30.0,64.6 L32.0,61.7 L34.0,58.7 L36.0,61.3 L38.0,63.7 L40.0,65.6 L42.0,66.7 L44.0,68.7 L46.0,72.8 L48.0,73.7 L50.0,72.6 L52.0,70.3 L54.0,68.8 L56.0,69.3 L58.0,64.6 L60.0,61.9 L62.0,60.2 L64.0,61.5 L66.0,64.2 L68.0,62.9 L70.0,65.1 L72.0,71.7 L74.0,76.2 L76.0,76.5 L78.0,77.5 L80.0,77.1 L82.0,77.7 L84.0,74.1 L86.0,70.3 L88.0,65.8 L90.0,65.2 L92.0,64.3 L94.0,60.9 L96.0,59.5 L98.0,60.8 L100.0,64.3 L102.0,66.2 L104.0,66.8 L106.0,68.3 L108.0,69.6 L110.0,72.0 L112.0,68.8 L114.0,65.0 L116.0,64.0 L118.0,62.1 L120.0,58.6 L122.0,54.3 L124.0,52.1 L126.0,51.3 L128.0,53.8 L130.0,50.8 L132.0,51.3 L134.0,53.2 L136.0,54.1 L138.0,55.9 L140.0,53.0 L142.0,52.4 L144.0,52.1 L146.0,52.2 L148.0,50.2 L150.0,49.7 L152.0,49.2 L154.0,53.3 L156.0,55.3 L158.0,56.0 L160.0,57.6 L162.0,62.6 L164.0,67.1 L166.0,68.6 L168.0,67.3 L170.0,70.0 L172.0,71.5 L174.0,70.0 L176.0,64.6 L178.0,64.0 L180.0,62.2 L182.0,62.4 L184.0,61.0 L186.0,60.5 L188.0,61.5 L190.0,66.4 L192.0,67.4 L194.0,67.1 L196.0,68.5 L198.0,71.0 L200.0,71.8 L202.0,69.6 L204.0,67.6 L206.0,67.2 L208.0,65.1 L210.0,62.6 L212.0,61.2 L214.0,59.6 L216.0,61.6 L218.0,63.4 L220.0,64.4 L222.0,65.6 L224.0,68.1 L226.0,71.4 L228.0,71.1 L230.0,70.9 L232.0,68.1" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,64.9 L18.0,70.2 L20.0,72.1 L22.0,70.6 L24.0,70.7 L26.0,70.4 L28.0,70.4 L30.0,66.2 L32.0,63.8 L34.0,61.7 L36.0,62.6 L38.0,63.1 L40.0,61.8 L42.0,63.7 L44.0,66.9 L46.0,70.2 L48.0,70.9 L50.0,70.0 L52.0,71.1 L54.0,72.9 L56.0,70.9 L58.0,67.8 L60.0,66.7 L62.0,66.3 L64.0,64.8 L66.0,62.1 L68.0,60.7 L70.0,62.8 L72.0,67.6 L74.0,71.3 L76.0,72.7 L78.0,74.1 L80.0,78.2 L82.0,79.1 L84.0,76.1 L86.0,72.6 L88.0,71.1 L90.0,69.0 L92.0,66.3 L94.0,61.1 L96.0,59.9 L98.0,61.7 L100.0,62.6 L102.0,61.4 L104.0,63.3 L106.0,66.0 L108.0,69.5 L110.0,69.2 L112.0,68.8 L114.0,67.6 L116.0,68.7 L118.0,66.3 L120.0,62.0 L122.0,56.9 L124.0,55.0 L126.0,52.8 L128.0,50.6 L130.0,47.8 L132.0,47.9 L134.0,49.6 L136.0,52.5 L138.0,52.4 L140.0,52.3 L142.0,55.4 L144.0,57.6 L146.0,55.9 L148.0,53.6 L150.0,52.3 L152.0,54.8 L154.0,55.2 L156.0,52.8 L158.0,53.1 L160.0,56.3 L162.0,60.5 L164.0,61.5 L166.0,63.9 L168.0,66.4 L170.0,70.7 L172.0,71.9 L174.0,70.7 L176.0,69.1 L178.0,68.6 L180.0,68.2 L182.0,63.7 L184.0,60.2 L186.0,59.7 L188.0,61.7 L190.0,61.8 L192.0,62.4 L194.0,63.2 L196.0,65.8 L198.0,70.3 L200.0,70.6 L202.0,69.3 L204.0,69.6 L206.0,70.9 L208.0,69.2 L210.0,65.2 L212.0,61.7 L214.0,62.1 L216.0,62.1 L218.0,61.2 L220.0,59.9 L222.0,61.0 L224.0,66.4 L226.0,67.1 L228.0,68.3 L230.0,68.7 L232.0,71.3" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,62.3 L18.0,61.1 L20.0,60.4 L22.0,59.2 L24.0,63.1 L26.0,66.4 L28.0,68.3 L30.0,69.2 L32.0,70.6 L34.0,72.3 L36.0,73.3 L38.0,70.2 L40.0,67.3 L42.0,66.7 L44.0,67.4 L46.0,64.7 L48.0,62.2 L50.0,61.8 L52.0,63.3 L54.0,64.5 L56.0,65.7 L58.0,65.2 L60.0,69.0 L62.0,72.9 L64.0,72.8 L66.0,70.2 L68.0,71.1 L70.0,72.7 L72.0,70.9 L74.0,68.3 L76.0,66.2 L78.0,67.3 L80.0,69.7 L82.0,67.5 L84.0,67.3 L86.0,68.6 L88.0,71.0 L90.0,71.6 L92.0,72.0 L94.0,70.3 L96.0,71.0 L98.0,70.7 L100.0,68.9 L102.0,63.8 L104.0,61.6 L106.0,62.1 L108.0,60.3 L110.0,59.2 L112.0,58.6 L114.0,61.0 L116.0,64.7 L118.0,65.0 L120.0,62.5 L122.0,64.1 L124.0,64.4 L126.0,63.7 L128.0,58.5 L130.0,53.1 L132.0,51.1 L134.0,48.7 L136.0,46.5 L138.0,42.0 L140.0,43.1 L142.0,46.0 L144.0,48.7 L146.0,49.9 L148.0,53.0 L150.0,56.9 L152.0,62.2 L154.0,62.0 L156.0,61.8 L158.0,62.2 L160.0,63.3 L162.0,62.5 L164.0,59.3 L166.0,57.6 L168.0,59.9 L170.0,61.3 L172.0,60.3 L174.0,61.1 L176.0,64.7 L178.0,69.8 L180.0,71.6 L182.0,70.3 L184.0,69.1 L186.0,71.8 L188.0,70.7 L190.0,67.6 L192.0,64.0 L194.0,62.6 L196.0,62.5 L198.0,62.4 L200.0,59.6 L202.0,60.2 L204.0,64.7 L206.0,66.7 L208.0,67.8 L210.0,69.2 L212.0,69.7 L214.0,73.4 L216.0,72.2 L218.0,68.3 L220.0,65.5 L222.0,66.0 L224.0,65.2 L226.0,60.6 L228.0,59.0 L230.0,60.3 L232.0,63.1" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,64.9 L18.0,65.1 L20.0,63.4 L22.0,65.9 L24.0,70.2 L26.0,70.8 L28.0,68.9 L30.0,66.8 L32.0,69.1 L34.0,69.6 L36.0,67.0 L38.0,63.8 L40.0,62.9 L42.0,66.5 L44.0,65.5 L46.0,65.1 L48.0,65.9 L50.0,67.8 L52.0,68.5 L54.0,68.3 L56.0,68.7 L58.0,68.3 L60.0,70.8 L62.0,69.4 L64.0,66.0 L66.0,65.6 L68.0,65.8 L70.0,67.0 L72.0,66.8 L74.0,66.1 L76.0,68.5 L78.0,72.8 L80.0,73.9 L82.0,72.7 L84.0,70.9 L86.0,72.8 L88.0,72.6 L90.0,70.4 L92.0,67.3 L94.0,67.6 L96.0,66.6 L98.0,64.1 L100.0,62.4 L102.0,60.4 L104.0,63.2 L106.0,64.3 L108.0,64.4 L110.0,63.4 L112.0,65.6 L114.0,67.2 L116.0,67.3 L118.0,64.1 L120.0,63.4 L122.0,62.6 L124.0,59.9 L126.0,55.5 L128.0,51.4 L130.0,50.7 L132.0,49.3 L134.0,48.7 L136.0,46.4 L138.0,45.7 L140.0,49.9 L142.0,51.1 L144.0,51.4 L146.0,52.7 L148.0,54.7 L150.0,58.7 L152.0,58.0 L154.0,56.0 L156.0,57.1 L158.0,57.6 L160.0,60.0 L162.0,57.6 L164.0,57.6 L166.0,61.9 L168.0,64.8 L170.0,65.1 L172.0,64.7 L174.0,67.9 L176.0,70.1 L178.0,71.3 L180.0,67.9 L182.0,66.7 L184.0,66.2 L186.0,66.2 L188.0,64.3 L190.0,62.0 L192.0,61.1 L194.0,63.3 L196.0,64.1 L198.0,64.9 L200.0,64.8 L202.0,67.9 L204.0,69.9 L206.0,70.7 L208.0,68.3 L210.0,68.1 L212.0,69.0 L214.0,68.5 L216.0,64.6 L218.0,61.6 L220.0,61.9 L222.0,63.4 L224.0,62.4 L226.0,63.0 L228.0,63.6 L230.0,67.5 L232.0,67.8" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,66.4 L18.0,66.5 L20.0,68.6 L22.0,71.2 L24.0,72.4 L26.0,70.2 L28.0,68.0 L30.0,67.3 L32.0,67.6 L34.0,63.2 L36.0,59.9 L38.0,59.5 L40.0,61.9 L42.0,64.4 L44.0,64.8 L46.0,66.4 L48.0,68.7 L50.0,73.4 L52.0,72.3 L54.0,71.6 L56.0,70.5 L58.0,71.0 L60.0,69.0 L62.0,66.0 L64.0,61.4 L66.0,62.7 L68.0,63.5 L70.0,64.6 L72.0,65.2 L74.0,67.4 L76.0,72.6 L78.0,75.3 L80.0,75.6 L82.0,74.7 L84.0,75.9 L86.0,76.7 L88.0,71.9 L90.0,67.0 L92.0,64.7 L94.0,63.7 L96.0,63.1 L98.0,60.3 L100.0,58.3 L102.0,60.9 L104.0,64.9 L106.0,66.6 L108.0,66.3 L110.0,67.9 L112.0,71.7 L114.0,69.8 L116.0,66.7 L118.0,64.8 L120.0,62.3 L122.0,59.4 L124.0,55.7 L126.0,51.6 L128.0,48.6 L130.0,48.8 L132.0,48.1 L134.0,46.8 L136.0,49.0 L138.0,51.4 L140.0,55.5 L142.0,54.1 L144.0,53.6 L146.0,54.0 L148.0,56.4 L150.0,55.2 L152.0,52.9 L154.0,51.9 L156.0,53.2 L158.0,54.7 L160.0,55.1 L162.0,57.5 L164.0,59.3 L166.0,64.9 L168.0,67.7 L170.0,68.5 L172.0,68.4 L174.0,71.0 L176.0,71.3 L178.0,69.6 L180.0,66.6 L182.0,64.2 L184.0,64.5 L186.0,61.7 L188.0,58.7 L190.0,59.3 L192.0,62.0 L194.0,65.3 L196.0,66.0 L198.0,67.1 L200.0,69.9 L202.0,73.4 L204.0,72.4 L206.0,70.0 L208.0,68.6 L210.0,66.9 L212.0,65.5 L214.0,62.5 L216.0,58.8 L218.0,60.2 L220.0,62.5 L222.0,62.6 L224.0,62.2 L226.0,63.9 L228.0,68.2 L230.0,70.9 L232.0,71.4" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,66.3 L18.0,68.0 L20.0,69.0 L22.0,70.5 L24.0,68.8 L26.0,66.1 L28.0,64.7 L30.0,65.8 L32.0,64.2 L34.0,62.4 L36.0,61.2 L38.0,64.3 L40.0,66.6 L42.0,67.7 L44.0,67.7 L46.0,69.6 L48.0,72.9 L50.0,72.4 L52.0,70.4 L54.0,68.3 L56.0,68.6 L58.0,67.4 L60.0,65.6 L62.0,62.0 L64.0,61.7 L66.0,63.8 L68.0,65.1 L70.0,65.5 L72.0,68.5 L74.0,72.3 L76.0,75.3 L78.0,76.8 L80.0,75.0 L82.0,73.8 L84.0,73.7 L86.0,71.2 L88.0,67.1 L90.0,65.2 L92.0,65.3 L94.0,64.5 L96.0,61.9 L98.0,61.1 L100.0,62.7 L102.0,65.8 L104.0,66.4 L106.0,66.8 L108.0,67.8 L110.0,69.6 L112.0,68.8 L114.0,66.8 L116.0,62.6 L118.0,62.2 L120.0,60.8 L122.0,58.9 L124.0,54.4 L126.0,50.9 L128.0,52.0 L130.0,53.5 L132.0,51.1 L134.0,49.9 L136.0,51.3 L138.0,54.3 L140.0,54.5 L142.0,51.9 L144.0,52.3 L146.0,53.1 L148.0,52.8 L150.0,52.6 L152.0,50.7 L154.0,51.8 L156.0,56.9 L158.0,56.5 L160.0,58.0 L162.0,60.1 L164.0,65.3 L166.0,67.3 L168.0,67.0 L170.0,66.7 L172.0,67.8 L174.0,69.8 L176.0,67.8 L178.0,65.2 L180.0,62.6 L182.0,63.5 L184.0,63.3 L186.0,63.1 L188.0,61.9 L190.0,64.2 L192.0,66.9 L194.0,67.4 L196.0,66.4 L198.0,68.7 L200.0,70.4 L202.0,70.0 L204.0,67.9 L206.0,65.2 L208.0,66.1 L210.0,66.6 L212.0,63.3 L214.0,61.9 L216.0,60.8 L218.0,63.9 L220.0,66.0 L222.0,65.3 L224.0,66.0 L226.0,67.8 L228.0,69.7 L230.0,70.5 L232.0,68.5" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,60.1 L18.0,60.6 L20.0,63.5 L22.0,64.4 L24.0,64.3 L26.0,66.4 L28.0,69.2 L30.0,72.2 L32.0,70.6 L34.0,69.3 L36.0,69.2 L38.0,69.7 L40.0,67.8 L42.0,65.4 L44.0,63.7 L46.0,65.3 L48.0,65.6 L50.0,63.6 L52.0,62.6 L54.0,64.7 L56.0,67.9 L58.0,69.3 L60.0,68.9 L62.0,69.8 L64.0,71.6 L66.0,71.0 L68.0,69.9 L70.0,66.8 L72.0,68.6 L74.0,68.9 L76.0,69.8 L78.0,68.1 L80.0,69.1 L82.0,71.3 L84.0,71.8 L86.0,70.8 L88.0,69.8 L90.0,71.0 L92.0,71.6 L94.0,70.8 L96.0,68.4 L98.0,65.6 L100.0,67.2 L102.0,65.1 L104.0,61.7 L106.0,58.9 L108.0,60.9 L110.0,62.4 L112.0,63.4 L114.0,63.1 L116.0,64.3 L118.0,66.2 L120.0,66.0 L122.0,62.7 L124.0,60.9 L126.0,59.5 L128.0,58.2 L130.0,53.3 L132.0,49.4 L134.0,45.8 L136.0,46.3 L138.0,46.0 L140.0,45.5 L142.0,46.6 L144.0,48.9 L146.0,54.0 L148.0,56.0 L150.0,55.5 L152.0,57.4 L154.0,61.5 L156.0,62.9 L158.0,61.1 L160.0,59.4 L162.0,59.8 L164.0,61.0 L166.0,60.3 L168.0,59.9 L170.0,60.4 L172.0,64.0 L174.0,66.8 L176.0,67.5 L178.0,66.7 L180.0,68.9 L182.0,70.8 L184.0,70.2 L186.0,67.4 L188.0,65.5 L190.0,65.7 L192.0,65.1 L194.0,62.1 L196.0,60.8 L198.0,62.6 L200.0,63.4 L202.0,64.5 L204.0,65.2 L206.0,67.6 L208.0,69.7 L210.0,71.8 L212.0,69.8 L214.0,69.1 L216.0,68.2 L218.0,68.9 L220.0,66.2 L222.0,62.2 L224.0,60.8 L226.0,62.4 L228.0,62.5 L230.0,61.3 L232.0,62.1" fill="none" stroke="#a78bfa" stroke-opacity=".22" stroke-width=".8"/><path d="M16.0,66.0 L18.0,66.0 L20.0,66.0 L22.0,66.0 L24.0,66.0 L26.0,66.0 L28.0,66.0 L30.0,66.0 L32.0,66.0 L34.0,66.2 L36.0,66.5 L38.0,67.3 L40.0,68.5 L42.0,69.9 L44.0,70.9 L46.0,70.9 L48.0,69.9 L50.0,68.5 L52.0,67.3 L54.0,66.5 L56.0,66.2 L58.0,66.1 L60.0,66.3 L62.0,66.6 L64.0,67.2 L66.0,68.4 L68.0,70.1 L70.0,72.4 L72.0,75.0 L74.0,77.5 L76.0,79.3 L78.0,80.0 L80.0,79.3 L82.0,77.5 L84.0,75.0 L86.0,72.3 L88.0,70.1 L90.0,68.4 L92.0,67.2 L94.0,66.5 L96.0,66.2 L98.0,66.0 L100.0,65.8 L102.0,65.6 L104.0,65.4 L106.0,65.0 L108.0,64.6 L110.0,63.9 L112.0,63.0 L114.0,61.8 L116.0,60.3 L118.0,58.4 L120.0,56.1 L122.0,53.5 L124.0,50.6 L126.0,47.4 L128.0,44.2 L130.0,41.0 L132.0,38.1 L134.0,35.6 L136.0,33.6 L138.0,32.4 L140.0,32.0 L142.0,32.4 L144.0,33.6 L146.0,35.6 L148.0,38.1 L150.0,41.0 L152.0,44.2 L154.0,47.4 L156.0,50.6 L158.0,53.5 L160.0,56.1 L162.0,58.4 L164.0,60.3 L166.0,61.8 L168.0,63.0 L170.0,63.9 L172.0,64.6 L174.0,65.0 L176.0,65.4 L178.0,65.6 L180.0,65.8 L182.0,65.9 L184.0,65.9 L186.0,66.0 L188.0,66.0 L190.0,66.0 L192.0,66.0 L194.0,66.0 L196.0,66.0 L198.0,66.0 L200.0,66.0 L202.0,66.0 L204.0,66.0 L206.0,66.0 L208.0,66.0 L210.0,66.0 L212.0,66.0 L214.0,66.0 L216.0,66.0 L218.0,66.0 L220.0,66.0 L222.0,66.0 L224.0,66.0 L226.0,66.0 L228.0,66.0 L230.0,66.0 L232.0,66.0" fill="none" stroke="#c4b5fd" stroke-width="2.2" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;0;0;1" keyTimes="0;.55;.9;1" dur="5s" repeatCount="indefinite"/></path><text x="136" y="104" font-size="8" fill="#ddd6fe" font-family="monospace" text-anchor="middle">P300</text><text x="79" y="40" font-size="8" fill="#ddd6fe" fill-opacity=".8" font-family="monospace" text-anchor="middle">N100</text><g><line x1="0" y1="8" x2="0" y2="118" stroke="#fff" stroke-opacity=".55"/><animateTransform attributeName="transform" type="translate" values="16 0;232 0;232 0;16 0" keyTimes="0;.55;.9;1" dur="5s" repeatCount="indefinite"/></g><path d="M52,10V116" stroke="#f472d0" stroke-opacity=".5" stroke-dasharray="3 3"/><text x="55" y="19" font-size="7" fill="#f9a8d4" font-family="monospace">estímulo</text></svg>
+        </div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">ERPSim</h3>
+        <h4 class="text-xs font-semibold text-purple-400 uppercase tracking-wide mb-2">Simulación de potenciales evocados</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Analiza la respuesta cerebral a estímulos y experimenta con diferentes paradigmas y condiciones.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 3: GraphSim -->
+      <a href="apps/GraphSim.html" class="sim-card p-4 text-left group" style="--card-color:#34d399; --card-glow:rgba(52,211,153,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">GRAPH</span>
+        </div>
+
+        <div class="preview-container mb-3"><canvas class="pv" data-pv="graph"></canvas></div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">GraphSim</h3>
+        <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Conectómica y redes cerebrales</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Explora la organización funcional del cerebro mediante redes complejas y métricas de conectividad.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 4: SourceSim -->
+      <a href="apps/SourceSim.html" class="sim-card p-4 text-left group" style="--card-color:#fb923c; --card-glow:rgba(251,146,60,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">SOURCE</span>
+        </div>
+
+        <div class="preview-container mb-3"><canvas class="pv" data-pv="src"></canvas></div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">SourceSim</h3>
+        <h4 class="text-xs font-semibold text-orange-400 uppercase tracking-wide mb-2">Localización de fuentes</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Simula y analiza la actividad cerebral con técnicas de localización de fuentes en EEG/MEG.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-orange-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <!-- TARJETA 5: OptoGenSim -->
+      <a href="apps/OptoGenSim.html" class="sim-card p-4 text-left group" style="--card-color:#f472d0; --card-glow:rgba(244,114,208,0.35);">
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">OPTOGEN</span>
+        </div>
+
+        <div class="preview-container mb-3"><canvas class="pv" data-pv="opt"></canvas></div>
+
+        <h3 class="text-lg font-bold text-white group-hover:text-pink-300 transition-colors">OptoGenSim</h3>
+        <h4 class="text-xs font-semibold text-pink-400 uppercase tracking-wide mb-2">Optogenética y circuitos neuronales</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">
+          Simula la activación y modulación de circuitos neuronales mediante optogenética.
+        </p>
+
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-pink-400">
+          <span>Acceder</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+    </main>
+
+    <section class="feature-box p-6 sm:p-8 my-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Bloque 1: Aprendizaje activo -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Aprendizaje activo</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Experimenta y comprende la neurociencia desde la práctica.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 2: Formación de calidad -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Formación de calidad</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Herramientas docentes diseñadas para el aula universitaria.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Tecnología y ciencia -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Tecnología y ciencia</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Simulaciones basadas en la evidencia y en el estado del arte.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Grupo de Ingeniería Biomédica -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-400 shadow-[0_0_15px_rgba(167,139,250,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Grupo de Ingeniería Biomédica</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              GIB-UVa · Universidad de Valladolid.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="nl-foot">
+      <div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img src="img/UVa.png" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img src="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)" onerror="this.replaceWith(document.createTextNode(this.alt))"></a></div>
+      <div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
+    </footer>
+
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+
+      // --- 1. Fondo de Partículas Conectadas ---
+      (function initBgParticles() {
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+
+        function resize() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          const count = Math.min(70, Math.floor((width * height) / 20000));
+          particles = Array.from({ length: count }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            r: Math.random() * 1.4 + 1
+          }));
+        }
+
+        function draw() {
+          ctx.clearRect(0, 0, width, height);
+          for (let i = 0; i < particles.length; i++) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < 0 || p.x > width) p.vx *= -1;
+            if (p.y < 0 || p.y > height) p.vy *= -1;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.fill();
+
+            for (let j = i + 1; j < particles.length; j++) {
+              let p2 = particles[j];
+              let dx = p.x - p2.x, dy = p.y - p2.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 120) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(99, 102, 241, ${(1 - dist / 120) * 0.18})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+              }
+            }
+          }
+          requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        draw();
+      })();
+
+      // --- 2. Cerebro de puntos ---
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const clampv=(v,a,b)=>Math.max(a,Math.min(b,v)),lerpv=(a,b,t)=>a+(b-a)*t,mixCol=(c1,c2,t)=>c1.map((v,i)=>Math.round(lerpv(v,c2[i],t)));
+/* ---------- Cerebro: nube de puntos con dos hemisferios, surcos, lóbulos temporales, cerebelo y tronco ---------- */
+function mkBrain(N){
+  const rnd=mulberry(11),P=[],CYAN=[34,211,238],VIO=[167,139,250],PINK=[244,114,208];
+  const inCer=(x,y,z,s)=>{const a=(x-s*.40)/.44,b=(y-.05)/.56,c=z/.95;return a*a+b*b+c*c};
+  const ant=z=>{let t=(.95-z)/1.9;t=Math.floor(clampv(t,0,.999)*6)/6;return t<.5?mixCol(CYAN,VIO,t*2):mixCol(VIO,PINK,(t-.5)*2)};
+  const M=Math.round(N*.33);
+  for(let h=0;h<2;h++){const s=h?1:-1;
+    for(let i=0;i<M;i++){
+      const uy=1-2*(i+.5)/M,r=Math.sqrt(1-uy*uy),th=i*2.399963+h*.9,ux=r*Math.cos(th),uz=r*Math.sin(th);
+      const g=Math.sin(5.2*ux+2.1*uz+1.3*uy)*Math.sin(4.6*uz-3.1*uy+2*ux)+.6*Math.sin(9*uy+3.7*ux-2.4*uz)*Math.cos(7*uz+1.7*ux),k=1+.05*g;
+      let x=s*.40+ux*.44*k,y=.05+uy*.56*k,z=uz*.95*k;
+      if(y<-.36)y=-.36+(y+.36)*.25;
+      y*=.9+.12*((z+.95)/1.9);
+      if(s*x<.06)continue;
+      P.push({x,y,z,g,col:ant(z),h,part:0});
+    }}
+  const T=Math.round(N*.07);
+  for(let h=0;h<2;h++){const s=h?1:-1;for(let i=0;i<T;i++){const uy=1-2*(i+.5)/T,r=Math.sqrt(1-uy*uy),th=i*2.399963+h,ux=r*Math.cos(th),uz=r*Math.sin(th),x=s*(.62+ux*.2),y=-.31+uy*.17,z=.2+uz*.44;
+    if(inCer(x,y,z,s)<1.03)continue;P.push({x,y,z,g:Math.sin(11*ux+7*uz),col:[251,146,60],h,part:1});}}
+  const C=Math.round(N*.1);
+  for(let i=0;i<C;i++){const uy=1-2*(i+.5)/C,r=Math.sqrt(1-uy*uy),th=i*2.399963,ux=r*Math.cos(th),uz=r*Math.sin(th),k=1+.05*Math.sin(26*uy),x=ux*.46*k,y=-.42+uy*.2*k,z=-.66+uz*.28*k;
+    if(inCer(x,y,z,1)<1.02||inCer(x,y,z,-1)<1.02)continue;P.push({x,y,z,g:Math.sin(26*uy),col:[52,211,153],h:2,part:2});}
+  const J=Math.max(6,Math.round(N/90));
+  for(let r=0;r<6;r++){const f=r/5,y=-.26-f*.5,z=-.16-f*.12,rad=.1-.025*f;for(let j=0;j<J;j++){const a=j/J*2*Math.PI+r*.4;P.push({x:Math.cos(a)*rad*1.1,y,z:z+Math.sin(a)*rad,g:0,col:[125,211,252],h:3,part:3});}}
+  const n=P.length,dm=1.9*Math.sqrt(5/n),E=[],seen=new Set(),adj=P.map(()=>[]),cols=[],cmap={};
+  P.forEach(p=>{const k=p.col.join(',');if(!(k in cmap)){cmap[k]=cols.length;cols.push(k)}p.cls=cmap[k]});
+  for(let i=0;i<n;i++){const d=[];for(let j=0;j<n;j++){if(i==j)continue;const a=P[i],b=P[j];if(a.part==0&&b.part==0&&a.h!=b.h)continue;const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z,q=dx*dx+dy*dy+dz*dz;if(q<dm*dm)d.push([q,j])}
+    d.sort((u,v)=>u[0]-v[0]);d.slice(0,3).forEach(([q,j])=>{const key=i<j?i*n+j:j*n+i;if(!seen.has(key)){seen.add(key);E.push([i,j]);const id=E.length-1;adj[i].push(id);adj[j].push(id)}})}
+  const pulses=[];for(let i=0;i<Math.max(8,Math.round(n/20));i++)pulses.push({e:Math.floor(rnd()*E.length),f:rnd(),dir:rnd()<.5?1:-1,sp:.7+rnd()*.8});
+  return{P,E,adj,cols,pulses,act:new Float32Array(n),lt:null};
+}
+function drawBrain(ctx,B,cx,cy,sc,yaw,tilt,t,am){
+  const dt=B.lt==null?0:Math.min(.1,Math.max(0,t-B.lt));B.lt=t;
+  const cY=Math.cos(yaw),sY=Math.sin(yaw),cX=Math.cos(tilt),sX=Math.sin(tilt),lw=Math.max(.5,sc/230);
+  const pr=B.P.map(p=>{const y0=p.y+.19,x1=p.x*cY-p.z*sY,z1=p.x*sY+p.z*cY,y1=y0*cX-z1*sX,z2=y0*sX+z1*cX,k=3.2/(3.2+z2);return{x:cx+x1*sc*k,y:cy-y1*sc*k,z:z2,k}});
+  ctx.save();ctx.globalAlpha=am;ctx.lineWidth=lw;
+  const bk=new Map();B.E.forEach(([a,b],i)=>{const al=clampv(.30-.2*(pr[a].z+pr[b].z)/2,.04,.46),q=Math.min(5,Math.floor(al*12)),key=B.P[a].cls*6+q;let l=bk.get(key);if(!l){l=[];bk.set(key,l)}l.push(i)});
+  bk.forEach((list,key)=>{ctx.strokeStyle=`rgba(${B.cols[(key/6)|0]},${((key%6)+.5)/12})`;ctx.beginPath();list.forEach(i=>{const[a,b]=B.E[i];ctx.moveTo(pr[a].x,pr[a].y);ctx.lineTo(pr[b].x,pr[b].y)});ctx.stroke()});
+  const dec=Math.exp(-3.5*dt);
+  pr.forEach((p,i)=>{const n=B.P[i],ac=B.act[i],al=clampv(.62-.4*p.z+.1*n.g+ac*.6,.15,1),r=(.0085+(n.g>.5?.004:0)+ac*.012)*sc*p.k;ctx.fillStyle=`rgba(${n.col},${al})`;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.8,r),0,6.2832);ctx.fill();B.act[i]=ac*dec});
+  ctx.shadowColor='#fff';ctx.shadowBlur=Math.max(3,sc/25);ctx.fillStyle='rgba(255,255,255,.95)';
+  B.pulses.forEach(pl=>{pl.f+=pl.dir*pl.sp*dt*3.2;
+    if(pl.f>=1||pl.f<=0){const node=pl.f>=1?B.E[pl.e][1]:B.E[pl.e][0];B.act[node]=1;const L=B.adj[node];let e2=L[Math.floor(Math.random()*L.length)];if(L.length>1&&e2==pl.e)e2=L[(L.indexOf(e2)+1)%L.length];pl.e=e2;if(B.E[e2][0]==node){pl.f=0;pl.dir=1}else{pl.f=1;pl.dir=-1}}
+    const[a,b]=B.E[pl.e],A=pr[a],Bn=pr[b],x=A.x+(Bn.x-A.x)*pl.f,y=A.y+(Bn.y-A.y)*pl.f;ctx.beginPath();ctx.arc(x,y,Math.max(1.2,.011*sc*A.k),0,6.2832);ctx.fill()});
+  ctx.restore();
+}
+
+
+(function initBrainHero(){
+  const canvas=document.getElementById('hero-brain-canvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');let W,H,d=1;
+  const resize=()=>{const r=canvas.getBoundingClientRect();d=window.devicePixelRatio||1;W=canvas.width=r.width*d;H=canvas.height=r.height*d};
+  resize();window.addEventListener('resize',resize);
+  const B=mkBrain(1500);let uy=0,ux=0,drag=false,lx=0,ly=0;
+  canvas.style.touchAction='pan-y';
+  canvas.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;try{canvas.setPointerCapture(e.pointerId)}catch(_){}});
+  canvas.addEventListener('pointermove',e=>{if(!drag)return;uy+=(e.clientX-lx)*.012;ux=clampv(ux+(e.clientY-ly)*.008,-.6,.6);lx=e.clientX;ly=e.clientY});
+  ['pointerup','pointercancel','pointerleave'].forEach(n=>canvas.addEventListener(n,()=>drag=false));
+  const t0=performance.now();
+  (function render(now){const t=(now-t0)/1000;ctx.clearRect(0,0,W,H);
+    drawBrain(ctx,B,W/2,H/2+H*.02,Math.min(W/2.15,H/1.75),1.2+.55*Math.sin(t*.35)+uy,.2+ux+.06*Math.sin(t*.5),t,1);
+    requestAnimationFrame(render)})(performance.now());
+})();
+
+    });
+  </script>
+<script>
+(function(){
+const TAU=Math.PI*2;
+/* ---------- Vistas previas de las fichas (coordenadas lógicas 240 × 125) ---------- */
+const PV = {};
+PV.eeg = (x, t) => {
+  ['Fp1', 'C3', 'Cz', 'C4', 'O1'].forEach((n, k) => {
+    const y0 = 19 + k * 21; x.strokeStyle = `rgba(34,211,238,${0.5 + 0.1 * k})`; x.lineWidth = 1.3; x.beginPath();
+    for (let px = 26; px <= 234; px += 2) { const u = px * 0.05 - t * 3.2, w = ((u % 7) + 7) % 7, v = 3.2 * Math.sin(u * 1.6 + k * 1.7) + 2.2 * Math.sin(u * 4.3 + k * 2.1) + 1.4 * Math.sin(u * 9.1 + k * 5.3) + (k === 2 && w < 0.55 ? 8 * Math.sin(w * 11.4) : 0); px === 26 ? x.moveTo(px, y0 + v) : x.lineTo(px, y0 + v); }
+    x.stroke(); x.fillStyle = '#64748b'; x.font = '7px system-ui'; x.fillText(n, 4, y0 + 2);
+  });
+  const cx = 26 + (t * 30) % 208; x.strokeStyle = 'rgba(250,204,21,.75)'; x.setLineDash([2, 2]); x.beginPath(); x.moveTo(cx, 5); x.lineTo(cx, 119); x.stroke(); x.setLineDash([]);
+};
+const GN = [['Fp1', -.38, -.8], ['Fp2', .38, -.8], ['C3', -.82, .02], ['C4', .82, .02], ['P3', -.52, .62], ['P4', .52, .62], ['O1', -.26, .94], ['O2', .26, .94]];
+PV.graph = (x, t) => {
+  x.strokeStyle = 'rgba(148,163,184,.3)'; x.beginPath(); x.ellipse(120, 64, 50, 54, 0, 0, TAU); x.stroke(); x.beginPath(); x.moveTo(112, 11); x.lineTo(120, 3); x.lineTo(128, 11); x.stroke();
+  const P = GN.map(n => [120 + n[1] * 44, 64 + n[2] * 46]), deg = GN.map(() => 0), E = [];
+  for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) { const w = 0.5 + 0.5 * Math.sin(i * 2.1 + j * 3.7 + t * 0.9); if (w > 0.62) { E.push([i, j, w]); deg[i]++; deg[j]++; } }
+  E.forEach(([i, j, w]) => { x.strokeStyle = `rgba(52,211,153,${0.2 + (w - 0.6) * 1.8})`; x.lineWidth = 0.8 + (w - 0.6) * 5; x.beginPath(); x.moveTo(P[i][0], P[i][1]); x.lineTo(P[j][0], P[j][1]); x.stroke(); }); x.lineWidth = 1;
+  P.forEach((p, i) => { x.fillStyle = '#34d399'; x.beginPath(); x.arc(p[0], p[1], 3 + deg[i] * 0.55, 0, TAU); x.fill(); x.fillStyle = '#94a3b8'; x.font = '7px system-ui'; x.fillText(GN[i][0], p[0] + 5, p[1] - 4); });
+  x.fillStyle = '#6ee7b7'; x.font = '8px system-ui'; x.fillText('PLV · grafo funcional', 4, 120);
+};
+PV.src = (x, t) => {
+  const cx = 120, cy = 64, R = 46, a = t * 0.6, px = cx + 13 * Math.cos(t * 0.7), py = cy + 7 * Math.sin(t * 0.9), dx = Math.cos(a), dy = Math.sin(a);
+  [[1, '244,114,182'], [-1, '56,189,248']].forEach(([sg, col]) => { const bx = px + dx * 26 * sg, by = py + dy * 26 * sg, g = x.createRadialGradient(bx, by, 0, bx, by, 32); g.addColorStop(0, `rgba(${col},.65)`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.save(); x.beginPath(); x.arc(cx, cy, R, 0, TAU); x.clip(); x.beginPath(); x.arc(bx, by, 32, 0, TAU); x.fill(); x.restore(); });
+  x.strokeStyle = 'rgba(148,163,184,.55)'; x.lineWidth = 1.3; x.beginPath(); x.arc(cx, cy, R, 0, TAU); x.stroke(); x.beginPath(); x.moveTo(cx - 7, cy - R + 1); x.lineTo(cx, cy - R - 8); x.lineTo(cx + 7, cy - R + 1); x.stroke(); x.lineWidth = 1;
+  x.strokeStyle = 'rgba(148,163,184,.3)'; x.beginPath(); x.ellipse(cx, cy, 33, 29, 0, 0, TAU); x.stroke();
+  for (let i = 0; i < 16; i++) { const an = i / 16 * TAU, ex = cx + Math.cos(an) * (R - 3), ey = cy + Math.sin(an) * (R - 3), ddx = ex - px, ddy = ey - py, v = (dx * ddx + dy * ddy) / (ddx * ddx + ddy * ddy) * 30; x.fillStyle = v > 0 ? `rgba(244,114,182,${Math.min(1, 0.4 + v)})` : `rgba(56,189,248,${Math.min(1, 0.4 - v)})`; x.beginPath(); x.arc(ex, ey, 2.4, 0, TAU); x.fill(); }
+  x.strokeStyle = '#fbbf24'; x.lineWidth = 2; x.beginPath(); x.moveTo(px - dx * 9, py - dy * 9); x.lineTo(px + dx * 9, py + dy * 9); x.stroke(); x.fillStyle = '#fbbf24'; x.beginPath(); x.arc(px + dx * 9, py + dy * 9, 3, 0, TAU); x.fill(); x.lineWidth = 1;
+  x.fillStyle = '#94a3b8'; x.font = '8px system-ui'; x.fillText('dipolo → potencial en el cuero cabelludo', 4, 121);
+};
+PV.opt = (x, t) => {
+  const on = tt => (tt % 3 + 3) % 3 < 1.4, o = on(t), sx = 118, sy = 46;
+  x.fillStyle = o ? 'rgba(56,189,248,.28)' : 'rgba(56,189,248,.07)'; x.beginPath(); x.moveTo(6, 8); x.lineTo(sx - 10, sy - 10); x.lineTo(sx - 12, sy + 16); x.closePath(); x.fill();
+  x.fillStyle = '#7dd3fc'; x.font = '8px system-ui'; x.fillText('470 nm', 6, 22);
+  x.strokeStyle = 'rgba(251,146,60,.85)'; x.lineWidth = 1.4; x.beginPath();
+  [[sx - 8, sy - 5, sx - 28, sy - 20, sx - 40, sy - 24], [sx - 28, sy - 20, sx - 34, sy - 36], [sx + 2, sy - 9, sx + 8, sy - 26, sx + 22, sy - 32], [sx + 8, sy - 26, sx - 2, sy - 38], [sx + 9, sy - 2, sx + 30, sy - 8, sx + 44, sy - 22], [sx - 9, sy + 4, sx - 36, sy + 8, sx - 52, sy + 2]].forEach(l => { x.moveTo(l[0], l[1]); l.length === 6 ? x.lineTo(l[2], l[3]) : x.lineTo(l[2], l[3]); if (l.length === 6) x.lineTo(l[4], l[5]); });
+  x.moveTo(sx + 2, sy + 9); x.quadraticCurveTo(sx + 14, sy + 34, sx + 52, sy + 30); x.lineTo(sx + 96, sy + 28); x.stroke(); x.lineWidth = 1;
+  x.save(); x.shadowColor = '#38bdf8'; x.shadowBlur = o ? 14 : 0; x.fillStyle = o ? '#38bdf8' : '#155e75'; x.beginPath(); x.arc(sx, sy, 9, 0, TAU); x.fill(); x.restore();
+  for (let i = 0; i < 6; i++) { const an = i / 6 * TAU; x.fillStyle = o ? '#e0f2fe' : '#0e7490'; x.beginPath(); x.arc(sx + Math.cos(an) * 9, sy + Math.sin(an) * 9, 1.5, 0, TAU); x.fill(); }
+  x.strokeStyle = '#334155'; x.beginPath(); x.moveTo(24, 112); x.lineTo(234, 112); x.stroke(); x.strokeStyle = '#38bdf8'; x.lineWidth = 1.4; x.beginPath();
+  for (let px = 24; px <= 234; px += 1) { const tt = t - (234 - px) / 55, sp = on(tt) && ((tt * 9) % 1) < 0.07; const ph = ((tt * 9) % 1) / 0.07, v = sp ? 20 * (ph < 0.4 ? ph / 0.4 : Math.max(-0.2, 1 - (ph - 0.4) / 0.35)) : 0; px === 24 ? x.moveTo(px, 112 - v) : x.lineTo(px, 112 - v); } x.stroke(); x.lineWidth = 1;
+  x.fillStyle = '#94a3b8'; x.fillText('ChR2 · espigas con luz', 4, 122);
+};
+function initPreviews(mods) {
+  const items = [...document.querySelectorAll('canvas.pv')].map(cv => ({ cv, x: cv.getContext('2d'), kind: cv.dataset.pv }));
+  const rs = () => items.forEach(it => { const r = it.cv.getBoundingClientRect(), d = devicePixelRatio || 1; it.cv.width = Math.max(2, Math.round(r.width * d)); it.cv.height = Math.max(2, Math.round(r.height * d)); }); rs(); addEventListener('resize', rs);
+  const S3 = { brain: [48, -0.2, 0.6], globe: [31, 0.35, 0.5], net: [35, 0.25, 0.55] }, t0 = performance.now();
+  (function loop(now) { const t = (now - t0) / 1000;
+    items.forEach(it => { const c = it.cv, x = it.x; x.setTransform(c.width / 240, 0, 0, c.height / 125, 0, 0); x.clearRect(0, 0, 240, 125);
+      if (PV[it.kind]) PV[it.kind](x, t); else if (mods && mods[it.kind]) { const [s, tilt, k] = S3[it.kind]; mods[it.kind].draw(x, { cx: 120, cy: 62 + (it.kind === 'brain' ? 12 : 0), s, yaw: t * 0.35 + 1, tilt, t, al: 1, k }); } });
+    requestAnimationFrame(loop); })(performance.now());
+}
+
+window.addEventListener("DOMContentLoaded",()=>initPreviews({}));
+})();
+</script>
+</body>
+</html>

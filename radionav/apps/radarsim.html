@@ -1,0 +1,460 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RadarSim · Laboratorio de radar</title><meta name="theme-color" content="#070b14">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#070b14;color:#cbd5e1;font-family:system-ui,sans-serif}
+canvas{width:100%;display:block;background:#0a1020;border-radius:.5rem;border:1px solid #1e293b}
+.ia{touch-action:none;cursor:crosshair}
+.card{background:#0d1424;border:1px solid #1e293b;border-radius:.75rem;padding:.7rem}
+.b{padding:.35rem .7rem;border-radius:.5rem;border:1px solid #334155;background:#111b30;font-size:.82rem;min-height:40px}
+.b.on{border-color:#22d3ee;color:#22d3ee;background:#06323d}
+input[type=range]{width:100%;accent-color:#34d399}
+summary{cursor:pointer;color:#22d3ee;font-weight:600;min-height:32px}
+.bd{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:9999px;color:#000;font-weight:700;margin-right:.4rem}
+.hd{font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;flex-wrap:wrap;gap:.25rem}
+.sub{font-weight:600;color:#e2e8f0;font-size:.9rem;margin:.9rem 0 .3rem;padding-top:.6rem;border-top:1px dashed #1e293b}
+.key{background:#06281f;border:1px solid #047857;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#a7f3d0;margin:.4rem 0}
+.try{background:#2a1a05;border:1px solid #b45309;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#fde68a;margin:.4rem 0}
+.res{background:#0a1020;border:1px solid #1e293b;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;margin:.4rem 0}
+table.cmp{width:100%;font-size:.8rem;border-collapse:collapse}.cmp th,.cmp td{border:1px solid #1e293b;padding:.35rem .5rem;text-align:left;vertical-align:top}.cmp th{background:#111b30;color:#e2e8f0}
+.chip{display:inline-block;border:1px solid #334155;border-radius:9999px;padding:.1rem .6rem;font-size:.75rem;margin:.15rem .15rem .15rem 0;background:#111b30}
+.hidden{display:none!important}
+:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
+</style><style id="nl-style">
+/* Elementos comunes RadioNav UVa: fondo de nodos, enlace al índice y pie */
+html{background:radial-gradient(circle at 82% 8%,rgba(34,211,238,.10),transparent 45%),radial-gradient(circle at 12% 88%,rgba(167,139,250,.08),transparent 45%),#070b14;background-attachment:fixed}
+body{background:transparent!important}
+#nl-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block;background:transparent!important;border:0!important;border-radius:0!important}
+.nl-hd{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
+.nl-back{font-size:.72rem;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);border-radius:9999px;padding:.25rem .7rem;text-decoration:none;white-space:nowrap;background:rgba(8,16,36,.55)}
+.nl-back:hover{background:rgba(14,116,144,.35);color:#e0f2fe}
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-bg,#nl-foot,.nl-back{display:none!important}}
+</style>
+</head><body class="p-2 md:p-4 max-w-7xl mx-auto">
+<canvas id="nl-bg" aria-hidden="true"></canvas>
+
+<header class="mb-3"><div class="nl-hd"><h1 class="text-xl md:text-2xl font-bold text-white">RadarSim <span class="text-cyan-400 text-sm md:text-base font-normal">Antenas, radares de impulsos, MTI y radares de onda continua</span></h1><a class="nl-back nl-idx" href="../index.html" title="Volver al índice de simuladores">← RadioNav UVa</a></div>
+<div class="card mt-2 text-sm"><b class="text-white">La idea en 20 segundos.</b> Un radar <b class="text-cyan-300">emite</b> una onda y <b class="text-cyan-300">escucha el eco</b>. Del eco saca la <b class="text-violet-300">dirección</b> (según cómo recibe la antena), la <b class="text-amber-300">distancia</b> (por el tiempo que tarda en volver) y la <b class="text-emerald-300">velocidad</b> (por el efecto Doppler). Los cuatro paneles recorren el temario: <b>1</b> cómo se mide el ángulo, <b>2</b> radar de impulsos, <b>3</b> cómo se separa lo que se mueve de lo que está quieto (MTI) y <b>4</b> radares de onda continua.</div></header>
+<main class="grid lg:grid-cols-3 gap-3">
+<div class="lg:col-span-2 space-y-3">
+
+ <section class="card"><div class="hd"><span class="bd bg-cyan-400">1</span>Antenas: ¿de dónde viene la señal?</div>
+  <p class="text-sm mb-2">La antena es la que da la <b>dirección</b> del blanco. Hay varias técnicas para medir el ángulo de llegada de una señal (Tema 4). Elige una y mueve el blanco: la pantalla de la derecha muestra <b>qué mide el receptor</b> y a qué ángulo lo traduce.</p>
+  <div id="m1" class="mb-1"></div><p id="d1" class="text-sm mb-2"></p>
+  <div class="grid sm:grid-cols-2 gap-3"><div><p class="text-xs text-slate-400" id="c1a">&nbsp;</p><canvas id="a1" style="height:310px" aria-label="Escena de antenas"></canvas></div><div><p class="text-xs text-slate-400" id="c1b">&nbsp;</p><canvas id="a2" style="height:310px" aria-label="Señal medida"></canvas></div></div>
+  <div id="sl-a" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div>
+  <div class="flex flex-wrap gap-1"><button class="b" id="a1new">🎲 Repetir la medida (otro ruido)</button><button class="b hidden" id="a1opt"></button></div>
+  <div id="t1a" class="res"></div><div class="key" id="k1"></div><div class="try" id="y1"></div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-amber-400">2</span>Radar de impulsos: τ, T, R<sub>max</sub> no ambigua y pulsos por blanco</div>
+  <p class="text-sm mb-2">La señal del radar pulsado son <b>pulsos de RF de duración τ separados T</b>. Todo lo demás (alcance, resolución, pulsos por blanco) sale de esos dos tiempos.</p>
+  <div class="sub" style="border:0;margin-top:.2rem">a) Frecuencia de repetición y distancia máxima no ambigua</div>
+  <p class="text-xs text-slate-400">Pulsos emitidos (cian, dibujados más anchos de lo real) y eco del blanco (ámbar). Eje = tiempo.</p><canvas id="s1" style="height:190px" aria-label="Tren de pulsos"></canvas>
+  <div id="sl-p1" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div>
+  <p class="text-xs text-slate-400 mt-2">Eje de distancias: de 0 a R<sub>max</sub> (cada eco se coloca según el tiempo que tarda desde el <i>último</i> pulso)</p><canvas id="s1r" style="height:120px" aria-label="Eje de distancias"></canvas>
+  <div id="sl-p1r" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div id="t1" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> hay que esperar el eco antes de lanzar el siguiente pulso. Si el blanco está más lejos que <b>R<sub>max</sub> = c·T/2 = c/(2f<sub>p</sub>)</b>, su eco llega cuando ya se ha emitido otro pulso y se ve <i>más cerca de lo que está</i>. Por eso la <b>distancia útil</b> del radar debe ser menor que R<sub>max</sub>.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> con el blanco a 120 km, sube f<sub>p</sub> hasta que R<sub>max</sub> quede por debajo de 120 km: el blanco «salta» a otra distancia. Observa cómo la distancia útil deja de ser válida. Luego sube τ y fíjate en el ciclo de trabajo y la potencia media.</div>
+
+  <div class="sub">b) Resolución en distancia: ΔR = c·τ/2</div>
+  <p class="text-sm mb-1">Cada eco ocupa una anchura de <b>ΔR = c·τ/2</b>. Si dos blancos están más cerca que eso, sus ecos se solapan y se ven como uno.</p>
+  <canvas id="s1b" style="height:150px" aria-label="Resolución"></canvas><div id="sl-p1b" class="mt-2"></div><div id="t1b" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> un pulso más corto separa mejor los blancos (ΔR menor), pero lleva menos energía: para la misma potencia de pico, la potencia media baja con el ciclo de trabajo τ/T.</div>
+
+  <div class="sub">c) Pulsos que recibe cada blanco: N = (θ<sub>B</sub>/Ω)·f<sub>p</sub></div>
+  <p class="text-sm mb-1">Mientras el haz barre un blanco (θ<sub>B</sub> = ancho a 3 dB en acimut, Ω = velocidad de giro) el blanco recibe varios pulsos. Se pueden <b>sumar</b> para detectar mejor.</p>
+  <p class="text-xs text-slate-400">Eje = acimut del haz respecto al blanco. Cada marca es un pulso emitido (cian = pulsos dentro del haz a 3 dB).</p><canvas id="s1c" style="height:170px" aria-label="Pulsos por blanco"></canvas>
+  <div id="sl-p1c" class="grid sm:grid-cols-3 gap-x-4 mt-2"></div><div class="flex flex-wrap gap-1"><button class="b" id="typ">📐 Valores típicos: 300 Hz, 1,5°, 5 rpm</button></div><div id="t1c" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> cuantos más pulsos por blanco, mejor detección. Pero un haz más estrecho o una antena más rápida dan <i>menos</i> pulsos, y subir f<sub>p</sub> para compensarlo reduce R<sub>max</sub>.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> pulsa «valores típicos» (N = 15). Sube el giro a 30 rpm: ¿cuántos pulsos quedan? ¿Qué f<sub>p</sub> necesitas para recuperar 15 y cuánto vale entonces R<sub>max</sub>?</div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-rose-400">3</span>Radar MTI: ver lo que se mueve y borrar lo fijo</div>
+  <p class="text-sm mb-2">El terreno, las montañas o la lluvia devuelven ecos muy fuertes (<b>clutter</b>) que tapan los blancos. El clutter está quieto: su eco es igual pulso tras pulso. El del blanco móvil <b>cambia</b>. El <b>MTI</b> se queda solo con lo que cambia.</p>
+  <div id="sl-m0" class="grid sm:grid-cols-2 gap-x-4 mb-1"></div>
+  <div class="sub" style="border:0;margin-top:.2rem">a) El PPI: sin MTI y con MTI</div>
+  <p class="text-sm mb-1">La pantalla <b>PPI</b> muestra el radar visto desde arriba: el barrido gira y los ecos se iluminan al pasar el haz. Un avión cruza la zona; las manchas fijas son clutter (montañas a la derecha, lluvia a la izquierda).</p>
+  <div class="grid sm:grid-cols-2 gap-3"><div><p class="text-xs text-slate-400 text-center">Sin MTI</p><canvas id="pp1" style="aspect-ratio:1/1" aria-label="PPI sin MTI"></canvas></div><div><p class="text-xs text-slate-400 text-center">Con MTI (cancelador de línea de retardo)</p><canvas id="pp2" style="aspect-ratio:1/1" aria-label="PPI con MTI"></canvas></div></div>
+  <div id="sl-m1" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div id="t3a" class="res"></div>
+  <div class="key">💡 <b>Idea clave:</b> el MTI deja pasar el eco según su <b>velocidad radial</b> (la que va hacia o desde el radar). Un avión que vuela <i>en círculo alrededor</i> del radar (velocidad radial nula) casi desaparece, igual que el clutter.</div>
+
+  <div class="sub">b) El efecto mariposa y el cancelador de línea de retardo</div>
+  <p class="text-sm mb-1">Si superponemos varios barridos consecutivos (amplitud frente a distancia), el clutter se ve siempre igual, pero el eco del blanco móvil <b>cambia de amplitud y de signo</b> en cada barrido: dibuja unas «alas», el <b>efecto mariposa</b>.</p>
+  <div class="grid sm:grid-cols-2 gap-3"><div><p class="text-xs text-slate-400">Ocho barridos superpuestos</p><canvas id="bf1" style="height:180px"></canvas></div><div><p class="text-xs text-slate-400">Tras el cancelador: cada barrido menos el anterior</p><canvas id="bf2" style="height:180px"></canvas></div></div>
+  <div class="card mt-2" style="background:#0a1020"><p class="text-xs text-slate-400 mb-1">El <b>cancelador de línea de retardo</b> (DLC): la señal se retarda un periodo T entre pulsos y se resta de la que llega ahora.</p>
+   <svg viewBox="0 0 520 90" class="w-full" style="max-height:110px" role="img" aria-label="Esquema del cancelador de línea de retardo"><g font-family="system-ui,sans-serif" font-size="11" fill="#cbd5e1" stroke-width="1.5"><line x1="10" y1="45" x2="90" y2="45" stroke="#22d3ee"/><circle cx="90" cy="45" r="3" fill="#22d3ee" stroke="none"/><line x1="90" y1="45" x2="90" y2="20" stroke="#22d3ee"/><line x1="90" y1="20" x2="330" y2="20" stroke="#22d3ee"/><line x1="90" y1="45" x2="150" y2="45" stroke="#a78bfa"/><rect x="150" y="30" width="120" height="30" rx="5" fill="#111b30" stroke="#a78bfa"/><text x="210" y="49" text-anchor="middle">retardo T = 1/f_p</text><line x1="270" y1="45" x2="330" y2="45" stroke="#a78bfa"/><circle cx="350" cy="32" r="15" fill="#111b30" stroke="#34d399"/><text x="350" y="37" text-anchor="middle" font-size="16">Σ</text><line x1="330" y1="20" x2="338" y2="25" stroke="#22d3ee"/><line x1="330" y1="45" x2="340" y2="40" stroke="#a78bfa"/><text x="322" y="16" text-anchor="end" fill="#22d3ee">+</text><text x="322" y="58" text-anchor="end" fill="#a78bfa">−</text><line x1="365" y1="32" x2="440" y2="32" stroke="#34d399"/><text x="445" y="36" fill="#34d399">salida</text><text x="10" y="38" fill="#22d3ee">entrada</text><text x="260" y="85" fill="#94a3b8" text-anchor="middle">salida = eco actual − eco del pulso anterior</text></g></svg></div>
+  <p class="text-sm mt-2 mb-1"><b>Un solo punto de distancia, pulso a pulso.</b> La curva es el Doppler real del blanco; los puntos son lo que el radar mide, <b>una muestra por pulso</b>. El cancelador resta cada muestra de la anterior (barras de abajo).</p>
+  <canvas id="bf3" style="height:230px" aria-label="Muestras pulso a pulso"></canvas>
+  <div id="sl-m2" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div class="flex flex-wrap gap-1"><button class="b" id="blind">🙈 Poner el blanco en la primera velocidad ciega</button><button class="b" id="half">⭐ Poner el blanco en la velocidad de máxima respuesta</button></div><div id="t3b" class="res"></div>
+
+  <div class="sub">c) Velocidades ciegas</div>
+  <p class="text-sm mb-1">La respuesta del cancelador es <b>|2·sen(π·f<sub>d</sub>·T)|</b>. Se anula cuando f<sub>d</sub> es múltiplo de f<sub>p</sub>, es decir, para <b>v = n·λ·f<sub>p</sub>/2</b>: el blanco se mueve, pero entre pulso y pulso su eco vuelve a ser idéntico.</p>
+  <canvas id="bf4" style="height:170px" aria-label="Respuesta del cancelador"></canvas>
+  <div class="key">💡 <b>Idea clave:</b> el MTI mide el Doppler «a trozos», una muestra por pulso (a f<sub>p</sub>). Por eso aparecen velocidades ciegas, que el CW no tiene. Para alejarlas: <b>subir f<sub>p</sub></b> (a costa de reducir R<sub>max</sub>), usar dos f<sub>p</sub> alternadas o varias frecuencias portadoras.</div>
+  <div class="try">🧪 <b>Prueba esto:</b> pulsa «primera velocidad ciega»: los puntos de abajo quedan todos a la misma altura y las barras desaparecen. Después sube f<sub>p</sub> y mira cómo se aleja la velocidad ciega… y cuánto baja R<sub>max</sub>. Cambia también la banda (panel lateral): ¿qué pasa con λ y con v<sub>1</sub>?</div></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-emerald-400">4</span>Radares de onda continua (CW)</div>
+  <p class="text-sm mb-2">El radar CW no calla nunca: emite siempre. Elige qué tipo de CW quieres ver; cada uno resuelve un problema distinto.</p>
+  <div id="m4" class="mb-2"></div>
+
+  <div class="cw" data-m="0">
+   <p class="text-sm mb-2"><b>CW simple.</b> Mide <b>velocidad</b>: el eco vuelve con otra frecuencia, <b>f<sub>d</sub> = 2·v<sub>r</sub>/λ = 2·v<sub>r</sub>·f<sub>0</sub>/c</b>. Solo cuenta la parte de la velocidad que va hacia el radar o desde él (v<sub>r</sub> = v·cos α). Pero no sabe a qué distancia está el blanco.</p>
+   <div class="grid sm:grid-cols-2 gap-3"><div><p class="text-xs text-slate-400">Vista desde arriba (el blanco se mueve en la dirección de la flecha)</p><canvas id="s3" style="aspect-ratio:16/10" aria-label="Escena Doppler"></canvas></div>
+   <div><p class="text-xs text-slate-400">Frecuencia emitida (cian) y recibida (ámbar)</p><canvas id="s3b" style="height:100px"></canvas><p class="text-xs text-slate-400 mt-1">Tono Doppler a la salida del receptor</p><canvas id="s3c" style="height:90px"></canvas></div></div>
+   <div id="sl-c0" class="grid sm:grid-cols-3 gap-x-4 mt-2"></div><div id="t4a" class="res"></div>
+   <div class="key">💡 <b>Idea clave:</b> el CW mide <b>velocidad</b> directamente y sin velocidades ciegas. Pero la <b>distancia no se puede medir</b>: cambiarla solo desplaza la fase del tono (y la fase se repite cada λ/2, centímetros). Si el blanco va de lado (α = 90°), el Doppler es cero.</div>
+   <div class="try">🧪 <b>Prueba esto:</b> cambia la distancia R y comprueba que el desplazamiento Doppler no cambia, solo la fase del tono. Pon α a 90° y mira cómo desaparece. Cambia la banda en el panel lateral.</div></div>
+
+  <div class="cw hidden" data-m="1">
+   <p class="text-sm mb-2"><b>CW-FM.</b> Si la frecuencia sube y baja en <b>triángulo</b> (excursión Δf, frecuencia de modulación f<sub>m</sub>), el eco vuelve con un retardo y el receptor ve una diferencia de frecuencias constante, la <b>frecuencia de batido</b>: <b>f<sub>bR</sub> = 4·Δf·f<sub>m</sub>·R/c</b>. Si el blanco se mueve, el Doppler se suma en una rampa y se resta en la otra.</p>
+   <p class="text-xs text-slate-400">Frecuencia frente al tiempo: emitida (cian) y eco (ámbar). Retardo y Doppler exagerados.</p><canvas id="s5" style="height:190px"></canvas>
+   <p class="text-xs text-slate-400 mt-1">Frecuencia de batido en cada rampa (f<sub>b</sub>′ en la subida, f<sub>b</sub>″ en la bajada)</p><canvas id="s5b" style="height:120px"></canvas>
+   <div id="sl-c1" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div id="t4b" class="res"></div>
+   <div class="key">💡 <b>Idea clave:</b> con las dos rampas se separan distancia y velocidad: la <b>media</b> de los batidos da la distancia y su <b>semidiferencia</b> da el Doppler. Más Δf = más resolución en distancia (pero más ancho de banda). Aplicación clásica: el altímetro.</div>
+   <div class="try">🧪 <b>Prueba esto:</b> con v = 0 las dos rampas dan el mismo batido. Mueve v: f<sub>b</sub>′ y f<sub>b</sub>″ se separan, pero su media (la distancia) no cambia.</div></div>
+
+  <div class="cw hidden" data-m="2">
+   <p class="text-sm mb-2"><b>CW de múltiples frecuencias.</b> Se emiten dos frecuencias separadas Δf y se compara la fase de sus ecos: <b>Δφ = 4π·Δf·R/c</b>. Con una sola frecuencia la fase da la vuelta cada λ/2 (¡centímetros!). Con Δf pequeño, la diferencia solo da la vuelta cada <b>R<sub>max</sub> = c/(2Δf)</b>.</p>
+   <canvas id="s6" style="height:190px" aria-label="Fase frente a distancia"></canvas><div id="sl-c2" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div id="t4c" class="res"></div>
+   <div class="key">💡 <b>Idea clave:</b> hay compromiso. Con Δf grande, un pequeño error de fase da muy poco error de distancia (precisión), pero la medida se repite antes (R<sub>max</sub> menor; Δf &lt; c/(2R<sub>max</sub>)). Y solo funciona con <b>un único blanco</b> (telurómetro, guiado de misiles).</div>
+   <div class="try">🧪 <b>Prueba esto:</b> sube R por encima de R<sub>max</sub> y comprueba que el radar «lee» una distancia más corta. Prueba Δf pequeño y grande y compara R<sub>max</sub> con el error de distancia.</div></div>
+
+  <div class="cw hidden" data-m="3">
+   <p class="text-sm mb-2"><b>Navegación Doppler.</b> Una aeronave apunta un haz hacia el suelo con un ángulo γ respecto a la horizontal (habitualmente 65°–70°). El eco del suelo tiene un desplazamiento <b>f<sub>d</sub> = 2·(f<sub>0</sub>/c)·v·cos γ</b>, de donde se calcula la <b>velocidad respecto al suelo</b> sin ninguna estación en tierra. Un haz da una sola componente; con varios haces se obtiene el vector velocidad (y el ángulo de <b>deriva</b>). El sistema <b>Janus</b> usa 4 haces: 2 hacia delante y 2 hacia atrás.</p>
+   <div class="grid sm:grid-cols-2 gap-3"><div><p class="text-xs text-slate-400">Vista desde arriba: haces (puntos en el suelo) y velocidad respecto al suelo</p><canvas id="s7" style="height:290px" aria-label="Haces Janus"></canvas></div><div><p class="text-xs text-slate-400">Desplazamiento Doppler de cada haz (los delanteros suben, los traseros bajan)</p><canvas id="s7b" style="height:290px" aria-label="Doppler de cada haz"></canvas></div></div>
+   <div id="sl-c3" class="grid sm:grid-cols-2 gap-x-4 mt-2"></div><div id="t4d" class="res"></div>
+   <div class="key">💡 <b>Idea clave:</b> con un solo haz, un cabeceo o una velocidad vertical de la aeronave se confunden con velocidad horizontal. Con haces delante <i>y</i> detrás, esos errores se <b>restan</b> y se anulan: por eso Janus es más preciso. Con 2 haces se simplifica el sistema, pero hace falta otra fuente para la tercera coordenada.</div>
+   <div class="try">🧪 <b>Prueba esto:</b> sube el cabeceo a 4° con v<sub>vert</sub> = 0: el haz único se equivoca más de un 10 %, Janus casi nada. Luego pon una velocidad vertical y compara. Mueve la deriva y mira cómo los haces izquierdo y derecho dejan de ser iguales.</div></div>
+ </section>
+
+ <section class="card"><div class="hd"><span class="bd bg-orange-400">5</span>🎯 Reto: ¿qué radar necesito?</div>
+  <p class="text-sm mb-2">Lee la situación y elige el tipo de radar más adecuado.</p>
+  <p id="qq" class="text-sm font-semibold text-white"></p><div id="qo" class="mt-2"></div><p id="qf" class="text-sm mt-2"></p><button class="b hidden mt-1" id="qn">Siguiente situación →</button></section>
+
+ <section class="card"><div class="hd"><span class="bd bg-pink-400">6</span>Comparativa: radar de ondas continuas frente a radar pulsado</div>
+  <div class="overflow-x-auto"><table class="cmp"><thead><tr><th></th><th class="text-cyan-300">Radar pulsado</th><th class="text-emerald-300">Radar de onda continua (CW)</th></tr></thead><tbody>
+   <tr><th>Cómo emite</th><td>Ráfagas cortas de duración τ cada T; escucha entre pulsos.</td><td>Emite siempre; la señal emitida y los ecos están a la vez.</td></tr>
+   <tr><th>Distancia</th><td>Directa, por el tiempo del eco. Ambigua más allá de R<sub>max</sub> = c/(2f<sub>p</sub>).</td><td>Con CW puro no se mide. Hace falta modular: FM (CW-FM) o varias frecuencias.</td></tr>
+   <tr><th>Velocidad</th><td>Por Doppler muestreado a f<sub>p</sub> (MTI): aparecen <b>velocidades ciegas</b>.</td><td>Directa y continua por Doppler: <b>sin velocidades ciegas</b>.</td></tr>
+   <tr><th>Clutter</th><td>MTI: se cancela lo fijo (Doppler nulo).</td><td>Se separa por Doppler: lo fijo no desplaza la frecuencia.</td></tr>
+   <tr><th>Aislamiento TX/RX</th><td>Fácil: no se transmite y recibe a la vez.</td><td>Difícil: el transmisor es mucho más fuerte que el eco; se usan dos antenas.</td></tr>
+   <tr><th>Varios blancos</th><td>Se distinguen si están separados más de ΔR.</td><td>CW-FM: un tono por blanco. Multifrecuencia: solo un blanco.</td></tr>
+   <tr><th>Aplicaciones típicas</th><td>Vigilancia y control del tráfico aéreo.</td><td>Medida de velocidad, altímetros, alarmas, guiado de misiles, navegación Doppler.</td></tr></tbody></table></div>
+  <p class="text-xs text-slate-400 mt-3 mb-1">Otras formas de clasificar un radar (Tema 4):</p>
+  <div><span class="chip">Portadora: continua · pulsada</span><span class="chip">Configuración: monoestático · multiestático</span><span class="chip">Acción del blanco: primario (no responde) · secundario (responde)</span><span class="chip">Función: vigilancia · control de tráfico aéreo · control remoto</span><span class="chip">Técnica: MTI · SAR · Doppler pulsado</span></div></section>
+</div>
+
+<aside class="space-y-2 lg:sticky lg:top-2 self-start lg:max-h-[96vh] lg:overflow-auto">
+ <details open class="card"><summary>Banda de frecuencia</summary><div id="bd" class="mt-2"></div><p class="text-xs text-slate-400">Portadora f<sub>0</sub> = <b id="f0v" class="text-emerald-400"></b> · λ = <b id="lv" class="text-emerald-400"></b>. Afecta a los paneles 3 y 4.</p></details>
+ <details open class="card"><summary>Fórmulas</summary><ul class="text-xs space-y-1 mt-2">
+  <li><b class="text-cyan-300">Ángulo de llegada</b><br>Retardo: T′ = d·senθ/c<br>Fase: Δφ = 2π·d·senθ/λ<br>Amplitud: x = log(A₁/A₂) ∝ θ<br>Doppler: Δf = (f₀·V/c)·senθ</li>
+  <li><b class="text-amber-300">Radar pulsado</b><br>f<sub>p</sub> = 1/T · ciclo = τ/T = τ·f<sub>p</sub><br>R<sub>max</sub> = c·T/2 = c/(2f<sub>p</sub>)<br>ΔR = c·τ/2 · P<sub>media</sub> = P<sub>pico</sub>·τ·f<sub>p</sub></li>
+  <li><b class="text-violet-300">Pulsos por blanco</b><br>N = (θ<sub>B</sub>/Ω)·f<sub>p</sub></li>
+  <li><b class="text-emerald-300">Doppler</b><br>f<sub>d</sub> = 2v<sub>r</sub>/λ = 2v<sub>r</sub>f<sub>0</sub>/c</li>
+  <li><b class="text-rose-300">MTI</b><br>|H| = 2|sen(π·f<sub>d</sub>·T)|<br>v<sub>n</sub> = n·λ·f<sub>p</sub>/2</li>
+  <li><b class="text-amber-300">CW-FM</b><br>f<sub>bR</sub> = 4Δf·f<sub>m</sub>·R/c<br>f<sub>bR</sub> = (f<sub>b</sub>′ + f<sub>b</sub>″)/2 · f<sub>d</sub> = (f<sub>b</sub>″ − f<sub>b</sub>′)/2</li>
+  <li><b class="text-sky-300">CW multifrecuencia</b><br>Δφ = 4πΔf·R/c · R<sub>max</sub> = c/(2Δf)</li>
+  <li><b class="text-emerald-300">Navegación Doppler</b><br>f<sub>d</sub> = 2(f₀/c)·v·cosγ</li>
+  <li class="text-slate-400">c = 3·10⁸ m/s</li></ul></details>
+</aside></main>
+<footer id="nl-foot">
+<a class="nl-idx" href="../index.html">← RadioNav UVa · Índice de simuladores</a>
+<div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img data-f="img/UVa.png" alt="Universidad de Valladolid"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img data-f="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)"></a></div>
+<div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
+</footer>
+<script>
+const $=s=>document.querySelector(s),PI=Math.PI,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),C=3e8,D2R=PI/180;
+let CX={};
+function cv(id){const c=$(id),r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);return{x,w:r.width,h:r.height}}
+function cvc(id){return CX[id]||(CX[id]=cv(id))}
+function mk(el,opts,cur,cb){el.innerHTML='';opts.forEach((o,i)=>{const b=document.createElement('button');b.className='b mr-1 mb-1';b.textContent=o;b.onclick=()=>{[...el.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(o,i)};if(o==cur)b.classList.add('on');el.appendChild(b)})}
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const gn=r=>r()+r()+r()+r()-2; // ruido ~N(0,0.58)
+const fh=f=>{const a=Math.abs(f);return(a>=1e9?(f/1e9).toFixed(2)+' GHz':a>=1e6?(f/1e6).toFixed(2)+' MHz':a>=1e3?(f/1e3).toFixed(2)+' kHz':f.toFixed(0)+' Hz')},fm_=m=>{const a=Math.abs(m);return a>=1e4?(m/1e3).toFixed(0)+' km':a>=1e3?(m/1e3).toFixed(2)+' km':a>=1?m.toFixed(a>=100?0:1)+' m':(m*100).toFixed(1)+' cm'};
+const BANDS={'L · 1,3 GHz':1.3e9,'S · 3 GHz':3e9,'C · 5,6 GHz':5.6e9,'X · 10 GHz':10e9},S={f0:3e9},lam=()=>C/S.f0;
+// ---- parámetros (deslizadores)
+const V={thA:60,bw1:8,sepA:0,nz:15,thB:15,bw2:40,sq:15,dd:30,dl:2,bwm:20,nb:7,
+prf:500,tau:2,Pp:200,R1:120,Ru:80,sep:1500,bw:1.5,rpm:5,
+prf4:1000,vv:250,hd:70,vr:60,
+v3:100,ang:30,R3:100,R5:100,df5:100,fm5:200,v5:15,R6:120,df6:1,
+Vg:220,dr:6,gm:67,ph0:25,pt:0,wv:0};
+const FM={},RD={};
+function buildGroup(p,defs){const el=$('#sl-'+p);el.innerHTML=defs.map(([k,l,mn,mx,st,f])=>{FM[k]=f;return`<label class="text-sm block mb-1">${l}: <b class="text-emerald-400 vv" data-k="${k}"></b><input type="range" data-k="${k}" data-p="${p}" min="${mn}" max="${mx}" step="${st}" value="${V[k]}"></label>`}).join('');
+el.querySelectorAll('input').forEach(e=>e.oninput=()=>{V[e.dataset.k]=+e.value;lab();RD[p]()});lab()}
+function lab(){document.querySelectorAll('.vv').forEach(e=>e.textContent=FM[e.dataset.k](V[e.dataset.k]));document.querySelectorAll('input[data-k]').forEach(e=>{if(+e.value!=V[e.dataset.k])e.value=V[e.dataset.k]})}
+const SL={
+a0:[['thA','Azimut del blanco',0,359,1,v=>v+'°'],['bw1','Ancho del haz θ_B',3,40,1,v=>v+'°'],['sepA','Segundo blanco a (0 = ninguno)',0,40,1,v=>v?v+'° del primero':'ninguno'],['nz','Ruido',0,100,5,v=>v+' %']],
+a1:[['thB','Ángulo del blanco θ',-45,45,1,v=>v+'°'],['bw2','Ancho de cada haz',20,70,1,v=>v+'°'],['sq','Desvío de cada haz respecto al eje',5,30,1,v=>'±'+v+'°'],['nz','Ruido',0,100,5,v=>v+' %']],
+a2:[['thB','Ángulo del blanco θ',-80,80,1,v=>v+'°'],['dd','Separación entre antenas d',5,100,1,v=>v+' m'],['nz','Ruido (jitter de la medida de tiempo)',0,100,5,v=>v+' %']],
+a3:[['thB','Ángulo del blanco θ',-85,85,1,v=>v+'°'],['dl','Separación entre antenas d/λ',.25,6,.25,v=>v+' λ'+(v>.5?' (>λ/2: ambiguo)':'')],['nz','Ruido de fase',0,100,5,v=>v+' %']],
+a4:[['thA','Azimut del emisor',0,359,1,v=>v+'°'],['nz','Ruido',0,100,5,v=>v+' %']],
+a5:[['thB','Ángulo del blanco θ',-60,60,1,v=>v+'°'],['nb','Número de haces N',3,15,1,v=>v],['bwm','Ancho de cada haz',4,40,1,v=>v+'°'],['nz','Ruido',0,100,5,v=>v+' %']],
+p1:[['prf','Frecuencia de repetición f_p',100,3000,50,v=>v+' Hz'],['tau','Duración del pulso τ',.5,20,.5,v=>v+' µs'],['Pp','Potencia de pico',10,1000,10,v=>v+' kW'],['R1','Distancia real del blanco',5,800,5,v=>v+' km']],
+p1r:[['Ru','Distancia útil que se quiere cubrir',10,800,5,v=>v+' km']],
+p1b:[['sep','Separación entre los dos blancos',0,5000,50,v=>v+' m'],['tau','Duración del pulso τ',.5,20,.5,v=>v+' µs']],
+p1c:[['bw','Ancho del haz θ_B',.5,12,.5,v=>v+'°'],['rpm','Giro de la antena Ω',1,30,1,v=>v+' rpm'],['prf','Frecuencia de repetición f_p',100,3000,50,v=>v+' Hz']],
+m0:[['prf4','Frecuencia de repetición f_p',200,3000,50,v=>v+' Hz']],
+m1:[['vv','Velocidad del avión',20,400,10,v=>v+' m/s ('+(v*3.6).toFixed(0)+' km/h)'],['hd','Rumbo del avión (desde el norte)',0,359,1,v=>v+'°']],
+m2:[['vr','Velocidad radial del blanco',0,600,1,v=>v+' m/s']],
+c0:[['v3','Velocidad del blanco v',0,300,5,v=>v+' m/s'],['ang','Ángulo α con la línea de visión',0,180,5,v=>v+'° ('+(v<90?'se acerca':v>90?'se aleja':'de lado')+')'],['R3','Distancia R',10,300,5,v=>v+' m']],
+c1:[['R5','Distancia R',5,300,1,v=>v+' m'],['df5','Excursión Δf',20,200,5,v=>v+' MHz'],['fm5','Frecuencia de modulación f_m',50,500,10,v=>v+' Hz'],['v5','Velocidad radial (+ se acerca)',-60,60,1,v=>v+' m/s']],
+c2:[['R6','Distancia real R',0,300,1,v=>v+' m'],['df6','Separación entre frecuencias Δf',.1,5,.1,v=>v+' MHz']],
+c3:[['Vg','Velocidad respecto al suelo',100,300,5,v=>v+' m/s'],['dr','Ángulo de deriva',-15,15,1,v=>v+'°'],['gm','Ángulo del haz γ (con la horizontal)',60,75,1,v=>v+'°'],['ph0','Desvío lateral de los haces',10,40,1,v=>'±'+v+'°'],['pt','Cabeceo (morro arriba +)',-6,6,.5,v=>v+'°'],['wv','Velocidad vertical (subiendo +)',-15,15,1,v=>v+' m/s']]};
+// ===================== 1. ANTENAS =====================
+const A={mode:0,seed:1,interp:1,base:1};
+const AM=['Haz estrecho giratorio','Comparación de amplitud','Retardo temporal','Comparación de fase','Efecto Doppler','Multihaz'];
+const AD=[
+['<b>Una antena con un haz muy estrecho gira.</b> El blanco «aparece» cuando el haz le apunta: el ángulo es el que tenía la antena en ese instante, θ = Ω·t. Se compara el eco con un umbral (la antena omnidireccional da la referencia) y se toma el centro del eco.','La precisión angular es del orden del <b>ancho del haz</b>, y dos blancos dentro del mismo haz se ven como uno. Un haz más estrecho exige una antena más grande. Es la técnica de los radares de vigilancia.','Estrecha el haz a 3° y luego ábrelo a 30°. Activa el segundo blanco y acércalo al primero: ¿a qué separación dejas de ver dos picos?','Acimut de la antena (°) = Ω·t','Señal recibida mientras la antena gira'],
+['<b>Dos haces ligeramente desviados del eje</b> (1 y 2) reciben la señal a la vez. Si el blanco está en el eje, los dos ecos tienen la misma amplitud; si se desplaza, uno gana. Un amplificador logarítmico y un restador dan <b>x = log(A₁/A₂)</b>, casi proporcional al ángulo cerca del eje.','Mide el ángulo <b>de un solo pulso</b>, sin girar la antena. Más precisión con haces estrechos o muy desviados, pero solo es lineal cerca del eje y el ruido en A₁ y A₂ se traduce en error de ángulo.','Pon el blanco en 0°: x = 0. Aléjalo y mira dónde la curva deja de ser una recta. Estrecha los haces: ¿sube o baja la pendiente? ¿y el efecto del ruido?','Los dos haces (1 y 2) y el blanco','Salida x = log(A₁/A₂) frente al ángulo'],
+['<b>Dos antenas separadas una distancia d.</b> Si el blanco no está de frente, su señal llega antes a una antena que a la otra. Esa diferencia de tiempo es <b>T′ = d·senθ/c</b>, y de ella se despeja el ángulo: θ = arcsen(c·T′/d).','Cuanto mayor es d, mayor es el retardo y menos afecta el error de tiempo al ángulo, pero hacen falta <b>pulsos muy cortos</b> y electrónica muy rápida (nanosegundos).','Sube el ruido y mira cómo se mueve el retardo medido. Compara el error con d = 10 m y con d = 100 m.','Las dos antenas y el frente de onda','Envolventes recibidas en cada antena'],
+['<b>Interferómetro.</b> Las dos antenas comparan la <b>fase</b> de la señal recibida en vez de los tiempos: Δφ = 2π·d·senθ/λ. Un detector de fase mide Δφ y de ahí sale θ. Es muy preciso porque 1° de fase es una fracción de la longitud de onda.','El problema: la fase solo se conoce <b>módulo 2π</b>. Si d &gt; λ/2, varios ángulos dan la misma fase (ambigüedad). Solución típica: una base corta (λ/2, ambigua no) para elegir el ángulo correcto y una larga para afinar.','Con d = 0,5 λ la medida no es ambigua. Sube d/λ a 3: aparecen varios ángulos posibles. Activa la base corta y comprueba cómo se resuelve la duda. Mira cómo baja el error por el ruido al aumentar d.','Las dos antenas y el frente de onda (se ve λ)','Fase medida Δφ frente al ángulo real'],
+['<b>Sistema Doppler.</b> Una antena <b>gira en círculo</b> (en el VOR Doppler, 30 vueltas por segundo). Al acercarse al emisor su frecuencia sube y al alejarse baja: Δf = (f₀·V/c)·senθ. Ese tono Doppler es una senoide de 30 Hz cuya <b>fase respecto a la referencia es el acimut</b>.','El ángulo sale de una <b>fase</b>, no de una amplitud: es muy robusto al ruido porque se promedia a lo largo de toda la vuelta. Es la base del VOR Doppler (aeronáutica).','Mueve el acimut del emisor: la senoide se desplaza. El acimut es donde cruza por cero hacia abajo. Sube el ruido y comprueba que el error apenas cambia.','Antena giratoria (cada punto es una posición) y dirección del emisor','Desplazamiento Doppler de la antena frente a su posición en la vuelta'],
+['<b>Sistema multihaz.</b> Una red de alimentación forma N haces fijos que cubren todo el sector, cada uno con su receptor y su comparador (junto a una antena omnidireccional de referencia). El blanco ilumina sobre todo uno o dos haces: el ángulo es el del haz con más señal.','Sin partes móviles y de un solo pulso, pero necesita <b>N receptores</b>. Con pocos haces, la resolución es la separación entre haces; comparando los haces vecinos se puede <b>interpolar</b> entre ellos.','Con N = 3 y luego N = 15: ¿cómo cambia el error? Activa la interpolación y mira cuánto mejora. Estrecha los haces sin subir N: ¿qué pasa en los huecos entre haces?','Haces fijos y blanco','Señal en cada haz (dB respecto al máximo posible)']];
+const THR=.5;
+const G=(p,bw)=>{const u=.8859*p/bw,s=Math.abs(u)<1e-9?1:Math.sin(PI*u)/(PI*u);return Math.max(s*s,1e-4)};
+const pt=(cx,cy,r,a)=>[cx+r*Math.sin(a*D2R),cy-r*Math.cos(a*D2R)];
+function lobe(x,cx,cy,R,c,bw,col,fa,lw){x.beginPath();x.moveTo(cx,cy);for(let p=-90;p<=90;p+=1){const[a,b]=pt(cx,cy,R*Math.sqrt(G(p,bw)),c+p);x.lineTo(a,b)}x.closePath();x.fillStyle=fa;x.fill();x.strokeStyle=col;x.lineWidth=lw||1.5;x.stroke();x.lineWidth=1}
+function rings(x,cx,cy,R){x.strokeStyle='#1e293b';[.5,1].forEach(k=>{x.beginPath();x.arc(cx,cy,R*k,0,2*PI);x.stroke()});x.fillStyle='#475569';x.font='10px sans-serif';x.textAlign='center';[['N',0],['E',90],['S',180],['O',270]].forEach(([n,a])=>{const[px,py]=pt(cx,cy,R+9,a);x.fillText(n,px,py+3)})}
+function star(x,px,py,col,lbl){x.fillStyle=col;x.strokeStyle=col;x.beginPath();x.arc(px,py,5,0,2*PI);x.fill();x.beginPath();for(let k=0;k<3;k++){const a=k*PI/3;x.moveTo(px+10*Math.cos(a),py+10*Math.sin(a));x.lineTo(px-10*Math.cos(a),py-10*Math.sin(a))}x.stroke();if(lbl){x.font='11px sans-serif';x.textAlign='left';x.fillText(lbl,px+12,py-7)}}
+function axes(x,L,T,W,H,B){x.strokeStyle='#334155';x.beginPath();x.moveTo(L,H-B);x.lineTo(W-6,H-B);x.moveTo(L,H-B);x.lineTo(L,T);x.stroke()}
+const E=(e,col)=>`<b style="color:${col||'#34d399'}">${e}</b>`,dg=v=>v.toFixed(1)+'°';
+function endRes(real,est,extra){const er=est-real;return`Ángulo real <b>${real.toFixed(1)}°</b> · medido <b class="text-emerald-300">${est.toFixed(1)}°</b> · error <b class="${Math.abs(er)>5?'text-rose-400':'text-slate-200'}">${er.toFixed(1)}°</b>${extra?'<br>'+extra:''}`}
+const ph_=n=>(n||0)/1000;
+function m0(now){const{x,w,h}=cvc('#a1'),cx=w/2,cy=h/2,R=Math.min(w,h)/2-18,beam=((ph_(now)*.1)%1)*360,bw=V.bw1,th=V.thA,sep=V.sepA;x.clearRect(0,0,w,h);rings(x,cx,cy,R);
+const SS=[th];if(sep>0)SS.push((th+sep)%360);SS.forEach((s,i)=>{const[px,py]=pt(cx,cy,R*.85,s);star(x,px,py,i?'#fbbf24':'#fb7185',sep>0?(i?'2':'1'):'')});
+lobe(x,cx,cy,R,beam,bw,'#22d3ee','rgba(34,211,238,.2)');x.fillStyle='#1e293b';x.beginPath();x.arc(cx,cy,5,0,2*PI);x.fill();
+const b=cvc('#a2'),y=b.x,W=b.w,H=b.h,L=30,B=24,X=a=>L+a/360*(W-L-8),Y=v=>H-B-v/1.4*(H-B-16),n=360,r=rng(A.seed*13+1),V0=a=>{let s=0;SS.forEach(t=>{s+=G(((a-t+540)%360)-180,bw)});return s},Vn=[];for(let k=0;k<n;k++)Vn.push(V0(k)+V.nz/100*.3*gn(r));
+y.clearRect(0,0,W,H);axes(y,L,8,W,H,B);y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='center';for(let a=0;a<=360;a+=90)y.fillText(a+'°',X(a),H-10);y.fillText('0',L-8,Y(0)+3);y.fillText('1',L-8,Y(1)+3);
+y.strokeStyle='#fbbf24';y.setLineDash([4,4]);y.beginPath();y.moveTo(L,Y(THR));y.lineTo(W-6,Y(THR));y.stroke();y.setLineDash([]);y.fillStyle='#fbbf24';y.textAlign='left';y.fillText('umbral',L+3,Y(THR)-3);
+let i0=0;for(let k=1;k<n;k++)if(Vn[k]>Vn[i0])i0=k;let l=0,rr=0;while(Vn[(i0-l-1+n)%n]>THR&&l<120)l++;while(Vn[(i0+rr+1)%n]>THR&&rr<120)rr++;const est=(i0+(rr-l)/2+360)%360;
+y.strokeStyle='#22d3ee';y.lineWidth=1.3;y.beginPath();for(let k=0;k<n;k++)k?y.lineTo(X(k),Y(Vn[k])):y.moveTo(X(k),Y(Vn[k]));y.stroke();y.lineWidth=1;
+y.strokeStyle='#34d399';y.setLineDash([3,3]);y.beginPath();y.moveTo(X(est),Y(0));y.lineTo(X(est),Y(1.4));y.stroke();y.setLineDash([]);y.fillStyle='#34d399';y.textAlign='center';y.fillText('medido',X(est),12);
+const bi=Math.floor(beam)%360;y.fillStyle='#fff';y.beginPath();y.arc(X(beam),Y(Vn[bi]),4,0,2*PI);y.fill();
+let reg=0;for(let k=0;k<n;k++)if(V0(k)>THR&&V0((k+n-1)%n)<=THR)reg++;const Om=36;
+let er=est-th;er=((er+540)%360)-180;
+$('#t1a').innerHTML=`Azimut real <b>${th}°</b> · medido (centro del eco) <b class="text-emerald-300">${est.toFixed(1)}°</b> · error <b>${er.toFixed(1)}°</b> · anchura del eco ≈ ${l+rr+1}° ≈ θ<sub>B</sub> · con Ω = ${Om}°/s, t = θ/Ω = <b>${(est/Om).toFixed(2)} s</b>`+(sep>0?`<br>${reg>=2?'<b class="text-emerald-300">Se distinguen dos blancos</b>':'<b class="text-rose-400">Los dos blancos se confunden en uno</b>'} (separación ${sep}° frente a θ<sub>B</sub> = ${bw}°).`:'')}
+function m1(){const{x,w,h}=cvc('#a1'),cx=w/2,cy=h-26,R=h-56,bw=V.bw2,sq=V.sq,th=V.thB;x.clearRect(0,0,w,h);x.strokeStyle='#1e293b';x.beginPath();x.arc(cx,cy,R,-PI,0);x.stroke();
+x.strokeStyle='#334155';x.setLineDash([4,4]);x.beginPath();x.moveTo(cx,cy);x.lineTo(cx,cy-R-8);x.stroke();x.setLineDash([]);
+lobe(x,cx,cy,R,sq,bw,'#22d3ee','rgba(34,211,238,.15)');lobe(x,cx,cy,R,-sq,bw,'#a78bfa','rgba(167,139,250,.15)');
+x.font='12px sans-serif';x.fillStyle='#22d3ee';x.textAlign='center';let p=pt(cx,cy,R*.6,sq+bw*.15);x.fillText('(1)',p[0]+16,p[1]);x.fillStyle='#a78bfa';p=pt(cx,cy,R*.6,-sq-bw*.15);x.fillText('(2)',p[0]-16,p[1]);
+const[sx,sy]=pt(cx,cy,R*.95,th);x.strokeStyle='rgba(251,113,133,.6)';x.setLineDash([3,3]);x.beginPath();x.moveTo(cx,cy);x.lineTo(sx,sy);x.stroke();x.setLineDash([]);star(x,sx,sy,'#fb7185','');
+x.fillStyle='#e2e8f0';x.fillRect(cx-9,cy-3,18,12);
+const f=t=>10*Math.log10(G(t-sq,bw)/G(t+sq,bw)),sl=(f(.5)-f(-.5)),b=cvc('#a2'),y=b.x,W=b.w,H=b.h,L=36,B=24,ym=24,X=a=>L+(a+60)/120*(W-L-8),Y=v=>(H-B)/2+8-v/ym*((H-B)/2-12);
+y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(L,Y(0));y.lineTo(W-6,Y(0));y.moveTo(X(0),8);y.lineTo(X(0),H-B);y.stroke();y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='center';for(let a=-60;a<=60;a+=30)y.fillText(a+'°',X(a),H-10);y.textAlign='right';[-20,-10,0,10,20].forEach(v=>y.fillText(v,L-3,Y(v)+3));y.save();y.translate(10,H/2);y.rotate(-PI/2);y.textAlign='center';y.fillText('x = A₁/A₂ (dB)',0,0);y.restore();
+y.strokeStyle='#475569';y.setLineDash([4,4]);y.beginPath();y.moveTo(X(-60),Y(-60*sl));y.lineTo(X(60),Y(60*sl));y.stroke();y.setLineDash([]);
+y.strokeStyle='#22d3ee';y.lineWidth=2;y.beginPath();let first=1;for(let a=-60;a<=60;a+=.5){const v=clamp(f(a),-ym,ym);first?y.moveTo(X(a),Y(v)):y.lineTo(X(a),Y(v));first=0}y.stroke();y.lineWidth=1;
+const r=rng(A.seed*17+2),sg=V.nz/100*3,xm=f(th)+sg*(gn(r)-gn(r))*.7,est=xm/sl,a1=10*Math.log10(G(th-sq,bw)),a2=10*Math.log10(G(th+sq,bw));
+y.fillStyle='#fbbf24';y.beginPath();y.arc(X(th),Y(clamp(f(th),-ym,ym)),5,0,2*PI);y.fill();y.strokeStyle='#34d399';y.setLineDash([3,3]);y.beginPath();y.moveTo(L,Y(clamp(xm,-ym,ym)));y.lineTo(X(clamp(est,-60,60)),Y(clamp(xm,-ym,ym)));y.lineTo(X(clamp(est,-60,60)),Y(0));y.stroke();y.setLineDash([]);
+y.fillStyle='#475569';y.textAlign='left';y.fillText('recta tangente (aprox. lineal)',L+4,12);
+$('#t1a').innerHTML=endRes(th,est,`A₁ = ${a1.toFixed(1)} dB, A₂ = ${a2.toFixed(1)} dB (respecto al pico de cada haz) → x = <b>${xm.toFixed(1)} dB</b> · pendiente cerca del eje ≈ ${sl.toFixed(2)} dB/° · el ángulo se estima como x / pendiente.`)}
+function m2(){const{x,w,h}=cvc('#a1'),th=V.thB,dd=V.dd,dpx=w*(.15+.5*(dd-5)/95),cy=h-44,ax1=w/2-dpx/2,ax2=w/2+dpx/2,u=[Math.sin(th*D2R),-Math.cos(th*D2R)];x.clearRect(0,0,w,h);
+const RR=h-70,sx=w/2+u[0]*RR,sy=cy+u[1]*RR;x.strokeStyle='rgba(148,163,184,.35)';for(let k=-3;k<=3;k++){const px=ax2+u[0]*(-k*34+0),py=cy+u[1]*(-k*34);const dx=-u[1],dy=u[0];x.beginPath();x.moveTo(px-dx*w*.5,py-dy*w*.5);x.lineTo(px+dx*w*.5,py+dy*w*.5);x.setLineDash(k?[4,5]:[]);x.strokeStyle=k?'rgba(148,163,184,.3)':'#fb7185';x.stroke()}x.setLineDash([]);
+star(x,clamp(sx,12,w-12),clamp(sy,12,cy),'#fb7185','');
+[[ax1,'#a78bfa','1'],[ax2,'#22d3ee','2']].forEach(([ax,c,n])=>{x.fillStyle=c;x.beginPath();x.moveTo(ax,cy);x.lineTo(ax-8,cy+16);x.lineTo(ax+8,cy+16);x.fill();x.fillStyle='#e2e8f0';x.font='11px sans-serif';x.textAlign='center';x.fillText(n,ax,cy+30)});
+x.strokeStyle='#475569';x.beginPath();x.moveTo(ax1,cy+36);x.lineTo(ax2,cy+36);x.stroke();x.fillStyle='#94a3b8';x.fillText('d = '+dd+' m',w/2,cy+h*0+42);
+const t=dpx*Math.sin(th*D2R);x.strokeStyle='#fbbf24';x.lineWidth=3;x.beginPath();x.moveTo(ax1,cy);x.lineTo(ax1+u[0]*t,cy+u[1]*t);x.stroke();x.lineWidth=1;x.fillStyle='#fbbf24';x.textAlign='left';x.fillText('d·senθ',ax1+u[0]*t+6,cy+u[1]*t-4);
+const Tp=dd*Math.sin(th*D2R)/C*1e9,b=cvc('#a2'),y=b.x,W=b.w,H=b.h,L=14,B=24,tm=dd/C*1e9*1.1+30,X=t=>L+(t+tm)/(2*tm)*(W-L-8),Y=v=>H-B-v*(H-B-26),sp=7,ev=(t,t0)=>Math.exp(-((t-t0)**2)/(2*sp*sp));
+y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(L,H-B);y.lineTo(W-6,H-B);y.stroke();y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='center';const stp=tm>200?100:50;for(let t=-Math.floor(tm/stp)*stp;t<=tm;t+=stp)y.fillText(t,X(t),H-10);y.fillText('t (ns)',W-20,H-10);
+const t1=Tp/2,t2=-Tp/2;[[t1,'#a78bfa','antena 1'],[t2,'#22d3ee','antena 2']].forEach(([t0,c,n],i)=>{y.strokeStyle=c;y.lineWidth=2;y.beginPath();for(let k=0;k<=300;k++){const tt=-tm+2*tm*k/300,v=ev(tt,t0);k?y.lineTo(X(tt),Y(v)):y.moveTo(X(tt),Y(v))}y.stroke();y.lineWidth=1;y.fillStyle=c;y.textAlign=i?'right':'left';y.fillText(n,i?X(t0)-10:X(t0)+10,Y(1)+(i?0:12))});
+y.strokeStyle='#fbbf24';y.beginPath();y.moveTo(X(t2),Y(.5));y.lineTo(X(t1),Y(.5));y.stroke();y.fillStyle='#fbbf24';y.textAlign='center';y.fillText("T′ = "+Tp.toFixed(1)+' ns',X(0),Y(.5)-5);
+const r=rng(A.seed*19+3),sgt=V.nz/100*8,Tm=Tp+sgt*gn(r),est=Math.asin(clamp(C*Tm*1e-9/dd,-1,1))/D2R,dth=C*(sgt||.0001)*1e-9/(dd*Math.max(.05,Math.cos(th*D2R)))/D2R;
+$('#t1a').innerHTML=endRes(th,est,`T′ = d·senθ/c = <b>${Tp.toFixed(1)} ns</b> · medido ${Tm.toFixed(1)} ns · ángulo = arcsen(c·T′/d). Error típico por el ruido de tiempo (${sgt.toFixed(1)} ns): ≈ c·σ<sub>t</sub>/(d·cosθ) = ${dth.toFixed(1)}°.`)}
+const wr=a=>((a+PI)%(2*PI)+2*PI)%(2*PI)-PI;
+function m3(){const{x,w,h}=cvc('#a1'),th=V.thB,dl=V.dl,lp=w*.09,dpx=Math.min(w-60,dl*lp),cy=h-44,ax1=w/2-dpx/2,ax2=w/2+dpx/2,u=[Math.sin(th*D2R),-Math.cos(th*D2R)];x.clearRect(0,0,w,h);
+const RR=h-70,sx=w/2+u[0]*RR,sy=cy+u[1]*RR;for(let k=-6;k<=6;k++){const px=ax2+u[0]*(-k*lp),py=cy+u[1]*(-k*lp),dx=-u[1],dy=u[0];x.beginPath();x.moveTo(px-dx*w*.6,py-dy*w*.6);x.lineTo(px+dx*w*.6,py+dy*w*.6);x.strokeStyle=k?'rgba(148,163,184,.3)':'#fb7185';x.stroke()}
+star(x,clamp(sx,12,w-12),clamp(sy,12,cy),'#fb7185','');
+[[ax1,'#a78bfa','1'],[ax2,'#22d3ee','2']].forEach(([ax,c,n])=>{x.fillStyle=c;x.beginPath();x.moveTo(ax,cy);x.lineTo(ax-8,cy+16);x.lineTo(ax+8,cy+16);x.fill();x.fillStyle='#e2e8f0';x.font='11px sans-serif';x.textAlign='center';x.fillText(n,ax,cy+30)});
+x.strokeStyle='#475569';x.beginPath();x.moveTo(ax1,cy+36);x.lineTo(ax2,cy+36);x.stroke();x.fillStyle='#94a3b8';x.fillText('d = '+dl+' λ',w/2,cy+42);x.textAlign='left';x.fillStyle='#fbbf24';x.fillText('λ (entre frentes de onda)',8,16);x.strokeStyle='#fbbf24';x.lineWidth=3;x.beginPath();x.moveTo(8,22);x.lineTo(8+lp,22);x.stroke();x.lineWidth=1;
+const b=cvc('#a2'),y=b.x,W=b.w,H=b.h,L=40,B=24,X=a=>L+(a+90)/180*(W-L-8),Y=p=>(H-B)/2+6-p/PI*((H-B)/2-14);
+y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(L,Y(0));y.lineTo(W-6,Y(0));y.moveTo(X(0),8);y.lineTo(X(0),H-B);y.stroke();y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='center';for(let a=-90;a<=90;a+=30)y.fillText(a+'°',X(a),H-10);y.textAlign='right';y.fillText('180°',L-3,Y(PI)+3);y.fillText('0',L-3,Y(0)+3);y.fillText('−180°',L-3,Y(-PI)+3);
+y.strokeStyle='#22d3ee';y.lineWidth=2;let pr=null;y.beginPath();for(let a=-90;a<=90;a+=.25){const p=wr(2*PI*dl*Math.sin(a*D2R));if(pr===null||Math.abs(p-pr)>PI)y.moveTo(X(a),Y(p));else y.lineTo(X(a),Y(p));pr=p}y.stroke();y.lineWidth=1;
+const r=rng(A.seed*23+4),sg=V.nz/100*40*D2R,pm=wr(2*PI*dl*Math.sin(th*D2R)+sg*gn(r)),cand=[];for(let k=-12;k<=12;k++){const s=(pm+2*PI*k)/(2*PI*dl);if(Math.abs(s)<=1)cand.push(Math.asin(s)/D2R)}
+if(!cand.length)cand.push(clamp(Math.asin(clamp(pm/(2*PI*dl),-1,1))/D2R,-90,90));
+let est=cand.reduce((a,c)=>Math.abs(c)<Math.abs(a)?c:a,cand[0]);if(A.base&&dl>.5){const pc=wr(PI*Math.sin(th*D2R)+sg*gn(r)),tc=Math.asin(clamp(pc/PI,-1,1))/D2R;est=cand.reduce((a,c)=>Math.abs(c-tc)<Math.abs(a-tc)?c:a,cand[0])}
+y.strokeStyle='#fbbf24';y.setLineDash([4,4]);y.beginPath();y.moveTo(L,Y(pm));y.lineTo(W-6,Y(pm));y.stroke();y.setLineDash([]);cand.forEach(c=>{y.fillStyle=Math.abs(c-est)<1e-6?'#34d399':'#fb7185';y.beginPath();y.arc(X(c),Y(pm),Math.abs(c-est)<1e-6?6:4,0,2*PI);y.fill()});
+y.strokeStyle='#fb7185';y.setLineDash([3,3]);y.beginPath();y.moveTo(X(th),8);y.lineTo(X(th),H-B);y.stroke();y.setLineDash([]);y.fillStyle='#fb7185';y.textAlign='center';y.fillText('real',X(th),12);
+const amb=cand.length>1,ok=Math.abs(est-th)<3+V.nz/4;
+$('#t1a').innerHTML=endRes(th,est,`Fase medida Δφ = <b>${(pm/D2R).toFixed(0)}°</b> (módulo 360°) · ángulos compatibles: ${cand.map(c=>c.toFixed(0)+'°').join(', ')}`+(amb?`<br><b class="${A.base?'text-emerald-300':'text-rose-400'}">Ambigüedad: ${cand.length} ángulos dan la misma fase.</b> ${A.base?'La base corta (λ/2) elige el más cercano a su estimación gruesa.':'Sin más información, el radar elige el más cercano al eje y puede equivocarse.'}`:'<br><b class="text-emerald-300">Medida no ambigua</b> (d ≤ λ/2).')+` · error por ruido ≈ λ·σ<sub>φ</sub>/(2π·d·cosθ) = ${(V.nz/100*40*D2R/(2*PI*dl*Math.max(.05,Math.cos(th*D2R)))/D2R).toFixed(1)}°`)}
+const DV=(()=>{const r=6.76,f=30,f0=113e6,Vt=2*PI*f*r;return{r,f,f0,Vt,Dl:f0*Vt/C}})();
+function m4(now){const{x,w,h}=cvc('#a1'),cx=w/2,cy=h/2,R=Math.min(w,h)/2-18,beta=((ph_(now)*.08)%1)*360,th=V.thA;x.clearRect(0,0,w,h);rings(x,cx,cy,R);
+const Rc=R*.45,[sx,sy]=pt(cx,cy,R*.92,th);star(x,sx,sy,'#fb7185','emisor');x.strokeStyle='rgba(251,113,133,.35)';x.setLineDash([3,4]);x.beginPath();x.moveTo(cx,cy);x.lineTo(sx,sy);x.stroke();x.setLineDash([]);
+x.strokeStyle='#475569';x.beginPath();x.arc(cx,cy,Rc,0,2*PI);x.stroke();const[px,py]=pt(cx,cy,Rc,beta),vx=Math.cos(beta*D2R),vy=Math.sin(beta*D2R);
+x.strokeStyle='#22d3ee';x.fillStyle='#22d3ee';x.lineWidth=2.5;x.beginPath();x.moveTo(px,py);x.lineTo(px+vx*34,py+vy*34);x.stroke();x.lineWidth=1;x.beginPath();x.arc(px,py,6,0,2*PI);x.fill();x.fillStyle='#94a3b8';x.font='11px sans-serif';x.textAlign='center';x.fillText('velocidad V',px+vx*34+(vx>0?20:-20),py+vy*34+4);
+const b=cvc('#a2'),y=b.x,W=b.w,H=b.h,L=40,B=24,X=a=>L+a/360*(W-L-8),mx=DV.Dl*1.25,Y=v=>(H-B)/2+6-v/mx*((H-B)/2-14);y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(L,Y(0));y.lineTo(W-6,Y(0));y.stroke();y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='center';for(let a=0;a<=360;a+=90)y.fillText(a+'°',X(a),H-10);y.textAlign='right';y.fillText('+'+DV.Dl.toFixed(0),L-3,Y(DV.Dl)+3);y.fillText('0',L-3,Y(0)+3);y.fillText('−'+DV.Dl.toFixed(0),L-3,Y(-DV.Dl)+3);y.textAlign='left';y.fillText('Hz',L+3,12);
+const fd=a=>DV.Dl*Math.sin((th-a)*D2R),r=rng(A.seed*29+5),sg=V.nz/100*DV.Dl*.6,N=72;let ca=0,sa=0;const dots=[];for(let k=0;k<N;k++){const a=k*360/N,f=fd(a)+sg*gn(r);dots.push([a,f]);ca+=f*Math.cos(a*D2R);sa+=f*Math.sin(a*D2R)}ca*=2/N;sa*=2/N;const est=((Math.atan2(ca,-sa)/D2R)+360)%360;
+y.strokeStyle='#22d3ee';y.lineWidth=1.5;y.beginPath();for(let a=0;a<=360;a+=2){a?y.lineTo(X(a),Y(fd(a))):y.moveTo(X(a),Y(fd(a)))}y.stroke();y.lineWidth=1;y.fillStyle='#64748b';dots.forEach(([a,f])=>{y.beginPath();y.arc(X(a),Y(f),2,0,2*PI);y.fill()});
+y.strokeStyle='#34d399';y.setLineDash([3,3]);y.beginPath();y.moveTo(X(est),8);y.lineTo(X(est),H-B);y.stroke();y.setLineDash([]);y.fillStyle='#34d399';y.textAlign='center';y.fillText('cruce por cero ↓ = acimut',X(clamp(est,70,290)),12);
+y.fillStyle='#fff';y.beginPath();y.arc(X(beta),Y(fd(beta)),4,0,2*PI);y.fill();let er=est-th;er=((er+540)%360)-180;
+$('#t1a').innerHTML=`Acimut real <b>${th}°</b> · medido <b class="text-emerald-300">${est.toFixed(1)}°</b> · error <b>${er.toFixed(1)}°</b><br>Datos del VOR Doppler: antena a 30 vueltas/s, radio ${DV.r} m → V = 2π·30·${DV.r} = ${DV.Vt.toFixed(0)} m/s; con f₀ = 113 MHz la excursión es Δf = f₀·V/c = <b>${DV.Dl.toFixed(0)} Hz</b>. Cada punto gris es una medida con ruido.`}
+function m5(){const{x,w,h}=cvc('#a1'),cx=w/2,cy=h-26,R=h-56,N=V.nb,bw=V.bwm,th=V.thB,sp=120/(N-1),cs=[];for(let i=0;i<N;i++)cs.push(-60+i*sp);x.clearRect(0,0,w,h);x.strokeStyle='#1e293b';x.beginPath();x.arc(cx,cy,R,-PI,0);x.stroke();
+const r=rng(A.seed*31+6),sg=V.nz/100*2,P=cs.map(c=>10*Math.log10(G(th-c,bw))+sg*gn(r)),im=P.reduce((a,v,i)=>v>P[a]?i:a,0);
+cs.forEach((c,i)=>lobe(x,cx,cy,R,c,bw,i==im?'#34d399':'rgba(167,139,250,.45)',i==im?'rgba(52,211,153,.22)':'rgba(167,139,250,.05)',i==im?2:1));
+const[sx,sy]=pt(cx,cy,R*.95,th);star(x,sx,sy,'#fb7185','');x.fillStyle='#e2e8f0';x.fillRect(cx-9,cy-3,18,12);
+const b=cvc('#a2'),y=b.x,W=b.w,H=b.h,L=34,B=34,bwid=(W-L-8)/N,Y=d=>H-B-(1+d/40)*(H-B-14),dmin=-40;y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(L,H-B);y.lineTo(W-6,H-B);y.stroke();y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='right';[0,-20,-40].forEach(d=>y.fillText(d,L-3,Y(d)+3));
+P.forEach((p,i)=>{const hh=Math.max(0,Y(Math.max(p,dmin)));y.fillStyle=i==im?'#34d399':'#6d5bc4';const bx=L+i*bwid+bwid*.15;y.fillRect(bx,Y(Math.max(p,dmin)),bwid*.7,H-B-Y(Math.max(p,dmin)));y.fillStyle='#94a3b8';y.textAlign='center';if(N<=9||i%2==0)y.fillText(cs[i].toFixed(0)+'°',L+(i+.5)*bwid,H-B+13);y.fillText((i+1),L+(i+.5)*bwid,H-B+26)});
+let est=cs[im],inter='';if(A.interp&&im>0&&im<N-1){const a=P[im-1],bb=P[im],c=P[im+1],den=a-2*bb+c;if(Math.abs(den)>1e-6){est=cs[im]+clamp(.5*(a-c)/den,-.5,.5)*sp;inter=' (interpolado con los haces vecinos)'}}
+y.fillStyle='#64748b';y.textAlign='right';y.fillText('haz nº y dirección (abajo)',W-8,12);
+$('#t1a').innerHTML=endRes(th,est,`${N} haces separados ${sp.toFixed(1)}° · gana el haz nº ${im+1} (apunta a ${cs[im].toFixed(1)}°)${inter}. Sin interpolar, el error puede llegar a ±${(sp/2).toFixed(1)}° (media separación).`)}
+const AMODES=[m0,m1,m2,m3,m4,m5];function p1(now){AMODES[A.mode](now)}RD.a=()=>p1(performance.now());
+function setMode1(i){A.mode=i;CX={};$('#d1').innerHTML=AD[i][0];$('#k1').innerHTML='💡 <b>Idea clave:</b> '+AD[i][1];$('#y1').innerHTML='🧪 <b>Prueba esto:</b> '+AD[i][2];$('#c1a').innerHTML=AD[i][3];$('#c1b').innerHTML=AD[i][4];buildGroup('a',SL['a'+i]);const ob=$('#a1opt');ob.classList.toggle('hidden',!(i==3||i==5));ob.textContent=i==3?(A.base?'✔ Base corta λ/2 activada (resuelve la ambigüedad)':'✘ Sin base corta'):(A.interp?'✔ Interpolación entre haces':'✘ Sin interpolar');p1(performance.now())}
+$('#a1new').onclick=()=>{A.seed++;p1(performance.now())};
+$('#a1opt').onclick=()=>{if(A.mode==3)A.base=!A.base;else A.interp=!A.interp;setMode1(A.mode)};
+// ===================== 2. RADAR PULSADO =====================
+function p1p(){const T=1/V.prf,tau=V.tau*1e-6,Rm=C*T/2,R=V.R1*1e3,td=2*R/C,amb=R>=Rm,tdm=td%T,ap=R%Rm;
+const{x,w,h}=cvc('#s1'),L=14,B=28,Wd=w-L-10,tmax=3.3*T,X=t=>L+t/tmax*Wd,yb=h-B,ya=a=>yb-a*(yb-46);x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,yb);x.lineTo(w-6,yb);x.stroke();
+x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='center';for(let k=0;k<=3;k++)x.fillText(k==0?'0':k+'T',X(k*T),h-14);x.fillText('tiempo',w-24,h-4);
+const pw=Math.max(5,tau/tmax*Wd);for(let k=0;k<3;k++){x.fillStyle='#22d3ee';x.fillRect(X(k*T),ya(1),pw,yb-ya(1));const te=k*T+tdm;if(te<tmax){x.fillStyle='#fbbf24';x.fillRect(X(te),ya(.55),pw,yb-ya(.55))}}
+x.strokeStyle='#94a3b8';x.fillStyle='#94a3b8';x.font='11px sans-serif';x.textAlign='center';x.beginPath();x.moveTo(X(0)+pw/2,ya(1)-8);x.lineTo(X(T)+pw/2,ya(1)-8);x.stroke();x.fillText('T = 1/f_p = '+(T*1e3).toFixed(2)+' ms',X(T/2),ya(1)-12);
+x.fillStyle='#22d3ee';x.textAlign='left';x.fillText('τ = '+V.tau+' µs (a escala solo en el eje de tiempo)',X(2*T)+pw+4>w-190?X(1.3*T):X(T)+pw+4,ya(1)+14);
+if(!amb){x.strokeStyle='#fbbf24';x.beginPath();x.moveTo(X(0)+pw,yb-8);x.lineTo(X(tdm),yb-8);x.stroke();x.fillStyle='#fbbf24';x.textAlign='center';x.fillText('t = 2R/c = '+(td*1e3).toFixed(2)+' ms',X(tdm/2)+pw/2,yb-12)}
+else{x.fillStyle='#fb7185';x.textAlign='left';x.fillText('t = 2R/c = '+(td*1e3).toFixed(2)+' ms > T: ¡el eco llega tras el siguiente pulso!',L+2,yb-12)}
+const duty=tau*V.prf,Pm=V.Pp*duty;
+$('#t1').innerHTML=`T = 1/f<sub>p</sub> = ${(T*1e3).toFixed(2)} ms · ciclo de trabajo = τ/T = ${(duty*100).toFixed(2)} % · potencia media = P<sub>pico</sub>·τ/T = <b>${Pm.toFixed(2)} kW</b> (P<sub>pico</sub> = ${V.Pp} kW)<br><b class="text-emerald-300">R<sub>max</sub> = c·T/2 = ${(Rm/1e3).toFixed(0)} km</b> · ΔR = c·τ/2 = ${fm_(C*tau/2)}<br>`+(amb?`<b class="text-rose-400">El blanco está a ${V.R1} km (más allá de R<sub>max</sub>) y el radar lo coloca a ${(ap/1e3).toFixed(0)} km.</b>`:`Blanco a ${V.R1} km: eco a t = 2R/c = ${(td*1e3).toFixed(2)} ms, dentro de R<sub>max</sub>.`)+(V.Ru*1e3>Rm?`<br><b class="text-amber-300">⚠ La distancia útil (${V.Ru} km) es mayor que R<sub>max</sub>: el radar no puede cubrirla sin ambigüedad.</b>`:`<br>La distancia útil (${V.Ru} km) es menor que R<sub>max</sub>: <b class="text-emerald-300">correcto</b>.`);
+// eje de distancias
+const c2=cvc('#s1r'),y=c2.x,W=c2.w,H=c2.h,Lm=20,Rmk=Rm/1e3,xm=Math.max(Rmk,V.R1,V.Ru)*1.05,XX=k=>Lm+k/xm*(W-Lm-14),yl=H-46;y.clearRect(0,0,W,H);y.fillStyle='rgba(52,211,153,.2)';y.fillRect(XX(0),yl-14,XX(Math.min(V.Ru,xm))-XX(0),28);y.strokeStyle='#334155';y.beginPath();y.moveTo(XX(0),yl);y.lineTo(XX(xm),yl);y.stroke();
+y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='center';for(let i=0;i<=5;i++){const k=xm*i/5;y.fillText(k.toFixed(0),XX(k),H-8)}y.textAlign='right';y.fillText('km',W-4,12);
+y.strokeStyle='#fb7185';y.lineWidth=2;y.beginPath();y.moveTo(XX(Rmk),yl-22);y.lineTo(XX(Rmk),yl+22);y.stroke();y.lineWidth=1;y.fillStyle='#fb7185';y.textAlign='center';y.fillText('R_max',XX(Rmk),yl-26);
+y.fillStyle='#34d399';y.textAlign='left';y.fillText('distancia útil ('+V.Ru+' km)',XX(0)+3,yl+30);
+const tri=(k,c,fill)=>{y.fillStyle=c;y.strokeStyle=c;y.beginPath();y.moveTo(XX(k),yl-2);y.lineTo(XX(k)-7,yl-16);y.lineTo(XX(k)+7,yl-16);y.closePath();fill?y.fill():y.stroke()};
+tri(V.R1,'#fbbf24',true);y.fillStyle='#fbbf24';y.textAlign='center';y.fillText('real '+V.R1,XX(V.R1),yl-62+22);if(amb){tri(ap/1e3,'#fb7185',false);y.fillStyle='#fb7185';y.fillText('se ve aquí ('+(ap/1e3).toFixed(0)+')',XX(ap/1e3),yl+16)}}
+function p1b(){const dR=C*V.tau*1e-6/2,c2=cvc('#s1b'),y=c2.x,W=c2.w,H=c2.h,x0=-1500,x1=6500,XX=m=>34+(m-x0)/(x1-x0)*(W-42),yb=H-24,ya=a=>yb-a*(yb-24);y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(34,yb);y.lineTo(W-8,yb);y.stroke();y.fillStyle='#64748b';y.font='11px sans-serif';y.textAlign='center';for(let m=-1000;m<=6000;m+=1000)y.fillText(m,XX(m),H-8);y.fillText('m',W-12,H-8);
+const s=V.sep,rect=(a,b,c,al)=>{y.fillStyle=c;y.globalAlpha=al;y.fillRect(XX(a),ya(1),XX(b)-XX(a),yb-ya(1));y.globalAlpha=1};
+if(s<dR){y.fillStyle='#34d399';y.globalAlpha=.35;y.fillRect(XX(-dR/2),ya(1),XX(s+dR/2)-XX(-dR/2),yb-ya(1));y.globalAlpha=1;y.strokeStyle='#34d399';y.lineWidth=2;y.strokeRect(XX(-dR/2),ya(1),XX(s+dR/2)-XX(-dR/2),yb-ya(1));y.lineWidth=1}else{rect(-dR/2,dR/2,'#22d3ee',.5);rect(s-dR/2,s+dR/2,'#fbbf24',.5);y.strokeStyle='#22d3ee';y.strokeRect(XX(-dR/2),ya(1),XX(dR/2)-XX(-dR/2),yb-ya(1));y.strokeStyle='#fbbf24';y.strokeRect(XX(s-dR/2),ya(1),XX(s+dR/2)-XX(s-dR/2),yb-ya(1))}
+y.fillStyle='#e2e8f0';y.textAlign='left';y.fillText('ancho de cada eco ΔR = '+fm_(dR),40,12);
+$('#t1b').innerHTML=`ΔR = c·τ/2 = ${fm_(dR)} (τ = ${V.tau} µs). Separación = ${fm_(s)} → `+(s<dR?'<b class="text-rose-400">los ecos se solapan: se ve un solo blanco.</b>':'<b class="text-emerald-300">se ven dos blancos distintos.</b>')}
+function p1c(){const om=V.rpm*6,N=V.bw*V.prf/om,dp=om/V.prf,{x,w,h}=cvc('#s1c'),L=16,B=28,Wd=w-L-12,rg=Math.max(V.bw*1.6,dp*6),X=a=>L+(a+rg)/(2*rg)*Wd,yb=h-B;x.clearRect(0,0,w,h);
+const bwpx=(X(V.bw/2)-X(-V.bw/2));x.fillStyle='rgba(34,211,238,.1)';x.fillRect(X(-V.bw/2),14,bwpx,yb-14);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,yb);x.lineTo(w-8,yb);x.stroke();
+const n0=Math.ceil(-rg/dp),n1=Math.floor(rg/dp);let ins=0;const many=(n1-n0)>260;
+for(let k=n0;k<=n1;k++){const a=k*dp,i=Math.abs(a)<=V.bw/2;if(i)ins++;if(many&&!i&&k%4)continue;x.strokeStyle=i?'#22d3ee':'#475569';x.lineWidth=i?1.6:1;x.beginPath();x.moveTo(X(a),yb);x.lineTo(X(a),i?26:50);x.stroke()}x.lineWidth=1;
+x.fillStyle='#94a3b8';x.font='11px sans-serif';x.textAlign='center';x.fillText('θ_B = '+V.bw+'° (−3 dB)',X(0),10);x.strokeStyle='#fbbf24';x.beginPath();x.moveTo(X(-V.bw/2),yb+9);x.lineTo(X(V.bw/2),yb+9);x.stroke();x.fillStyle='#fbbf24';x.fillText('θ_B',X(0),yb+22);
+x.fillStyle='#64748b';x.textAlign='left';x.fillText('separación entre pulsos Ω/f_p = '+dp.toFixed(3)+'°',L,yb+22);x.textAlign='right';x.fillText('acimut →',w-8,yb+22);
+$('#t1c').innerHTML=`Ω = ${V.rpm} rpm = ${om}°/s (una vuelta cada ${(60/V.rpm).toFixed(0)} s) · el haz avanza ${dp.toFixed(3)}° entre pulsos<br><b class="text-emerald-300">N = θ<sub>B</sub>/Ω · f<sub>p</sub> = ${V.bw}°/${om}°/s · ${V.prf} Hz = ${N.toFixed(1)} pulsos por blanco</b> · R<sub>max</sub> = ${(C/2/V.prf/1e3).toFixed(0)} km`}
+RD.p1=()=>{p1p();p1c();p1b()};RD.p1r=p1p;RD.p1b=()=>{p1b();p1p()};RD.p1c=()=>{p1c();p1p()};
+$('#typ').onclick=()=>{V.prf=300;V.bw=1.5;V.rpm=5;lab();RD.p1c()};
+// ===================== 3. MTI =====================
+const RMAX=150,v1f=()=>lam()*V.prf4/2;
+// clutter: montañas (derecha) y lluvia (izquierda)
+const CL=(()=>{const r=rng(77),a=[];for(let i=0;i<150;i++)a.push({az:55+r()*50,r:.28+r()*.22,l:-99});for(let i=0;i<110;i++)a.push({az:215+r()*55,r:.45+r()*.3,l:-99});for(let i=0;i<14;i++)a.push({az:10+r()*30,r:.7+r()*.1,l:-99});return a})();
+const AC={x:-70,y:-55,l1:-99,l2:-99,b1:1,b2:0},PP={ang:0,vt:0,lt:performance.now(),n:0};
+function ppiDraw(x,w,h,mti,t0){const cx=w/2,cy=h/2,R=Math.min(w,h)/2-14,th=a=>(a-90)*D2R;x.clearRect(0,0,w,h);x.strokeStyle='#14532d';x.lineWidth=1;for(let i=1;i<=3;i++){x.beginPath();x.arc(cx,cy,R*i/3,0,2*PI);x.stroke()}for(let a=0;a<360;a+=45){x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+R*Math.cos(th(a)),cy+R*Math.sin(th(a)));x.stroke()}
+x.fillStyle='#166534';x.font='10px sans-serif';x.textAlign='left';x.fillText(Math.round(RMAX/3)+'',cx+3,cy-R/3+11);x.fillText(Math.round(2*RMAX/3)+'',cx+3,cy-2*R/3+11);x.fillText('km',cx+3,cy-R+11);
+for(let i=0;i<40;i++){x.fillStyle=`rgba(52,211,153,${.2*(1-i/40)})`;x.beginPath();x.moveTo(cx,cy);x.arc(cx,cy,R,th(PP.ang-(i+1)*1.5),th(PP.ang-i*1.5));x.fill()}
+x.strokeStyle='#facc15';x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+R*Math.cos(th(PP.ang)),cy+R*Math.sin(th(PP.ang)));x.stroke();
+const fade=Math.exp(-0);CL.forEach(c=>{const al=Math.exp(-(PP.vt-c.l)/1.6)*(mti?.04:.85);if(al>.012){x.fillStyle=`rgba(251,191,36,${al})`;const[px,py]=pt(cx,cy,c.r*R,c.az);x.fillRect(px-2,py-2,4,4)}});
+const al=Math.exp(-(PP.vt-(mti?AC.l2:AC.l1))/1.6)*(mti?AC.b2:1);if(al>.03){const[px,py]=pt(cx,cy,Math.hypot(AC.x,AC.y)/RMAX*R,Math.atan2(AC.x,AC.y)/D2R);x.fillStyle=`rgba(250,250,250,${al})`;x.beginPath();x.arc(px,py,5,0,2*PI);x.fill();x.strokeStyle=`rgba(250,250,250,${al*.7})`;x.beginPath();x.arc(px,py,9,0,2*PI);x.stroke()}}
+function ppiLoop(now){const dt=Math.min(.1,(now-PP.lt)/1e3);PP.lt=now;if(document.hidden)return;PP.vt+=dt;PP.ang=(PP.ang+72*dt)%360;
+const K=25,hd=V.hd*D2R;AC.x+=V.vv*Math.sin(hd)*K*dt/1e3;AC.y+=V.vv*Math.cos(hd)*K*dt/1e3;if(Math.hypot(AC.x,AC.y)>RMAX*.97){AC.x*=-.94;AC.y*=-.94}
+const d=Math.hypot(AC.x,AC.y)||1,vr=V.vv*(Math.sin(hd)*AC.x+Math.cos(hd)*AC.y)/d,resp=Math.abs(Math.sin(PI*vr/v1f())),azA=Math.atan2(AC.x,AC.y)/D2R;
+CL.forEach(c=>{if(Math.abs(((PP.ang-c.az+540)%360)-180)<2.2)c.l=PP.vt});if(Math.abs(((PP.ang-azA+540)%360)-180)<2.5){AC.l1=PP.vt;AC.l2=PP.vt;AC.b2=resp}
+const a=cvc('#pp1'),b=cvc('#pp2');if(a.w>0)ppiDraw(a.x,a.w,a.h,false);if(b.w>0)ppiDraw(b.x,b.w,b.h,true);
+if(++PP.n%12==0){const rp=resp*100;$('#t3a').innerHTML=`v<sub>1</sub> = λ·f<sub>p</sub>/2 = ${v1f().toFixed(0)} m/s (primera velocidad ciega) · el avión va a ${V.vv} m/s y su <b>velocidad radial ahora</b> es <b class="text-emerald-300">${Math.abs(vr).toFixed(0)} m/s</b> (${vr>=0?'se aleja':'se acerca'}) → el MTI deja pasar el <b class="${rp<15?'text-rose-400':'text-emerald-300'}">${rp.toFixed(0)} %</b> de su eco`+(rp<15?' — <b class="text-rose-400">¡casi invisible!</b>':'')+`<br><span class="text-slate-400">El movimiento del avión está acelerado para que se vea; la velocidad radial se calcula con la velocidad real.</span>`}}
+// efecto mariposa
+const NB=100,TB0=80;
+function p3(){const lm=lam(),fp=V.prf4,v1=v1f(),r=rng(3),Ab=new Float64Array(NB),ph=new Float64Array(NB),th=2*PI*V.vr/v1;for(let b=0;b<NB;b++){let a=0;if(b>=8&&b<=24)a=(1+.5*Math.sin((b-8)/16*PI))*(.8+.4*r());else if(b>=58&&b<=66)a=.8*(.8+.4*r());Ab[b]=a;ph[b]=r()*2*PI}
+const tp=[.2,.4,.5,.4,.2];tp.forEach((a,i)=>{Ab[TB0+i]=a;ph[TB0+i]=.6});
+const K=8,sw=[];for(let k=0;k<K;k++){const rr=rng(40+k),s=new Float64Array(NB);for(let b=0;b<NB;b++){const rot=(b>=TB0&&b<TB0+5)?th*k:0;s[b]=Ab[b]*Math.cos(ph[b]+rot)+.02*gn(rr)}sw.push(s)}
+const plot=(id,series,cols,ym)=>{const{x,w,h}=cvc(id),L=8,B=20,X=b=>L+b/(NB-1)*(w-L-6),Y=v=>(h-B)/2-v/ym*((h-B)/2-6);x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,Y(0));x.lineTo(w-6,Y(0));x.stroke();
+series.forEach((s,k)=>{x.strokeStyle=cols[k%cols.length];x.beginPath();for(let b=0;b<NB;b++)b?x.lineTo(X(b),Y(s[b])):x.moveTo(X(b),Y(s[b]));x.stroke()});x.fillStyle='#64748b';x.font='11px sans-serif';x.textAlign='center';x.fillText('distancia →',w/2,h-5);x.fillStyle='#94a3b8';x.textAlign='left';x.fillText('clutter',X(8),12);x.textAlign='right';x.fillText('blanco',X(TB0+6),12)};
+const cols=['rgba(34,211,238,.85)','rgba(167,139,250,.85)','rgba(52,211,153,.85)','rgba(251,191,36,.85)','rgba(251,113,133,.85)','rgba(148,163,184,.85)','rgba(250,204,21,.85)','rgba(244,114,182,.85)'];
+plot('#bf1',sw,cols,1.6);const df=[];for(let k=1;k<K;k++)df.push(Float64Array.from(sw[k],(v,b)=>v-sw[k-1][b]));plot('#bf2',df,cols.slice(1),1.6);
+// muestras pulso a pulso
+const{x,w,h}=cvc('#bf3'),L=34,B=22,N=14,X=k=>L+(k+.5)/N*(w-L-8),hh=(h-B)/2,Yv=v=>hh-v*(hh*.42),Yd=v=>h-B-20-v*9;x.clearRect(0,0,w,h);
+const phi0=.9,cell=k=>Math.cos(phi0+th*k);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,Yv(0));x.lineTo(w-8,Yv(0));x.moveTo(L,h-B-20);x.lineTo(w-8,h-B-20);x.stroke();
+x.strokeStyle='rgba(251,191,36,.45)';x.lineWidth=1.5;x.beginPath();for(let i=0;i<=600;i++){const k=-.5+(N)*i/600;const px=L+(k+.5)/N*(w-L-8);i?x.lineTo(px,Yv(Math.cos(phi0+th*k))):x.moveTo(px,Yv(Math.cos(phi0+th*k)))}x.stroke();x.lineWidth=1;
+x.fillStyle='#fbbf24';for(let k=0;k<N;k++){x.beginPath();x.arc(X(k),Yv(cell(k)),4,0,2*PI);x.fill()}
+x.strokeStyle='#34d399';x.lineWidth=5;for(let k=1;k<N;k++){const d=cell(k)-cell(k-1);x.beginPath();x.moveTo(X(k),Yd(0));x.lineTo(X(k),Yd(d));x.stroke()}x.lineWidth=1;
+x.fillStyle='#64748b';x.font='10px sans-serif';x.textAlign='center';for(let k=0;k<N;k+=1)x.fillText(k+1,X(k),h-8);x.textAlign='left';x.fillText('pulso',2,h-8);x.textAlign='center';x.textAlign='left';x.fillStyle='#fbbf24';x.fillText('eco del blanco en una celda de distancia (puntos = lo que mide el radar; curva = Doppler real)',L+4,12);x.fillStyle='#34d399';x.fillText('salida del cancelador (muestra − muestra anterior)',L+4,h-B-46);
+// respuesta
+const c4=cvc('#bf4'),y=c4.x,W=c4.w,H=c4.h,vmax=Math.max(4*v1,V.vr*1.15),Lm=34,Bm=22,XX=v=>Lm+v/vmax*(W-Lm-8),YY=a=>H-Bm-a*(H-Bm-16),resp=v=>Math.abs(Math.sin(PI*v/v1));y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(Lm,H-Bm);y.lineTo(W-8,H-Bm);y.moveTo(Lm,H-Bm);y.lineTo(Lm,10);y.stroke();
+y.fillStyle='#64748b';y.font='11px sans-serif';y.textAlign='center';for(let i=0;i<=5;i++){const v=vmax*i/5;y.fillText(v.toFixed(0),XX(v),H-8)}y.textAlign='left';y.fillText('velocidad radial (m/s)',Lm+8,12);y.textAlign='right';y.fillText('1',Lm-4,YY(1)+4);y.fillText('0',Lm-4,YY(0)+4);
+for(let n=1;n*v1<=vmax;n++){y.strokeStyle='rgba(251,113,133,.6)';y.setLineDash([3,3]);y.beginPath();y.moveTo(XX(n*v1),YY(0));y.lineTo(XX(n*v1),YY(1));y.stroke();y.setLineDash([]);y.fillStyle='#fb7185';y.textAlign='center';y.fillText(n==1?'v₁':n+'v₁',XX(n*v1),YY(1)-2)}
+y.strokeStyle='#22d3ee';y.lineWidth=2;y.beginPath();for(let i=0;i<=400;i++){const v=vmax*i/400;i?y.lineTo(XX(v),YY(resp(v))):y.moveTo(XX(v),YY(resp(v)))}y.stroke();y.lineWidth=1;y.fillStyle='#fbbf24';y.beginPath();y.arc(XX(V.vr),YY(resp(V.vr)),6,0,2*PI);y.fill();y.fillStyle='#94a3b8';y.textAlign='left';y.fillText('clutter (v = 0): respuesta 0 → se cancela',Lm+6,YY(.12));
+const rp=resp(V.vr)*100,fd=2*V.vr/lm,xs=V.vr/v1;
+$('#t3b').innerHTML=`f<sub>d</sub> = 2v/λ = ${fh(fd)} (λ = ${fm_(lm)}) · f<sub>p</sub> = ${fp} Hz → f<sub>d</sub>·T = ${(fd/fp).toFixed(2)} · <b class="text-rose-300">v₁ = λ·f<sub>p</sub>/2 = ${v1.toFixed(0)} m/s</b> · R<sub>max</sub> = ${(C/2/fp/1e3).toFixed(0)} km<br>El cancelador deja pasar el <b class="${rp<15?'text-rose-400':'text-emerald-300'}">${rp.toFixed(0)} %</b> del eco`+(rp<15?' — <b class="text-rose-400">¡velocidad ciega o casi!</b>':'')+(xs>.5&&Math.abs(xs-Math.round(xs))>.05?` · el Doppler real va ${xs.toFixed(2)} ciclos por pulso: lo medido parece <b>más lento</b> (solapamiento)`:'')}
+RD.m0=()=>{p3()};RD.m1=()=>{};RD.m2=p3;
+$('#blind').onclick=()=>{V.vr=clamp(Math.round(v1f()),0,600);lab();p3()};$('#half').onclick=()=>{V.vr=clamp(Math.round(v1f()/2),0,600);lab();p3()};
+// ===================== 4. CW =====================
+const CM=['CW simple','CW-FM','Múltiples frecuencias','Navegación Doppler'];let cwm=0;
+function c0(){const lm=lam(),vr=V.v3*Math.cos(V.ang*D2R),fd=2*vr/lm,{x,w,h}=cvc('#s3'),rx=30,ry=h/2,tx=w*.72,ty=h/2,a=V.ang*D2R;x.clearRect(0,0,w,h);
+x.fillStyle='#1e293b';x.fillRect(rx-10,ry-14,22,28);x.fillStyle='#e2e8f0';x.font='11px sans-serif';x.textAlign='center';x.fillText('radar',rx,ry+28);x.strokeStyle='rgba(148,163,184,.4)';x.setLineDash([4,4]);x.beginPath();x.moveTo(rx+12,ry);x.lineTo(tx,ty);x.stroke();x.setLineDash([]);
+x.fillStyle='#fbbf24';x.beginPath();x.arc(tx,ty,8,0,2*PI);x.fill();const L=15+V.v3/300*Math.min(110,w*.3),dx=-Math.cos(a),dy=-Math.sin(a);
+const arrow=(x0,y0,x1,y1,c,wd)=>{x.strokeStyle=c;x.fillStyle=c;x.lineWidth=wd;x.beginPath();x.moveTo(x0,y0);x.lineTo(x1,y1);x.stroke();const an=Math.atan2(y1-y0,x1-x0);x.beginPath();x.moveTo(x1,y1);x.lineTo(x1-9*Math.cos(an-.4),y1-9*Math.sin(an-.4));x.lineTo(x1-9*Math.cos(an+.4),y1-9*Math.sin(an+.4));x.fill();x.lineWidth=1};
+if(V.v3>0){arrow(tx,ty,tx+dx*L,ty+dy*L,'#fbbf24',2.5);const pr=L*Math.cos(a);x.strokeStyle='#34d399';x.setLineDash([3,3]);x.beginPath();x.moveTo(tx+dx*L,ty+dy*L);x.lineTo(tx-pr,ty);x.stroke();x.setLineDash([]);arrow(tx,ty+24,tx-pr,ty+24,'#34d399',2)}
+x.fillStyle='#fbbf24';x.textAlign='left';x.fillText('v',tx+dx*L+6,ty+dy*L-4);x.fillStyle='#34d399';x.fillText('v_r = v·cos α',tx-Math.max(40,Math.abs(L*Math.cos(a)))-10,ty+44);
+const c2=cvc('#s3b'),y=c2.x,W=c2.w,H=c2.h,fm=2*300/lm*1.1,X=f=>W/2+f/fm*(W/2-14);y.clearRect(0,0,W,H);y.strokeStyle='#334155';y.beginPath();y.moveTo(8,H-24);y.lineTo(W-8,H-24);y.stroke();
+y.strokeStyle='#22d3ee';y.lineWidth=3;y.beginPath();y.moveTo(X(0),H-24);y.lineTo(X(0),24);y.stroke();y.strokeStyle='#fbbf24';y.beginPath();y.moveTo(X(fd),H-24);y.lineTo(X(fd),40);y.stroke();y.lineWidth=1;y.fillStyle='#22d3ee';y.font='11px sans-serif';y.textAlign='center';y.fillText('f₀',X(0),16);y.fillStyle='#fbbf24';y.fillText('f₀'+(fd>=0?'+':'−')+'|f_d|',X(fd),32);y.fillStyle='#64748b';y.fillText('desplazamiento respecto a f₀ ('+fh(fm)+' a cada lado)',W/2,H-6);
+const c3=cvc('#s3c'),z=c3.x,w3=c3.w,h3=c3.h;z.clearRect(0,0,w3,h3);z.strokeStyle='#334155';z.beginPath();z.moveTo(0,h3/2);z.lineTo(w3,h3/2);z.stroke();const Tw=Math.abs(fd)>20?Math.min(.05,4/Math.abs(fd)):0,phR=4*PI*V.R3/lm;
+if(Tw){z.strokeStyle='#34d399';z.beginPath();for(let i=0;i<=w3;i+=1){const t=i/w3*Tw,v=Math.sin(2*PI*fd*t-phR);i?z.lineTo(i,h3/2-v*(h3/2-8)):z.moveTo(i,h3/2-v*(h3/2-8))}z.stroke();z.fillStyle='#64748b';z.font='10px sans-serif';z.textAlign='right';z.fillText((Tw*1e3).toFixed(1)+' ms',w3-4,h3-4)}else{z.fillStyle='#94a3b8';z.font='12px sans-serif';z.textAlign='center';z.fillText('Doppler nulo: no hay tono',w3/2,h3/2-8)}
+const dir=Math.abs(V.ang-90)<.5||V.v3==0?'<b class="text-slate-300">sin desplazamiento</b>':fd>0?'<b class="text-emerald-300">se acerca → la frecuencia recibida es mayor</b>':'<b class="text-rose-300">se aleja → la frecuencia recibida es menor</b>';
+$('#t4a').innerHTML=`v<sub>r</sub> = ${V.v3}·cos ${V.ang}° = <b>${vr.toFixed(1)} m/s</b> (${(vr*3.6).toFixed(0)} km/h) · <b class="text-emerald-300">f<sub>d</sub> = 2v<sub>r</sub>/λ = ${fh(fd)}</b> (λ = ${fm_(lm)}) · ${dir}<br>Distancia: <b class="text-rose-300">no se puede medir</b>. La fase del tono (${((phR/D2R)%360).toFixed(0)}°) cambia con R, pero se repite cada λ/2 = ${fm_(lm/2)}.`}
+function c1(){const lm=lam(),dfH=V.df5*1e6,fbR=4*dfH*V.fm5*V.R5/C,fd=2*V.v5/lm,up=fbR-fd,dn=fbR+fd,{x,w,h}=cvc('#s5'),L=40,B=24,Wd=w-L-8,tri=s=>{s=((s%1)+1)%1;return s<.5?-1+4*s:3-4*s},Y=u=>(h-B)/2-u*((h-B)/2-12)/1.5,X=t=>L+t/2*Wd;
+x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,h-B);x.lineTo(w-8,h-B);x.stroke();const dly=.06,sh=clamp(fd/(2*60/lm),-1,1)*.3;
+const line=(f,c)=>{x.strokeStyle=c;x.lineWidth=2;x.beginPath();for(let i=0;i<=400;i++){const t=i/200;i?x.lineTo(X(t),Y(f(t))):x.moveTo(X(t),Y(f(t)))}x.stroke();x.lineWidth=1};
+line(t=>tri(t),'#22d3ee');line(t=>tri(t-dly)+sh,'#fbbf24');x.fillStyle='#22d3ee';x.font='11px sans-serif';x.textAlign='left';x.fillText('emitida',L+4,14);x.fillStyle='#fbbf24';x.fillText('eco',L+60,14);x.fillStyle='#64748b';x.textAlign='center';x.fillText('tiempo → (dos periodos de modulación, 1/f_m cada uno)',w/2,h-6);x.textAlign='right';x.fillText('f₀+Δf/2',L-3,Y(1)+4);x.fillText('f₀−Δf/2',L-3,Y(-1)+4);
+const c2=cvc('#s5b'),y=c2.x,W=c2.w,H=c2.h,m=Math.max(Math.abs(fd)*2.4,fbR*.02,1),Yb=v=>H/2-(v-fbR)/m*(H/2-24),Xb=t=>L+t/2*(W-L-8);y.clearRect(0,0,W,H);y.strokeStyle='#475569';y.setLineDash([4,4]);y.beginPath();y.moveTo(L,Yb(fbR));y.lineTo(W-8,Yb(fbR));y.stroke();y.setLineDash([]);y.fillStyle='#94a3b8';y.font='10px sans-serif';y.textAlign='left';y.fillText('f_bR = media = '+fh(fbR)+' (distancia)',L+4,H-6);y.textAlign='right';y.fillText('escala ampliada alrededor de f_bR',W-8,12);
+[[0,.5,up,'f_b′ (subida)','#a78bfa'],[.5,1,dn,'f_b″ (bajada)','#34d399'],[1,1.5,up,'','#a78bfa'],[1.5,2,dn,'','#34d399']].forEach(([a,b,v,l,c])=>{y.strokeStyle=c;y.lineWidth=3;y.beginPath();y.moveTo(Xb(a),Yb(v));y.lineTo(Xb(b),Yb(v));y.stroke();y.lineWidth=1;if(l){y.fillStyle=c;y.font='11px sans-serif';y.textAlign='center';y.fillText(l+' = '+fh(v),Xb((a+b)/2),Yb(v)+(l.includes('bajada')?(up<=dn?-8:16):(up<=dn?16:-8)))}});
+const Rm=C*((up+dn)/2)/(4*dfH*V.fm5),vm=lm*((dn-up)/2)/2;
+$('#t4b').innerHTML=`f<sub>bR</sub> = 4Δf·f<sub>m</sub>·R/c = <b>${fh(fbR)}</b> · f<sub>d</sub> = 2v/λ = <b>${fh(fd)}</b><br>f<sub>b</sub>′ = f<sub>bR</sub> − f<sub>d</sub> = ${fh(up)} · f<sub>b</sub>″ = f<sub>bR</sub> + f<sub>d</sub> = ${fh(dn)}<br><b class="text-emerald-300">Medidos: R = c·(f<sub>b</sub>′+f<sub>b</sub>″)/2 / (4Δf·f<sub>m</sub>) = ${Rm.toFixed(1)} m · v = λ·(f<sub>b</sub>″−f<sub>b</sub>′)/4 = ${vm.toFixed(1)} m/s</b><br>Resolución en distancia: c/(2Δf) = ${fm_(C/(2*dfH))}`}
+function c2(){const d=V.df6*1e6,Rm=C/(2*d),{x,w,h}=cvc('#s6'),L=40,B=24,X=r=>L+r/300*(w-L-8),Y=p=>h-B-p/(2*PI)*(h-B-16);x.clearRect(0,0,w,h);x.strokeStyle='#334155';x.beginPath();x.moveTo(L,h-B);x.lineTo(w-8,h-B);x.moveTo(L,h-B);x.lineTo(L,8);x.stroke();
+x.fillStyle='#64748b';x.font='11px sans-serif';x.textAlign='center';for(let r=0;r<=300;r+=50)x.fillText(r,X(r),h-8);x.textAlign='right';x.fillText('distancia R (m)',w-8,12);x.fillText('2π',L-4,Y(2*PI)+4);x.fillText('π',L-4,Y(PI)+4);x.fillText('0',L-4,Y(0)+4);
+x.strokeStyle='#38bdf8';x.lineWidth=2;x.beginPath();let first=1;for(let i=0;i<=1200;i++){const r=300*i/1200,p=(4*PI*d*r/C)%(2*PI),pr=(4*PI*d*(300*(i-1)/1200)/C)%(2*PI);if(first||p<pr){x.moveTo(X(r),Y(p));first=0}else x.lineTo(X(r),Y(p))}x.stroke();x.lineWidth=1;
+const phi=(4*PI*d*V.R6/C)%(2*PI),Rv=C*phi/(4*PI*d);x.strokeStyle='rgba(251,191,36,.6)';x.setLineDash([4,4]);x.beginPath();x.moveTo(L,Y(phi));x.lineTo(X(V.R6),Y(phi));x.lineTo(X(V.R6),h-B);x.stroke();x.setLineDash([]);x.fillStyle='#fbbf24';x.beginPath();x.arc(X(V.R6),Y(phi),6,0,2*PI);x.fill();
+const cand=[];for(let r=Rv;r<=300;r+=Rm)cand.push(r.toFixed(0));const sg=5*PI/180,err=C*sg/(4*PI*d),amb=V.R6>=Rm;
+$('#t4c').innerHTML=`Una sola frecuencia (f₀ = ${fh(S.f0)}): la fase se repite cada λ/2 = <b>${fm_(lam()/2)}</b> → inútil para medir distancia.<br>Con dos: Δφ = 4πΔf·R/c = ${(phi*180/PI).toFixed(0)}° → <b class="text-emerald-300">R<sub>max</sub> = c/(2Δf) = ${fm_(Rm)}</b> · el radar lee <b class="${amb?'text-rose-400':'text-emerald-300'}">${Rv.toFixed(1)} m</b>${amb?' (¡ambiguo! la distancia real es otra de las compatibles: '+cand.join(', ')+' m)':''}<br>Con un error de fase de 5°, el error de distancia es c·δφ/(4πΔf) = <b>${fm_(err)}</b>`}
+// ---- navegación Doppler
+function c3(){const K=2*S.f0/C,g=V.gm*D2R,p0=V.ph0*D2R,pt_=V.pt*D2R,dr=V.dr*D2R,vx=V.Vg*Math.cos(dr),vy=V.Vg*Math.sin(dr),w=V.wv;
+// haces: FR, FL, BR, BL; depresión: delanteros δ−p, traseros δ+p
+const dep=[g-pt_,g-pt_,g+pt_,g+pt_],sx=[1,1,-1,-1],sy=[1,-1,1,-1],fb=dep.map((d,i)=>K*(vx*Math.cos(d)*Math.cos(p0)*sx[i]+vy*Math.cos(d)*Math.sin(p0)*sy[i]-w*Math.sin(d)));
+const [fFR,fFL,fBR,fBL]=fb,den=4*K*Math.cos(g),vxe=((fFR+fFL)-(fBL+fBR))/(den*Math.cos(p0)),vye=((fFR+fBR)-(fFL+fBL))/(den*Math.sin(p0)),Vj=Math.hypot(vxe,vye),dj=Math.atan2(vye,vxe)/D2R,V1=fFR/(K*Math.cos(g)*Math.cos(p0));
+const c=cvc('#s7'),x=c.x,W=c.w,H=c.h,cx=W/2,cy=H/2,Lf=Math.min(W,H)*.36;x.clearRect(0,0,W,H);x.strokeStyle='#1e293b';for(let k=1;k<=2;k++){x.beginPath();x.arc(cx,cy,Lf*k*.6,0,2*PI);x.stroke()}
+const cols=['#22d3ee','#a78bfa','#fbbf24','#fb7185'],nm=['delante der.','delante izq.','detrás der.','detrás izq.'];
+for(let i=0;i<4;i++){const a=(sx[i]>0?sy[i]*V.ph0:180-sy[i]*V.ph0),[px,py]=pt(cx,cy,Lf,a);x.strokeStyle=cols[i];x.setLineDash([4,4]);x.beginPath();x.moveTo(cx,cy);x.lineTo(px,py);x.stroke();x.setLineDash([]);x.fillStyle=cols[i];x.beginPath();x.arc(px,py,6,0,2*PI);x.fill();x.font='10px sans-serif';x.textAlign=sy[i]>0?'left':'right';x.fillText(nm[i],px+(sy[i]>0?9:-9),py+(sx[i]>0?-4:12))}
+x.fillStyle='#e2e8f0';x.beginPath();x.moveTo(cx,cy-16);x.lineTo(cx-10,cy+10);x.lineTo(cx,cy+5);x.lineTo(cx+10,cy+10);x.closePath();x.fill();x.fillStyle='#64748b';x.textAlign='center';x.fillText('eje del avión',cx,cy-Lf-12);
+const k=Lf*.9/300,ex=cx+vy*k,ey=cy-vx*k;x.strokeStyle='#34d399';x.fillStyle='#34d399';x.lineWidth=3;x.beginPath();x.moveTo(cx,cy);x.lineTo(ex,ey);x.stroke();x.lineWidth=1;const an=Math.atan2(ey-cy,ex-cx);x.beginPath();x.moveTo(ex,ey);x.lineTo(ex-10*Math.cos(an-.4),ey-10*Math.sin(an-.4));x.lineTo(ex-10*Math.cos(an+.4),ey-10*Math.sin(an+.4));x.fill();x.textAlign='left';x.fillText('velocidad respecto al suelo',ex+8,ey+(ey>cy?10:-6));
+const c2_=cvc('#s7b'),y=c2_.x,Wb=c2_.w,Hb=c2_.h,L=44,B=34,mx=Math.max(...fb.map(Math.abs),1000)*1.15,Yb=f=>(Hb-B)/2+6-f/mx*((Hb-B)/2-10),bw=(Wb-L-8)/4;y.clearRect(0,0,Wb,Hb);y.strokeStyle='#334155';y.beginPath();y.moveTo(L,Yb(0));y.lineTo(Wb-6,Yb(0));y.stroke();y.fillStyle='#64748b';y.font='10px sans-serif';y.textAlign='right';y.fillText('+'+(mx/1e3).toFixed(0)+' kHz',L-3,Yb(mx)+8);y.fillText('0',L-3,Yb(0)+3);y.fillText('−'+(mx/1e3).toFixed(0)+' kHz',L-3,Yb(-mx)-2);
+fb.forEach((f,i)=>{y.fillStyle=cols[i];const bx=L+i*bw+bw*.18;y.fillRect(bx,Math.min(Yb(0),Yb(f)),bw*.64,Math.abs(Yb(f)-Yb(0)));y.fillStyle='#e2e8f0';y.textAlign='center';y.fillText((f/1e3).toFixed(2)+' kHz',bx+bw*.32,f>=0?Yb(f)-4:Yb(f)+11);y.fillStyle='#94a3b8';y.fillText(nm[i],bx+bw*.32,Hb-18);});
+const e1=(V1/V.Vg-1)*100,ej=(Vj/V.Vg-1)*100;
+$('#t4d').innerHTML=`Cada haz: f<sub>d</sub> = 2(f₀/c)·v·cosγ = ${fh(2*S.f0/C*V.Vg*Math.cos(g))} para el haz delantero sin deriva ni cabeceo (γ = ${V.gm}°, f₀ = ${fh(S.f0)}; con el desvío lateral se multiplica además por cos ${V.ph0}°).<br><b class="text-amber-300">Con un solo haz delantero:</b> v = ${V1.toFixed(1)} m/s (error <b class="${Math.abs(e1)>1?'text-rose-400':'text-slate-200'}">${e1.toFixed(1)} %</b>) · <b class="text-emerald-300">Con Janus (4 haces):</b> v = ${Vj.toFixed(1)} m/s (error <b class="${Math.abs(ej)>1?'text-rose-400':'text-emerald-300'}">${ej.toFixed(2)} %</b>) y deriva = ${dj.toFixed(1)}° (real ${V.dr}°).`}
+RD.c0=c0;RD.c1=c1;RD.c2=c2;RD.c3=c3;const CD=[c0,c1,c2,c3];
+function setCW(i){cwm=i;CX={};document.querySelectorAll('.cw').forEach(e=>e.classList.toggle('hidden',+e.dataset.m!=i));CD[i]()}
+// ===================== reto =====================
+const OPT=['Pulsado (distancia)','Pulsado MTI','CW (velocidad)','CW-FM','CW multifrecuencia','Navegación Doppler'];
+const QS=[['Un radar de vigilancia aérea junto a montañas y zonas de lluvia debe ver aviones e ignorar el terreno.','Pulsado MTI','El terreno es clutter fijo (Doppler nulo) y el avión se mueve: el MTI cancela lo fijo y deja lo móvil.'],
+['Se quiere medir la velocidad de un coche de la forma más sencilla, sin necesitar su distancia.','CW (velocidad)','El CW mide directamente el desplazamiento Doppler f_d = 2v_r/λ.'],
+['El altímetro de un avión necesita la distancia al suelo de forma continua.','CW-FM','Modulando la frecuencia en triángulo, la frecuencia de batido es proporcional a la distancia.'],
+['Para guiar un misil se necesita una medida de distancia de gran precisión sobre un único blanco.','CW multifrecuencia','Comparar la fase de dos frecuencias da distancias muy precisas, pero solo funciona con un blanco (telurómetro).'],
+['Una aeronave debe calcular su velocidad respecto al suelo y su deriva sin ayuda de estaciones terrestres y con cualquier meteorología.','Navegación Doppler','Un radar Doppler con varios haces (p. ej. el sistema Janus, con γ de 65°–70°) mide el vector velocidad respecto a la superficie.'],
+['Un radar de costa debe medir con claridad la distancia a un buque lejano, con ráfagas cortas y escuchando entre pulsos.','Pulsado (distancia)','El radar de impulsos da la distancia por el tiempo del eco; hay que elegir f_p para no tener ambigüedad (R_max).'],
+['Se necesita una alarma sencilla de detección de intrusos: basta saber si algo se mueve.','CW (velocidad)','Cualquier Doppler distinto de cero delata un blanco en movimiento.']];
+const Q={ord:[],i:0,ok:0,n:0,done:0};
+function qnew(){if(Q.i>=Q.ord.length){Q.ord=QS.map((_,i)=>i).sort(()=>Math.random()-.5);Q.i=0}const q=QS[Q.ord[Q.i]];Q.done=0;$('#qq').textContent=q[0];$('#qf').innerHTML='';$('#qn').classList.add('hidden');mk($('#qo'),OPT,'',o=>{if(Q.done)return;Q.done=1;Q.n++;const ok=o==q[1];Q.ok+=ok;$('#qf').innerHTML=`${ok?'✓ <b class="text-emerald-300">Correcto.</b>':'✗ <b class="text-rose-300">Era «'+q[1]+'».</b>'} ${q[2]} <span class="text-xs text-slate-400">(${Q.ok}/${Q.n})</span>`;$('#qn').classList.remove('hidden')});[...$('#qo').children].forEach(b=>b.classList.remove('on'))}
+$('#qn').onclick=()=>{Q.i++;qnew()};
+// ===================== arranque =====================
+function all(){CX={};p1(performance.now());RD.p1();RD.m0();CD[cwm]()}
+mk($('#m1'),AM,AM[0],(o,i)=>setMode1(i));mk($('#m4'),CM,CM[0],(o,i)=>setCW(i));
+mk($('#bd'),Object.keys(BANDS),'S · 3 GHz',o=>{S.f0=BANDS[o];$('#f0v').textContent=fh(S.f0);$('#lv').textContent=fm_(lam());CX={};RD.m0();CD[cwm]()});$('#f0v').textContent=fh(S.f0);$('#lv').textContent=fm_(lam());
+buildGroup('p1',SL.p1);buildGroup('p1r',SL.p1r);buildGroup('p1b',SL.p1b);buildGroup('p1c',SL.p1c);buildGroup('m0',SL.m0);buildGroup('m1',SL.m1);buildGroup('m2',SL.m2);
+for(let i=0;i<4;i++)buildGroup('c'+i,SL['c'+i]);
+setMode1(0);qnew();all();
+function loop(now){requestAnimationFrame(loop);if(document.hidden)return;if(A.mode==0||A.mode==4)p1(now);ppiLoop(now)}
+requestAnimationFrame(loop);addEventListener('resize',all);
+</script>
+<script>
+/* RadioNav UVa: fondo de nodos, enlaces al índice y logos (independiente del resto de la app) */
+(function(){
+var base=/\/apps\/[^\/]*$/i.test(location.pathname)?'../':'';
+document.querySelectorAll('.nl-idx').forEach(function(a){a.href=base+'index.html'});
+document.querySelectorAll('#nl-foot img').forEach(function(im){var f=im.getAttribute('data-f');im.src=base+f;
+ im.onerror=function(){if(!im.dataset.t){im.dataset.t=1;im.src=(base?'':'../')+f}else{im.onerror=null;var sp=document.createElement('span');sp.textContent=im.alt;im.replaceWith(sp)}}});
+var c=document.getElementById('nl-bg');if(!c||!c.getContext)return;var x=c.getContext('2d'),W=0,H=0,P=[],last=0,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function build(){W=c.width=innerWidth;H=c.height=innerHeight;var n=Math.min(60,Math.floor(W*H/20000));P=[];for(var i=0;i<n;i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.4+1})}
+function draw(k){x.clearRect(0,0,W,H);for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx*k;p.y+=p.vy*k;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;x.beginPath();x.arc(p.x,p.y,p.r,0,6.2832);x.fillStyle='rgba(56,189,248,.4)';x.fill();
+ for(var j=i+1;j<P.length;j++){var q=P[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){x.beginPath();x.moveTo(p.x,p.y);x.lineTo(q.x,q.y);x.strokeStyle='rgba(99,102,241,'+((1-d/120)*.18)+')';x.lineWidth=.8;x.stroke()}}}}
+function frame(t){requestAnimationFrame(frame);if(document.hidden||t-last<33)return;var k=Math.min(3,(t-last)/16.7);last=t;draw(k)}
+build();draw(0);if(!still)requestAnimationFrame(frame);
+addEventListener('resize',function(){if(Math.abs(innerWidth-W)>2||Math.abs(innerHeight-H)>150){build();draw(0)}else{c.width=W=innerWidth;c.height=H=innerHeight}});
+})();
+</script>
+</body></html>

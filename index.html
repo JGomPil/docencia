@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SimuLab UVa · Simuladores docentes de neurociencia, radionavegación e inteligencia artificial</title>
+  <meta name="description" content="Simuladores docentes interactivos de neurociencia, radionavegación e inteligencia artificial y datos. Universidad de Valladolid.">
+  <meta name="theme-color" content="#020612">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #020612;
+      --panel: rgba(8, 16, 36, 0.75);
+      --panel-border: rgba(45, 80, 140, 0.35);
+      --cy: #22d3ee;
+      --vi: #a78bfa;
+      --em: #34d399;
+      --or: #fb923c;
+      --pk: #f472d0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: #f0f6ff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Aurora & Particles Background */
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 80% 25%, rgba(34, 211, 238, 0.16), transparent 50%),
+        radial-gradient(circle at 85% 35%, rgba(167, 139, 250, 0.18), transparent 45%),
+        radial-gradient(circle at 15% 75%, rgba(52, 211, 153, 0.08), transparent 45%);
+    }
+
+    canvas#bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Cards Grid Styling */
+    .sim-card {
+      background: linear-gradient(170deg, rgba(10, 20, 42, 0.85) 0%, rgba(4, 10, 24, 0.92) 100%);
+      border: 1px solid rgba(50, 85, 140, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s, box-shadow 0.28s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sim-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--card-color, #22d3ee), transparent 65%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.25;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .sim-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 36px -12px var(--card-glow, rgba(34, 211, 238, 0.35));
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .sim-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Badges */
+    .badge-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      border: 1px solid var(--card-color);
+      color: var(--card-color);
+      background: color-mix(in srgb, var(--card-color) 12%, transparent);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--card-color) 20%, transparent);
+    }
+
+    .preview-container {
+      height: 125px;
+      width: 100%;
+      border-radius: 10px;
+      background: radial-gradient(ellipse at center, rgba(14, 28, 56, 0.7), rgba(2, 6, 18, 0.95));
+      border: 1px solid rgba(45, 80, 135, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-box {
+      background: linear-gradient(180deg, rgba(8, 18, 38, 0.75) 0%, rgba(4, 10, 24, 0.88) 100%);
+      border: 1px solid rgba(45, 80, 135, 0.35);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+    .pulse-dot {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  
+    /* --- ajustes: previews con proporción fija, tarjetas uniformes y centradas --- */
+    .preview-container{height:auto!important;aspect-ratio:240/125}
+    .preview-container.tall{aspect-ratio:240/170}
+    .preview-container svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+    .soon-tag{position:static!important;white-space:nowrap}
+    .cards{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin:1.5rem 0}
+    .cards>.sim-card{width:calc((100% - (var(--n) - 1) * 1rem) / var(--n));min-width:0}
+    .cards>.sim-card .flex-grow{flex-grow:1}
+    .nl-back{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .95rem;border-radius:9999px;border:1px solid rgba(100,116,139,.55);background:rgba(15,23,42,.7);color:#cbd5e1;font-size:.78rem;font-weight:600;text-decoration:none;white-space:nowrap;transition:border-color .2s,color .2s,transform .2s}
+    .nl-back:hover{border-color:#22d3ee;color:#fff;transform:translateX(-2px)}
+.cards{--n:1}
+@media(min-width:768px){.cards{--n:3}}
+  </style>
+  <style>
+    .sim-card.soon{cursor:default;pointer-events:none}
+    .sim-card.soon:hover{transform:none;box-shadow:none}
+    .soon-tag{position:absolute;top:10px;right:12px;font-size:.58rem;font-weight:700;letter-spacing:.1em;padding:2px 8px;border-radius:9999px;color:#94a3b8;border:1px dashed rgba(148,163,184,.5);background:rgba(15,23,42,.7)}
+    .preview-container svg{width:100%;height:100%;display:block}
+    .preview-container.tall{height:170px}
+    .chip{font-size:.66rem;font-weight:600;padding:2px 8px;border-radius:9999px;border:1px solid rgba(148,163,184,.35);color:#cbd5e1;background:rgba(15,23,42,.6)}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes dash{to{stroke-dashoffset:-24}}
+    @keyframes blip{0%,100%{opacity:.15}50%{opacity:1}}
+    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    .spin{animation:spin 6s linear infinite}.spin-r{animation:spin 3s linear infinite}
+    .dashan{stroke-dasharray:4 4;animation:dash 1s linear infinite}
+    .blip{animation:blip 3s ease-in-out infinite}.bob{animation:bob 2.4s ease-in-out infinite}
+  </style>
+<style id="nl-foot-style">
+/* Pie común NeuroLab UVa (mismo que en las apps) */
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-foot{display:none!important}}
+</style>
+</head>
+<body class="relative text-slate-100 min-h-screen">
+
+  <div class="aurora-bg"></div>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+
+    <header class="flex flex-wrap items-center justify-between gap-4 py-3 mb-2 border-b border-slate-800/60">
+      <!-- Logo UVa (Izquierda) -->
+      <a href="https://www.uva.es/" class="flex items-center gap-3">
+          <img src="img/UVa.png" width="200">
+      </a>
+
+      <!-- Logo GIB (Derecha) -->
+      <div class="flex items-center gap-2.5">
+          <a href="https://gib.uva.es/"><img src="img/GIB.png" width="200"></a>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center py-6 sm:py-8">
+      <div class="lg:col-span-6 flex flex-col justify-center">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold tracking-widest uppercase w-fit mb-4">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] pulse-dot"></span>
+          SIMULADORES DOCENTES INTERACTIVOS<br>
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-2">
+          SimuLab <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">UVa</span>
+        </h1>
+        <h2 class="text-xl sm:text-2xl font-semibold text-slate-200 mb-3">Neurociencia, radionavegación e inteligencia artificial</h2>
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mb-6">
+          Tres áreas, una misma idea: aprender experimentando. Elige el área de la asignatura y entra en su laboratorio de simuladores.
+        </p>
+      </div>
+      <div class="lg:col-span-6 relative flex justify-center items-center">
+        <div class="absolute w-[300px] h-[300px] sm:w-[420px] sm:h-[420px] bg-gradient-to-tr from-cyan-500/20 via-orange-500/20 to-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <canvas id="hero-clusters-canvas" class="w-full max-w-[520px] h-[320px] sm:h-[390px] cursor-grab active:cursor-grabbing relative z-10" aria-label="Tres áreas conectadas: neurociencia, radionavegación e IA y datos"></canvas>
+      </div>
+    </section>
+
+     <main class="cards">
+
+      <a data-cluster="0" href="neurolab/index.html" class="sim-card p-4 text-left group" style="--card-color:#22d3ee; --card-glow:rgba(34,211,238,0.35);">
+        
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">5 SIMULADORES</span>
+        </div>
+        <div class="preview-container tall mb-3"><svg viewBox="0 0 240 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><ellipse cx="120" cy="66" rx="82" ry="52" fill="#22d3ee" fill-opacity=".05" stroke="#22d3ee" stroke-opacity=".5"/><g stroke="#22d3ee" stroke-opacity=".35"><line x1="73" y1="82" x2="80" y2="91"/><line x1="73" y1="82" x2="55" y2="52"/><line x1="73" y1="82" x2="72" y2="93"/><line x1="73" y1="82" x2="113" y2="70"/><line x1="73" y1="82" x2="98" y2="65"/><line x1="139" y1="64" x2="163" y2="67"/><line x1="139" y1="64" x2="121" y2="44"/><line x1="139" y1="64" x2="132" y2="30"/><line x1="139" y1="64" x2="161" y2="44"/><line x1="139" y1="64" x2="173" y2="76"/><line x1="139" y1="64" x2="120" y2="34"/><line x1="139" y1="64" x2="183" y2="55"/><line x1="139" y1="64" x2="113" y2="70"/><line x1="139" y1="64" x2="98" y2="65"/><line x1="139" y1="64" x2="171" y2="44"/><line x1="80" y1="91" x2="72" y2="93"/><line x1="80" y1="91" x2="113" y2="70"/><line x1="80" y1="91" x2="98" y2="65"/><line x1="163" y1="67" x2="161" y2="44"/><line x1="163" y1="67" x2="173" y2="76"/><line x1="163" y1="67" x2="183" y2="55"/><line x1="163" y1="67" x2="171" y2="44"/><line x1="121" y1="44" x2="132" y2="30"/><line x1="121" y1="44" x2="161" y2="44"/><line x1="121" y1="44" x2="120" y2="34"/><line x1="121" y1="44" x2="113" y2="70"/><line x1="121" y1="44" x2="98" y2="65"/><line x1="132" y1="30" x2="161" y2="44"/><line x1="132" y1="30" x2="120" y2="34"/><line x1="132" y1="30" x2="113" y2="70"/><line x1="132" y1="30" x2="171" y2="44"/><line x1="161" y1="44" x2="173" y2="76"/><line x1="161" y1="44" x2="120" y2="34"/><line x1="161" y1="44" x2="183" y2="55"/><line x1="161" y1="44" x2="171" y2="44"/><line x1="173" y1="76" x2="183" y2="55"/><line x1="173" y1="76" x2="171" y2="44"/><line x1="55" y1="52" x2="72" y2="93"/><line x1="55" y1="52" x2="98" y2="65"/><line x1="120" y1="34" x2="113" y2="70"/><line x1="120" y1="34" x2="98" y2="65"/><line x1="183" y1="55" x2="171" y2="44"/><line x1="72" y1="93" x2="98" y2="65"/><line x1="113" y1="70" x2="98" y2="65"/></g><circle class="blip" style="animation-delay:-2.3s" cx="73" cy="82" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-0.6s" cx="139" cy="64" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.9s" cx="80" cy="91" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.7s" cx="163" cy="67" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.3s" cx="121" cy="44" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.3s" cx="132" cy="30" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-1.7s" cx="161" cy="44" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.2s" cx="173" cy="76" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-0.4s" cx="55" cy="52" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-1.4s" cx="120" cy="34" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.5s" cx="183" cy="55" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-0.6s" cx="72" cy="93" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.8s" cx="113" cy="70" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-2.7s" cx="98" cy="65" r="3.2" fill="#22d3ee"/><circle class="blip" style="animation-delay:-1.2s" cx="171" cy="44" r="3.2" fill="#22d3ee"/><path d="M10,140 L10,142.5 L14,144.0 L18,141.4 L22,144.7 L26,146.7 L30,142.1 L34,135.8 L38,138.3 L42,137.3 L46,134.2 L50,133.4 L54,142.0 L58,142.3 L62,142.2 L66,142.9 L70,148.7 L74,141.9 L78,138.7 L82,136.9 L86,140.0 L90,132.2 L94,134.8 L98,138.1 L102,144.1 L106,138.8 L110,145.0 L114,146.0 L118,146.3 L122,136.7 L126,140.8 L130,137.5 L134,136.2 L138,130.6 L142,140.3 L146,139.6 L150,141.8 L154,140.3 L158,149.6 L162,143.5 L166,141.7 L170,137.6 L174,142.3 L178,133.1 L182,134.1 L186,135.2 L190,142.6 L194,137.1 L198,143.0 L202,145.3 L206,148.1 L210,139.0 L214,142.0 L218,139.7 L222,137.8 L226,130.5 L230,137.7 L234,138.4 L238,139.6" fill="none" stroke="#22d3ee" stroke-width="1.6" class="dashan" style="stroke-dasharray:240 8"/><text x="10" y="164" fill="#94a3b8" font-size="8" font-family="system-ui">EEG · ERP · conectividad · fuentes · optogenética</text></svg></div>
+        <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">Neurociencia</h3>
+        <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">Computacional · Avanzada</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">Simuladores de señal EEG, potenciales evocados, conectividad y grafos, localización de fuentes y optogenética.</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="chip">EEGSim</span><span class="chip">ERPSim</span><span class="chip">GraphSim</span><span class="chip">SourceSim</span><span class="chip">OptoGenSim</span></div>
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-cyan-400">
+          <span>Entrar en NeuroLab</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <a data-cluster="1" href="radionav/index.html" class="sim-card p-4 text-left group" style="--card-color:#fb923c; --card-glow:rgba(251,146,60,0.35);">
+        
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">4 SIMULADORES</span>
+        </div>
+        <div class="preview-container tall mb-3"><svg viewBox="0 0 240 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g transform="translate(92 78)"><circle r="46" fill="#0b1d3a" stroke="#fb923c" stroke-opacity=".7"/><g fill="none" stroke="#fb923c" stroke-opacity=".3"><ellipse rx="46" ry="14"/><ellipse rx="18" ry="46"/><ellipse rx="34" ry="46"/><line x1="-46" y1="0" x2="46" y2="0"/></g>
+<g transform="rotate(-22)"><ellipse rx="84" ry="26" fill="none" stroke="#fb923c" stroke-opacity=".4" stroke-dasharray="3 4"/><circle r="4" fill="#fb923c"><animateMotion dur="9s" repeatCount="indefinite" path="M-84,0 a84,26 0 1,0 168,0 a84,26 0 1,0 -168,0"/></circle></g><circle cx="22" cy="-10" r="3.2" fill="#fff"/></g>
+<g stroke="#fb923c" stroke-width="1.8" fill="none"><path d="M188,140 L196,90 L204,140"/><line x1="191" y1="120" x2="201" y2="120"/></g><circle cx="196" cy="86" r="3" fill="#fb923c"/>
+<g fill="none" stroke="#fb923c"><path class="blip" d="M204,84 A10,10 0 0 1 204,98"/><path class="blip" style="animation-delay:-.8s" d="M212,78 A18,18 0 0 1 212,104"/><path class="blip" style="animation-delay:-1.6s" d="M220,72 A26,26 0 0 1 220,110"/><path class="blip" d="M188,84 A10,10 0 0 0 188,98"/><path class="blip" style="animation-delay:-.8s" d="M180,78 A18,18 0 0 0 180,104"/></g>
+<text x="10" y="164" fill="#94a3b8" font-size="8" font-family="system-ui">GNSS · VOR/DME · ILS/MLS · radar</text></svg></div>
+        <h3 class="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">Radionavegación</h3>
+        <h4 class="text-xs font-semibold text-orange-400 uppercase tracking-wide mb-2">Radiodeterminación</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">Navegación por satélite, radiofaros (VOR y DME), sistemas de aterrizaje (ILS y MLS) y radar.</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="chip">GNSS</span><span class="chip">VOR · DME</span><span class="chip">ILS · MLS</span><span class="chip">Radar</span></div>
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-orange-400">
+          <span>Entrar en RadioNav</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+      <a data-cluster="2" href="datalab/index.html" class="sim-card p-4 text-left group" style="--card-color:#34d399; --card-glow:rgba(52,211,153,0.35);">
+        
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge-tag">6 SIMULADORES</span>
+        </div>
+        <div class="preview-container tall mb-3"><svg viewBox="0 0 240 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g stroke="#34d399" stroke-opacity=".28"><line x1="34" y1="50" x2="92" y2="36"/><line x1="34" y1="50" x2="92" y2="64"/><line x1="34" y1="50" x2="92" y2="92"/><line x1="34" y1="50" x2="92" y2="120"/><line x1="34" y1="80" x2="92" y2="36"/><line x1="34" y1="80" x2="92" y2="64"/><line x1="34" y1="80" x2="92" y2="92"/><line x1="34" y1="80" x2="92" y2="120"/><line x1="34" y1="110" x2="92" y2="36"/><line x1="34" y1="110" x2="92" y2="64"/><line x1="34" y1="110" x2="92" y2="92"/><line x1="34" y1="110" x2="92" y2="120"/><line x1="92" y1="36" x2="150" y2="36"/><line x1="92" y1="36" x2="150" y2="64"/><line x1="92" y1="36" x2="150" y2="92"/><line x1="92" y1="36" x2="150" y2="120"/><line x1="92" y1="64" x2="150" y2="36"/><line x1="92" y1="64" x2="150" y2="64"/><line x1="92" y1="64" x2="150" y2="92"/><line x1="92" y1="64" x2="150" y2="120"/><line x1="92" y1="92" x2="150" y2="36"/><line x1="92" y1="92" x2="150" y2="64"/><line x1="92" y1="92" x2="150" y2="92"/><line x1="92" y1="92" x2="150" y2="120"/><line x1="92" y1="120" x2="150" y2="36"/><line x1="92" y1="120" x2="150" y2="64"/><line x1="92" y1="120" x2="150" y2="92"/><line x1="92" y1="120" x2="150" y2="120"/><line x1="150" y1="36" x2="206" y2="64"/><line x1="150" y1="36" x2="206" y2="96"/><line x1="150" y1="64" x2="206" y2="64"/><line x1="150" y1="64" x2="206" y2="96"/><line x1="150" y1="92" x2="206" y2="64"/><line x1="150" y1="92" x2="206" y2="96"/><line x1="150" y1="120" x2="206" y2="64"/><line x1="150" y1="120" x2="206" y2="96"/></g><g stroke="#6ee7b7" class="dashan"><line x1="34" y1="80" x2="92" y2="64"/><line x1="92" y1="64" x2="150" y2="92"/><line x1="150" y1="92" x2="206" y2="64"/></g><circle class="blip" style="animation-delay:-2.0s" cx="34" cy="50" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.0s" cx="34" cy="80" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.0s" cx="34" cy="110" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.3s" cx="92" cy="36" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.1s" cx="92" cy="64" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-0.9s" cx="92" cy="92" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-0.7s" cx="92" cy="120" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.0s" cx="150" cy="36" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.8s" cx="150" cy="64" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.6s" cx="150" cy="92" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-1.4s" cx="150" cy="120" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.5s" cx="206" cy="64" r="4.5" fill="#34d399"/><circle class="blip" style="animation-delay:-2.7s" cx="206" cy="96" r="4.5" fill="#34d399"/><g fill="#f472b6" fill-opacity=".8"><rect x="30" y="140" width="8" height="12"/><rect x="42" y="134" width="8" height="18"/><rect x="54" y="128" width="8" height="24"/><rect x="66" y="138" width="8" height="14"/></g><text x="84" y="150" fill="#94a3b8" font-size="8" font-family="system-ui">datos · Big Data · deep learning</text></svg></div>
+        <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Inteligencia artificial y datos</h3>
+        <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">IA y Datos Biomédicos · Big Data e IA en Telecom.</h4>
+        <p class="text-xs text-slate-300 leading-relaxed flex-grow">Análisis de datos biomédicos, ciencia de datos y Big Data, aprendizaje profundo y modelos generativos.</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="chip">Datos biomédicos</span><span class="chip">Big Data</span><span class="chip">Deep learning</span><span class="chip">IA en telecom</span></div>
+        <div class="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
+          <span>Entrar en DataLab</span>
+          <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </a>
+
+    </main>
+
+    <section class="feature-box p-6 sm:p-8 my-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Bloque 1: Aprendizaje activo -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Aprendizaje activo</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Experimenta y comprende la neurociencia, la radionavegación y la inteligencia artificial desde la práctica.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 2: Formación de calidad -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Formación de calidad</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Herramientas docentes diseñadas para el aula universitaria.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Tecnología y ciencia -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Tecnología y ciencia</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Simulaciones basadas en la teoría, en la evidencia y en el estado del arte.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Grupo de Ingeniería Biomédica -->
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 p-3 rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-400 shadow-[0_0_15px_rgba(167,139,250,0.2)]">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white mb-1">Universidad de Valladolid</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              GIB-UVa · Universidad de Valladolid.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    
+    <!-- Footer -->
+    <footer id="nl-foot">
+      <div class="nl-logos"><a href="https://www.uva.es/" target="_blank" rel="noopener"><img src="img/UVa.png" alt="Universidad de Valladolid" onerror="this.replaceWith(document.createTextNode(this.alt))"></a><a href="https://gib.uva.es/" target="_blank" rel="noopener"><img src="img/GIB.png" alt="Grupo de Ingeniería Biomédica (GIB)" onerror="this.replaceWith(document.createTextNode(this.alt))"></a></div>
+      <div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Grupo de Ingeniería Biomédica, Universidad de Valladolid</div>
+    </footer>
+
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+
+      // --- 1. Fondo de partículas conectadas ---
+      (function initBgParticles() {
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+        function resize() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          const count = Math.min(70, Math.floor((width * height) / 20000));
+          particles = Array.from({ length: count }, () => ({
+            x: Math.random() * width, y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35, r: Math.random() * 1.4 + 1
+          }));
+        }
+        function draw() {
+          ctx.clearRect(0, 0, width, height);
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > width) p.vx *= -1;
+            if (p.y < 0 || p.y > height) p.vy *= -1;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(56, 189, 248, 0.4)'; ctx.fill();
+            for (let j = i + 1; j < particles.length; j++) {
+              const p2 = particles[j], dx = p.x - p2.x, dy = p.y - p2.y, dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 120) {
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(99, 102, 241, ${(1 - dist / 120) * 0.18})`; ctx.lineWidth = 0.8; ctx.stroke();
+              }
+            }
+          }
+          requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', resize);
+        resize(); draw();
+      })();
+
+      
+      // --- 2. Tres áreas, una red ---
+      function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const clampv=(v,a,b)=>Math.max(a,Math.min(b,v)),lerpv=(a,b,t)=>a+(b-a)*t,mixCol=(c1,c2,t)=>c1.map((v,i)=>Math.round(lerpv(v,c2[i],t)));
+/* ---------- Cerebro: nube de puntos con dos hemisferios, surcos, lóbulos temporales, cerebelo y tronco ---------- */
+function mkBrain(N){
+  const rnd=mulberry(11),P=[],CYAN=[34,211,238],VIO=[167,139,250],PINK=[244,114,208];
+  const inCer=(x,y,z,s)=>{const a=(x-s*.40)/.44,b=(y-.05)/.56,c=z/.95;return a*a+b*b+c*c};
+  const ant=z=>{let t=(.95-z)/1.9;t=Math.floor(clampv(t,0,.999)*6)/6;return t<.5?mixCol(CYAN,VIO,t*2):mixCol(VIO,PINK,(t-.5)*2)};
+  const M=Math.round(N*.33);
+  for(let h=0;h<2;h++){const s=h?1:-1;
+    for(let i=0;i<M;i++){
+      const uy=1-2*(i+.5)/M,r=Math.sqrt(1-uy*uy),th=i*2.399963+h*.9,ux=r*Math.cos(th),uz=r*Math.sin(th);
+      const g=Math.sin(5.2*ux+2.1*uz+1.3*uy)*Math.sin(4.6*uz-3.1*uy+2*ux)+.6*Math.sin(9*uy+3.7*ux-2.4*uz)*Math.cos(7*uz+1.7*ux),k=1+.05*g;
+      let x=s*.40+ux*.44*k,y=.05+uy*.56*k,z=uz*.95*k;
+      if(y<-.36)y=-.36+(y+.36)*.25;
+      y*=.9+.12*((z+.95)/1.9);
+      if(s*x<.06)continue;
+      P.push({x,y,z,g,col:ant(z),h,part:0});
+    }}
+  const T=Math.round(N*.07);
+  for(let h=0;h<2;h++){const s=h?1:-1;for(let i=0;i<T;i++){const uy=1-2*(i+.5)/T,r=Math.sqrt(1-uy*uy),th=i*2.399963+h,ux=r*Math.cos(th),uz=r*Math.sin(th),x=s*(.62+ux*.2),y=-.31+uy*.17,z=.2+uz*.44;
+    if(inCer(x,y,z,s)<1.03)continue;P.push({x,y,z,g:Math.sin(11*ux+7*uz),col:[251,146,60],h,part:1});}}
+  const C=Math.round(N*.1);
+  for(let i=0;i<C;i++){const uy=1-2*(i+.5)/C,r=Math.sqrt(1-uy*uy),th=i*2.399963,ux=r*Math.cos(th),uz=r*Math.sin(th),k=1+.05*Math.sin(26*uy),x=ux*.46*k,y=-.42+uy*.2*k,z=-.66+uz*.28*k;
+    if(inCer(x,y,z,1)<1.02||inCer(x,y,z,-1)<1.02)continue;P.push({x,y,z,g:Math.sin(26*uy),col:[52,211,153],h:2,part:2});}
+  const J=Math.max(6,Math.round(N/90));
+  for(let r=0;r<6;r++){const f=r/5,y=-.26-f*.5,z=-.16-f*.12,rad=.1-.025*f;for(let j=0;j<J;j++){const a=j/J*2*Math.PI+r*.4;P.push({x:Math.cos(a)*rad*1.1,y,z:z+Math.sin(a)*rad,g:0,col:[125,211,252],h:3,part:3});}}
+  const n=P.length,dm=1.9*Math.sqrt(5/n),E=[],seen=new Set(),adj=P.map(()=>[]),cols=[],cmap={};
+  P.forEach(p=>{const k=p.col.join(',');if(!(k in cmap)){cmap[k]=cols.length;cols.push(k)}p.cls=cmap[k]});
+  for(let i=0;i<n;i++){const d=[];for(let j=0;j<n;j++){if(i==j)continue;const a=P[i],b=P[j];if(a.part==0&&b.part==0&&a.h!=b.h)continue;const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z,q=dx*dx+dy*dy+dz*dz;if(q<dm*dm)d.push([q,j])}
+    d.sort((u,v)=>u[0]-v[0]);d.slice(0,3).forEach(([q,j])=>{const key=i<j?i*n+j:j*n+i;if(!seen.has(key)){seen.add(key);E.push([i,j]);const id=E.length-1;adj[i].push(id);adj[j].push(id)}})}
+  const pulses=[];for(let i=0;i<Math.max(8,Math.round(n/20));i++)pulses.push({e:Math.floor(rnd()*E.length),f:rnd(),dir:rnd()<.5?1:-1,sp:.7+rnd()*.8});
+  return{P,E,adj,cols,pulses,act:new Float32Array(n),lt:null};
+}
+function drawBrain(ctx,B,cx,cy,sc,yaw,tilt,t,am){
+  const dt=B.lt==null?0:Math.min(.1,Math.max(0,t-B.lt));B.lt=t;
+  const cY=Math.cos(yaw),sY=Math.sin(yaw),cX=Math.cos(tilt),sX=Math.sin(tilt),lw=Math.max(.5,sc/230);
+  const pr=B.P.map(p=>{const y0=p.y+.19,x1=p.x*cY-p.z*sY,z1=p.x*sY+p.z*cY,y1=y0*cX-z1*sX,z2=y0*sX+z1*cX,k=3.2/(3.2+z2);return{x:cx+x1*sc*k,y:cy-y1*sc*k,z:z2,k}});
+  ctx.save();ctx.globalAlpha=am;ctx.lineWidth=lw;
+  const bk=new Map();B.E.forEach(([a,b],i)=>{const al=clampv(.30-.2*(pr[a].z+pr[b].z)/2,.04,.46),q=Math.min(5,Math.floor(al*12)),key=B.P[a].cls*6+q;let l=bk.get(key);if(!l){l=[];bk.set(key,l)}l.push(i)});
+  bk.forEach((list,key)=>{ctx.strokeStyle=`rgba(${B.cols[(key/6)|0]},${((key%6)+.5)/12})`;ctx.beginPath();list.forEach(i=>{const[a,b]=B.E[i];ctx.moveTo(pr[a].x,pr[a].y);ctx.lineTo(pr[b].x,pr[b].y)});ctx.stroke()});
+  const dec=Math.exp(-3.5*dt);
+  pr.forEach((p,i)=>{const n=B.P[i],ac=B.act[i],al=clampv(.62-.4*p.z+.1*n.g+ac*.6,.15,1),r=(.0085+(n.g>.5?.004:0)+ac*.012)*sc*p.k;ctx.fillStyle=`rgba(${n.col},${al})`;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.8,r),0,6.2832);ctx.fill();B.act[i]=ac*dec});
+  ctx.shadowColor='#fff';ctx.shadowBlur=Math.max(3,sc/25);ctx.fillStyle='rgba(255,255,255,.95)';
+  B.pulses.forEach(pl=>{pl.f+=pl.dir*pl.sp*dt*3.2;
+    if(pl.f>=1||pl.f<=0){const node=pl.f>=1?B.E[pl.e][1]:B.E[pl.e][0];B.act[node]=1;const L=B.adj[node];let e2=L[Math.floor(Math.random()*L.length)];if(L.length>1&&e2==pl.e)e2=L[(L.indexOf(e2)+1)%L.length];pl.e=e2;if(B.E[e2][0]==node){pl.f=0;pl.dir=1}else{pl.f=1;pl.dir=-1}}
+    const[a,b]=B.E[pl.e],A=pr[a],Bn=pr[b],x=A.x+(Bn.x-A.x)*pl.f,y=A.y+(Bn.y-A.y)*pl.f;ctx.beginPath();ctx.arc(x,y,Math.max(1.2,.011*sc*A.k),0,6.2832);ctx.fill()});
+  ctx.restore();
+}
+
+/* ---------- Globo con constelaciones GNSS (de la web de radionavegación) ---------- */
+function mkGlobe(N){const earth=[],links=[];for(let i=0;i<N;i++){const y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),th=i*2.399963;earth.push({x:r*Math.cos(th),y,z:r*Math.sin(th),size:(i*37%16)/10+.9})}
+  const d2=.075*330/N;for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const dx=earth[i].x-earth[j].x,dy=earth[i].y-earth[j].y,dz=earth[i].z-earth[j].z;if(dx*dx+dy*dy+dz*dz<d2)links.push([i,j])}
+  const lat=41.65*Math.PI/180,lon=-4.72*Math.PI/180,recv={x:Math.cos(lat)*Math.cos(lon),y:Math.sin(lat),z:Math.cos(lat)*Math.sin(lon)};
+  const CONS=[['34, 211, 238',55,1.72,3,3,.30],['251, 146, 60',64.8,1.62,3,2,.34],['167, 139, 250',56,1.9,3,2,.26]],sats=[];
+  CONS.forEach(([col,inc,rad,P,S,w],c)=>{for(let p=0;p<P;p++)for(let s=0;s<S;s++)sats.push({col,inc:inc*Math.PI/180,rad,node:p*2*Math.PI/P+c*.5,ph:s*2*Math.PI/S+p*1.1,w})});
+  return{earth,links,recv,sats}}
+const satPos=(s,t)=>{const a=s.ph+t*s.w,x0=s.rad*Math.cos(a),z0=s.rad*Math.sin(a),y1=-z0*Math.sin(s.inc),z1=z0*Math.cos(s.inc);return{x:x0*Math.cos(s.node)+z1*Math.sin(s.node),y:y1,z:-x0*Math.sin(s.node)+z1*Math.cos(s.node)}};
+function drawGlobe(ctx,G,ox,oy,scale,viewYaw,tilt,t,am){
+  const f=Math.max(.45,scale/85),earthAng=t*.12,ce=Math.cos(earthAng),se=Math.sin(earthAng),cy=Math.cos(viewYaw),sy=Math.sin(viewYaw),cx=Math.cos(tilt),sx=Math.sin(tilt);
+  const rotE=p=>({x:p.x*ce+p.z*se,y:p.y,z:-p.x*se+p.z*ce}),proj=p=>{const x1=p.x*cy-p.z*sy,z1=p.x*sy+p.z*cy,y1=p.y*cx-z1*sx,z2=p.y*sx+z1*cx,k=3/(3+z2);return{px:ox+x1*scale*k,py:oy-y1*scale*k,pz:z2,k}};
+  ctx.save();ctx.globalAlpha=am;
+  G.sats.forEach((s,i)=>{if(i%3)return;ctx.beginPath();for(let a=0;a<=64;a++){const q=proj(satPos({...s,ph:a/64*2*Math.PI,w:0},0));a?ctx.lineTo(q.px,q.py):ctx.moveTo(q.px,q.py)}ctx.strokeStyle=`rgba(${s.col},0.16)`;ctx.lineWidth=f;ctx.stroke()});
+  const pe=G.earth.map(n=>proj(rotE(n)));
+  G.links.forEach(([i,j])=>{const a=pe[i],b=pe[j],al=Math.max(0,(1+(a.pz+b.pz)/2)*.18);if(al>.01){ctx.beginPath();ctx.moveTo(a.px,a.py);ctx.lineTo(b.px,b.py);ctx.strokeStyle=`rgba(99,160,255,${al})`;ctx.lineWidth=.9*a.k*f;ctx.stroke()}});
+  pe.forEach((p,i)=>{const al=Math.max(.08,(1+p.pz)*.4);ctx.beginPath();ctx.arc(p.px,p.py,Math.max(.7,G.earth[i].size*p.k*f),0,6.2832);ctx.fillStyle=`rgba(56,189,248,${al})`;ctx.fill()});
+  const rw=rotE(G.recv),rp=proj(rw),rl=Math.hypot(rw.x,rw.y,rw.z);
+  G.sats.forEach((s,i)=>{const sp=satPos(s,t),sl=Math.hypot(sp.x,sp.y,sp.z),dot=(rw.x*sp.x+rw.y*sp.y+rw.z*sp.z)/(rl*sl);if(dot>.25){const q=proj(sp);ctx.beginPath();ctx.moveTo(rp.px,rp.py);ctx.lineTo(q.px,q.py);ctx.strokeStyle=`rgba(${s.col},0.45)`;ctx.lineWidth=1.1*f;ctx.setLineDash([4*f,4*f]);ctx.lineDashOffset=-t*20;ctx.stroke();ctx.setLineDash([]);const fr=(t*.5+i*.37)%1;ctx.beginPath();ctx.arc(q.px+(rp.px-q.px)*fr,q.py+(rp.py-q.py)*fr,2*f,0,6.2832);ctx.fillStyle=`rgba(${s.col},0.95)`;ctx.fill()}});
+  G.sats.forEach(s=>{const q=proj(satPos(s,t)),al=Math.max(.45,.9+q.pz*.2);ctx.save();ctx.translate(q.px,q.py);ctx.fillStyle=`rgba(${s.col},${al})`;const k=q.k*f;ctx.fillRect(-2.5*k,-2*k,5*k,4*k);ctx.fillRect(-8*k,-.8*k,5*k,1.6*k);ctx.fillRect(3*k,-.8*k,5*k,1.6*k);ctx.restore()});
+  if(rp.pz<.15){const pulse=4+4*(.5+.5*Math.sin(t*3));ctx.beginPath();ctx.arc(rp.px,rp.py,3.2*f,0,6.2832);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(rp.px,rp.py,(pulse+3)*f,0,6.2832);ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=f;ctx.stroke()}
+  ctx.restore()}
+/* ---------- Red neuronal en capas (de la web de IA y datos) ---------- */
+function mkNet(){const rnd=mulberry(5),sizes=[5,8,9,8,4],cols=['34, 211, 238','129, 140, 248','167, 139, 250','244, 114, 182','52, 211, 153'],nodes=[],layerIdx=[];
+  sizes.forEach((n,l)=>{layerIdx.push([]);for(let i=0;i<n;i++){const a=i/n*2*Math.PI+l*.4,r=.35+.1*Math.sin(l*1.3+i);nodes.push({x:-1.5+l*.75,y:Math.sin(a)*r*1.5,z:Math.cos(a)*r*1.5,l,col:cols[l]});layerIdx[l].push(nodes.length-1)}});
+  const edges=[];for(let l=0;l<sizes.length-1;l++)layerIdx[l].forEach(a=>layerIdx[l+1].forEach(b=>{if(rnd()<.55)edges.push([a,b,rnd()])}));return{nodes,edges}}
+function drawNet(ctx,Nn,cx0,cy0,sc,yaw,tilt,t,am){const f=Math.max(.45,sc/80),cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(tilt),sx=Math.sin(tilt);
+  const P=n=>{const x1=n.x*cy-n.z*sy,z1=n.x*sy+n.z*cy,y1=n.y*cx-z1*sx,z2=n.y*sx+z1*cx,k=3.2/(3.2+z2);return{x:cx0+x1*sc*k,y:cy0-y1*sc*k,z:z2,k}};
+  const pr=Nn.nodes.map(P);ctx.save();ctx.globalAlpha=am;
+  Nn.edges.forEach(([a,b,ph])=>{const A=pr[a],B=pr[b],al=.12+.1*(1-(A.z+B.z)/2*.3);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.strokeStyle=`rgba(${Nn.nodes[a].col},${al})`;ctx.lineWidth=A.k*f;ctx.stroke();const fr=(t*.45+ph*3)%1;if(fr<.9){ctx.beginPath();ctx.arc(A.x+(B.x-A.x)*fr,A.y+(B.y-A.y)*fr,1.8*A.k*f,0,6.2832);ctx.fillStyle=`rgba(${Nn.nodes[a].col},.95)`;ctx.fill()}});
+  pr.forEach((p,i)=>{const n=Nn.nodes[i],act=.5+.5*Math.sin(t*2+n.l*1.2+i);ctx.beginPath();ctx.arc(p.x,p.y,(3+1.5*act)*p.k*f,0,6.2832);ctx.fillStyle=`rgba(${n.col},${.6+.4*act})`;ctx.fill()});ctx.restore()}
+
+
+(function initHeroClusters(){
+  const canvas=document.getElementById('hero-clusters-canvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');let W,H;
+  const resize=()=>{const r=canvas.getBoundingClientRect(),d=window.devicePixelRatio||1;W=canvas.width=r.width*d;H=canvas.height=r.height*d};
+  resize();window.addEventListener('resize',resize);
+  const CL=[{x:.19,y:.7,col:'34, 211, 238'},{x:.5,y:.3,col:'251, 146, 60'},{x:.81,y:.7,col:'52, 211, 153'}];
+  const BR=mkBrain(420),GL=mkGlobe(260),NT=mkNet();
+  let hl=-1;document.querySelectorAll('[data-cluster]').forEach(el=>{el.addEventListener('mouseenter',()=>hl=+el.dataset.cluster);el.addEventListener('mouseleave',()=>hl=-1)});
+  const t0=performance.now();
+  (function render(now){
+    const t=(now-t0)/1000,m=Math.min(W,H*1.35),rad=.2*m;ctx.clearRect(0,0,W,H);
+    CL.forEach((c,i)=>{const g=ctx.createRadialGradient(W*c.x,H*c.y,0,W*c.x,H*c.y,.2*m);g.addColorStop(0,`rgba(${c.col},${hl===i?.22:.09})`);g.addColorStop(1,`rgba(${c.col},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)});
+    for(let a=0;a<3;a++)for(let b=a+1;b<3;b++){const A=CL[a],B2=CL[b],ax=W*A.x,ay=H*A.y,bx=W*B2.x,by=H*B2.y,L=Math.hypot(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L,s=rad*.95,x1=ax+ux*s,y1=ay+uy*s,x2=bx-ux*s,y2=by-uy*s,on=hl<0||hl===a||hl===b;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.setLineDash([5,6]);ctx.lineDashOffset=-t*14;ctx.strokeStyle=`rgba(148,163,184,${on?.4:.12})`;ctx.lineWidth=1.2;ctx.stroke();ctx.setLineDash([]);
+      const f=(t*.25+(a*3+b)*.31)%1;ctx.beginPath();ctx.arc(x1+(x2-x1)*f,y1+(y2-y1)*f,2.6,0,6.2832);ctx.fillStyle='rgba(226,232,240,.9)';ctx.fill()}
+    const am=i=>hl<0||hl===i?1:.35;
+    drawBrain(ctx,BR,W*CL[0].x,H*CL[0].y,m*.18,1.2+.5*Math.sin(t*.4),.2,t,am(0));
+    drawGlobe(ctx,GL,W*CL[1].x,H*CL[1].y,m*.105,t*.15,.35,t,am(1));
+    drawNet(ctx,NT,W*CL[2].x,H*CL[2].y,m*.09,t*.3,.4,t,am(2));
+    requestAnimationFrame(render)})(performance.now());
+})();
+
+    });
+  </script>
+</body>
+</html>

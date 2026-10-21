@@ -1,0 +1,529 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BeaconSim · Radiofaros: VOR y DME</title><meta name="theme-color" content="#070b14">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#070b14;color:#cbd5e1;font-family:system-ui,sans-serif}
+canvas{width:100%;display:block;background:#0a1020;border-radius:.5rem;border:1px solid #1e293b}
+.ia{touch-action:none;cursor:crosshair}
+.card{background:#0d1424;border:1px solid #1e293b;border-radius:.75rem;padding:.7rem}
+.b{padding:.35rem .7rem;border-radius:.5rem;border:1px solid #334155;background:#111b30;font-size:.82rem;min-height:40px}
+.b.on{border-color:#22d3ee;color:#22d3ee;background:#06323d}
+.b:disabled{opacity:.4}
+input[type=range]{width:100%;accent-color:#34d399}
+input[type=number]{background:#0a1020;border:1px solid #334155;border-radius:.4rem;padding:.3rem .5rem;width:6rem;color:#e2e8f0}
+summary{cursor:pointer;color:#22d3ee;font-weight:600;min-height:32px}
+.bd{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:9999px;color:#000;font-weight:700;margin-right:.4rem}
+.hd{font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;flex-wrap:wrap;gap:.25rem}
+.key{background:#06281f;border:1px solid #047857;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#a7f3d0;margin:.4rem 0}
+.try{background:#2a1a05;border:1px solid #b45309;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#fde68a;margin:.4rem 0}
+.m b{color:#34d399;font-size:1.15rem}.m small{display:block;color:#94a3b8;font-size:.68rem;line-height:1.1}
+.led{font-family:ui-monospace,monospace;color:#fb923c;background:#1a0f08;border:2px solid #44403c;border-radius:.4rem;padding:.2rem .5rem;font-size:1.3rem;letter-spacing:.05em}
+.blk{border:1px solid #334155;border-radius:.4rem;padding:.25rem .45rem;background:#0a1020;font-size:.72rem;text-align:center}.blk b{color:#34d399}
+.q{display:block;width:100%;text-align:left;margin-bottom:.3rem}.q.ok{border-color:#34d399;color:#34d399;background:#064e3b55}.q.ko{border-color:#f87171;color:#f87171;background:#7f1d1d55}
+table{width:100%;font-size:.78rem}td,th{padding:.2rem .35rem;text-align:left;border-bottom:1px solid #1e293b}
+:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
+</style>
+<style id="nl-style">
+/* Elementos comunes NeuroLab UVa: fondo de nodos, enlace al índice y pie */
+html{background:radial-gradient(circle at 82% 8%,rgba(34,211,238,.10),transparent 45%),radial-gradient(circle at 12% 88%,rgba(167,139,250,.08),transparent 45%),#070b14;background-attachment:fixed}
+body{background:transparent!important}
+#nl-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block;background:transparent!important;border:0!important;border-radius:0!important}
+.nl-hd{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
+.nl-back{font-size:.72rem;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);border-radius:9999px;padding:.25rem .7rem;text-decoration:none;white-space:nowrap;background:rgba(8,16,36,.55)}
+.nl-back:hover{background:rgba(14,116,144,.35);color:#e0f2fe}
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-bg,#nl-foot,.nl-back{display:none!important}}
+</style></head><body class="p-2 md:p-4 max-w-7xl mx-auto">
+<canvas id="nl-bg" aria-hidden="true"></canvas>
+<header class="mb-3"><div class="nl-hd"><h1 class="text-xl md:text-2xl font-bold text-white">BeaconSim <span class="text-cyan-400 text-sm md:text-base font-normal">Radiofaros: VOR, VOR-Doppler y DME</span></h1><a class="nl-back nl-idx" href="../index.html" title="Volver al índice de simuladores">← RadioNav UVa</a></div>
+  <div class="card mt-2 text-sm"><b class="text-white">La idea en 20 segundos.</b> Un <b class="text-cyan-300">VOR</b> emite una señal cuya <i>fase</i> depende de la dirección: el avión mide esa fase y sabe en qué <b>radial</b> está (ángulo respecto al norte magnético). Un <b class="text-rose-300">DME</b> funciona como un radar cooperativo: el avión pregunta, la estación responde 50 µs después y el <b>tiempo de ida y vuelta</b> da la distancia. Un ángulo y una distancia fijan la posición (<b class="text-amber-300">ρ–θ</b>).</div></header>
+<main class="grid lg:grid-cols-3 gap-3">
+<div class="lg:col-span-2 space-y-3">
+
+<section class="card"><div class="hd"><span class="bd bg-cyan-400">1</span>Problemas VOR: ¿qué indica el equipo de a bordo?</div>
+ <p class="text-sm mb-2">Un avión está en el <b>radial α</b> (ángulo de la estación al avión, medido desde el norte magnético en sentido horario) y el piloto fija en el OBS la <b>ruta θ</b>. El equipo aplica dos reglas; úsalas para resolver los apartados (a)–(d) de los problemas del Tema 2.</p>
+ <div class="key"><b>Regla 1:</b> d = k·sen(α − 90° − θ) · d &gt; 0 ⇒ <b>TO</b> · d &lt; 0 ⇒ <b>FROM</b><br><b>Regla 2:</b> e = k′·sen(θ − α) · e &gt; 0 ⇒ aguja a la <b>derecha</b> · e &lt; 0 ⇒ aguja a la <b>izquierda</b></div>
+ <div class="text-xs">Problema del enunciado</div><div id="p1p"></div>
+ <div class="text-xs">Apartado</div><div id="p1a"></div>
+ <div class="grid sm:grid-cols-2 gap-3 mt-1"><div><canvas id="c1" style="height:300px" aria-label="Mapa del problema VOR"></canvas></div><div><canvas id="c1b" class="ia" style="height:300px" aria-label="Indicador VOR del problema"></canvas></div></div>
+ <div class="grid sm:grid-cols-3 gap-3 mt-2"><label class="text-xs block">α · radial del avión: <b id="pav" class="text-emerald-400">140</b>°<input id="pa" type="range" min="0" max="359" value="140"></label>
+  <label class="text-xs block">Desplazamiento δ del radial: <b id="pdv" class="text-emerald-400">5</b>°<input id="pd" type="range" min="1" max="30" value="5"></label>
+  <label class="text-xs block">θ · ruta del OBS: <b id="pov" class="text-emerald-400">320</b>°<input id="po" type="range" min="0" max="359" value="320"></label></div>
+ <div class="flex flex-wrap items-center gap-1 mt-1"><button class="b" id="p1sim">▶ Ver la evolución</button><label class="text-xs ml-2"><input type="checkbox" id="pxe"> Modo ejercicio (ocultar la solución)</label><button class="b" id="p1rnd">🎲 Problema aleatorio</button></div>
+ <div id="p1x" class="try hidden"></div>
+ <div id="p1t" class="text-sm mt-2"></div>
+ <canvas id="c1c" style="height:190px;margin-top:8px" aria-label="Reglas 1 y 2 en función de θ"></canvas>
+ <div id="p1s" class="key mt-2"></div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-amber-400">2</span>VOR: modulación y demodulación paso a paso</div>
+ <p class="text-sm mb-2">La antena emite un diagrama en <b>cardioide</b> (<i>V = V₀(1 + cos φ)</i>) que <b>gira a 30 vueltas por segundo</b>. Un avión en el radial α ve su intensidad subir y bajar 30 veces por segundo con un retardo proporcional a α respecto a una referencia en fase con el norte. Debajo recorres, paso a paso, cómo se <b>construye</b> la señal VOR y cómo el receptor la <b>demodula</b> (los pasos de la práctica de MATLAB®).</p>
+ <div class="grid sm:grid-cols-2 gap-3"><div><canvas id="c2a" style="height:260px" aria-label="Cardioide giratoria"></canvas></div>
+  <div class="text-sm"><label class="text-xs block">Radial del avión α: <b id="a2v" class="text-emerald-400">53</b>°<input id="a2" type="range" min="0" max="359" value="53"></label>
+   <div class="text-xs mt-1">Cámara lenta (en la realidad: 30 vueltas/s)</div><div id="rs"></div>
+   <p class="text-xs text-slate-400">La curva verde de abajo es lo que recibe el avión; la marca amarilla indica el instante en que la cardioide apunta al norte. El retardo entre la marca y el máximo es el ángulo.</p></div></div>
+ <div class="text-xs mt-2">Pasos de la práctica</div><div id="stp"></div>
+ <div id="dg" class="flex flex-wrap items-center gap-1 text-xs mt-1"></div>
+ <div id="m2d" class="text-sm mt-2"></div>
+ <div class="grid sm:grid-cols-3 gap-x-3 mt-1"><div><div class="text-xs">Ventana de tiempo</div><div id="tw"></div></div><div><div class="text-xs">Rango del espectro</div><div id="fw"></div></div><div><div class="text-xs">Moduladora de la FM</div><div id="fmm"></div></div></div>
+ <canvas id="c2b" class="ia" style="height:250px;margin-top:6px" aria-label="Señal en el tiempo"></canvas>
+ <p id="m2m" class="text-sm mt-1"></p>
+ <canvas id="c2c" style="height:210px;margin-top:6px" aria-label="Espectro de la señal"></canvas>
+ <div class="key"><b>Clave:</b> <i>v<sub>r</sub>(t) = cos(ω<sub>c</sub>t)·[1 + m₁ sen(ω<sub>m</sub>t − α) + m₂ cos(ω<sub>u</sub>t + β sen ω<sub>m</sub>t) + f(t) cos(ω<sub>i</sub>t)]</i> con m₁ = m₂ = 0,3 · f<sub>m</sub> = 30 Hz · f<sub>u</sub> = 9960 Hz · β = 16 · f<sub>i</sub> = 1020 Hz (Morse; no se incluye aquí). Para la simulación se usa f<sub>c</sub> = 112 kHz (en la realidad 112 MHz) y f<sub>s</sub> = 1120 kHz. El radial es la <b>diferencia de fase</b> entre las dos señales de 30 Hz.</div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-violet-400">3</span>El indicador VOR: OBS, CDI y TO/FROM</div>
+ <p class="text-sm mb-2">Gira el <b>OBS</b> para elegir el radial. El <b>CDI</b> (aguja) te dice hacia dónde está esa ruta y el indicador <b>TO/FROM</b> resuelve la ambigüedad de 180°. <b>Vuela tú</b> con los controles de rumbo.</p>
+ <div class="grid sm:grid-cols-2 gap-3"><div><canvas id="c3a" class="ia" style="height:290px" aria-label="Indicador VOR"></canvas></div><div><canvas id="c3b" style="height:290px" aria-label="Mapa de vuelo"></canvas></div></div>
+ <div class="grid sm:grid-cols-2 gap-3 mt-2"><label class="text-xs block">OBS (ruta seleccionada): <b id="obv" class="text-emerald-400">345</b>°<input id="ob" type="range" min="0" max="359" value="345"></label>
+  <label class="text-xs block">Rumbo objetivo del avión: <b id="hdv" class="text-emerald-400">90</b>°<input id="hd" type="range" min="0" max="359" value="90"></label></div>
+ <div class="flex flex-wrap items-center gap-1 mt-1"><button class="b" id="fy">▶ Volar</button><button class="b" id="fr">↺ Reiniciar</button><span class="text-xs text-slate-400">Velocidad</span><span id="fs"></span><button class="b" id="chb">🎯 Reto: intercepta el radial</button></div>
+ <p id="t3" class="text-sm mt-2"></p><p id="c3t" class="try hidden"></p>
+ <div class="key"><b>Clave:</b> aguja a la izquierda → la ruta está a tu izquierda → vira a la izquierda; aguja centrada → estás sobre el radial. Plena escala = 10° (2° por punto). OFF = fuera de cobertura, mal sintonizado o cono de silencio.</div></section>
+<section class="card"><div class="hd"><span class="bd bg-emerald-400">4</span>Una estación, muchos aviones: búsqueda y seguimiento</div>
+ <p class="text-sm mb-2">Todas las aeronaves usan <b>la misma frecuencia</b>. Cada una reconoce <i>sus</i> respuestas porque llegan siempre con el <b>mismo retardo</b> respecto a sus interrogaciones (que van con intervalos irregulares), mientras que las de los demás caen en retardos aleatorios. Recuerda: el avión mide t = 2d/c + 50 µs (12,36 µs por milla náutica de distancia + 50 µs de retardo de la estación). Pulsa <b>Interrogar</b> y mira cómo aparece la coincidencia.</p>
+ <canvas id="c6a" style="height:290px" aria-label="Trazas de respuestas y coincidencias"></canvas>
+ <div class="flex flex-wrap items-center gap-1 mt-2"><button class="b" id="i6">📡 Interrogar</button><button class="b" id="a6">▶ Automático</button><button class="b" id="z6">↺ Reiniciar búsqueda</button><label class="text-xs ml-2"><input type="checkbox" id="g6" checked> Marcar mis respuestas en verde</label><span id="m6" class="text-xs ml-auto"></span></div>
+ <label class="text-xs block mt-2">Distancia horizontal de tu avión a la estación: <b id="dd6v" class="text-emerald-400">39</b> NM (retardo = 12,36 µs/NM · d + 50 µs)<input id="dd6" type="range" min="2" max="190" step=".5" value="39"></label><div class="grid sm:grid-cols-3 gap-3 mt-2"><label class="text-xs block">Aviones usando la estación: <b id="n6v" class="text-emerald-400">100</b><input id="n6" type="range" min="1" max="150" value="100"></label>
+  <label class="text-xs block">Aviones en búsqueda: <b id="p6v" class="text-emerald-400">5</b> %<input id="p6" type="range" min="0" max="60" value="5"></label>
+  <label class="text-xs block">Coincidencias para enganchar: <b id="k6v" class="text-emerald-400">4</b> de 8<input id="k6" type="range" min="2" max="7" value="4"></label></div>
+ <div class="grid sm:grid-cols-2 gap-3 mt-2"><div><canvas id="c6b" style="height:210px" aria-label="Eficiencia frente al número de aviones"></canvas></div><div class="grid grid-cols-2 gap-2 m content-start" id="o6"></div></div>
+ <div class="key"><b>Clave:</b> en <b>búsqueda</b>: 150 interrogaciones/s y ventana de 2400 µs (200 NM); en <b>seguimiento</b>: 24 interrogaciones/s y ventana de 20 µs. Con 95 % de aviones en seguimiento: 0,05·150 + 0,95·24 = 30 int/s de media. Tras cada interrogación la estación queda ciega 60 µs (anti-multitrayecto), por lo que la eficiencia nunca es del 100 %; además, cada 37,5 s o 75 s transmite su identificación Morse (1350 Hz) y el equipo del avión <b>trabaja por memoria</b>.</div></section>
+<section class="card"><div class="hd"><span class="bd bg-sky-400">5</span>DME/P: precisión para aproximación y aterrizaje</div>
+ <p class="text-sm mb-2">Cerca del aeropuerto, ±100 m es demasiado. El DME/P usa pulsos con <b>flanco de subida más empinado</b> y, en aproximación final, detecta el pulso <b>al principio</b> con la técnica <b>DAC</b> (<i>Delay, Attenuate and Compare</i>): se compara una copia retardada con una copia atenuada y se dispara donde se cruzan.</p>
+ <canvas id="c7a" style="height:270px" aria-label="Pulsos DME/N y DME/P y detector DAC"></canvas>
+ <div class="grid sm:grid-cols-2 gap-3 mt-2"><label class="text-xs block">Atenuación A: <b id="avv" class="text-emerald-400">-6</b> dB<input id="av" type="range" min="-14" max="-1" step=".5" value="-6"></label>
+  <label class="text-xs block">Retardo τ: <b id="tav" class="text-emerald-400">95</b> ns<input id="ta" type="range" min="20" max="300" step="5" value="95"></label>
+  <label class="text-xs block">Relación señal/ruido: <b id="s7v" class="text-emerald-400">30</b> dB<input id="s7" type="range" min="10" max="45" value="30"></label>
+  <label class="text-xs block">Reflexión (multitrayecto): <b id="k7v" class="text-emerald-400">0</b> % · retraso <b id="e7v" class="text-emerald-400">500</b> ns<input id="k7" type="range" min="0" max="80" value="0"><input id="e7" type="range" min="50" max="3000" step="10" value="500"></label></div>
+ <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 m mt-2" id="o7"></div>
+ <canvas id="c7b" style="height:170px;margin-top:8px" aria-label="Error de detección"></canvas>
+ <div class="text-xs text-slate-400 mt-2">¿Qué modo usa el interrogador? Mueve el avión hacia la pista</div>
+ <label class="text-xs block"><b id="r7v" class="text-emerald-400">30</b> NM de la pista<input id="r7" type="range" min="0" max="35" step=".1" value="30"></label>
+ <canvas id="c7c" style="height:96px" aria-label="Zonas DME/N, IA y FA"></canvas><p id="t7" class="text-sm mt-1"></p>
+ <div class="key"><b>Clave:</b> con la rampa inicial lineal, <i>A·t/T<sub>r</sub> = (t − τ)/T<sub>r</sub></i> ⇒ <b>t<sub>d</sub> = τ / (1 − A)</b>. Valores típicos: A = −6 dB, τ = 95 ns ⇒ t<sub>d</sub> ≈ 190 ns (frente a ~1,75 µs del detector al 50 %). Más protección frente a multitrayecto pide cortar bajo; más protección frente a ruido pide cortar alto: es un compromiso.</div></section>
+<section class="card"><div class="hd"><span class="bd bg-pink-400">6</span>Test final y chuleta<span id="qs" class="text-xs text-slate-400 font-normal ml-1"></span></div>
+ <div id="qz"></div><button class="b mt-1" id="qn">Siguiente pregunta ▶</button>
+ <details class="mt-3"><summary>Chuleta de cifras y fórmulas</summary><div class="text-xs mt-1 overflow-x-auto"><table>
+ <tr><td>VOR</td><td>108–118 MHz (VHF) · aerovías 112–118 MHz (120 canales, 50 kHz) · terminal 108–112 MHz (40 canales, compartida con ILS) · 50–200 W · línea de visión directa</td></tr>
+ <tr><td>Señal VOR</td><td>AM 30 Hz (m = 0,3) + subportadora 9960 Hz FM (30 Hz, β = 16) + ident 1020 Hz Morse · precisión ±1°</td></tr>
+ <tr><td>Indicador</td><td>A: corona de rumbo · B: OBS · C: TO–OFF–FROM · D: CDI</td></tr>
+ <tr><td>DVOR</td><td>26 pares de dipolos, r = 6,76 m, solo 3 antenas activas a la vez; variable = FM, referencia = AM</td></tr>
+ <tr><td>DME/N</td><td>962–1213 MHz · interrogación 1025–1150 MHz · respuesta ±63 MHz · pulsos de 3,5 µs al 50 % separados 12 µs · retardo 50 µs · alcance ≈ 370 km (200 NM) · ±100 m</td></tr>
+ <tr><td>Distancia</td><td>t = 2d/c + 50 µs ⇒ d = (c/2)(t − 50 µs) · 12,36 µs por NM · 1 NM = 1852 m</td></tr>
+ <tr><td>Fases DME</td><td>Búsqueda: 150 int/s, ventana 2400 µs · Seguimiento: 24 int/s, ventana 20 µs · media 30 int/s · tiempo muerto 60 µs</td></tr>
+ <tr><td>DME/P</td><td>IA (como DME/N) y FA (DAC) · t<sub>d</sub> = τ/(1−A) · A = −6 dB, τ = 95 ns · subida 10–90 % &lt; 1600 ns · DME/N hasta ~22 NM, IA 22→8 NM, transición 8→7 NM, FA &lt; 7 NM</td></tr></table></div></details></section>
+</div>
+
+<aside class="space-y-2 lg:sticky lg:top-2 self-start lg:max-h-[96vh] lg:overflow-auto">
+ <details open class="card"><summary>Estación VOR/DME</summary><div id="pst" class="mt-2"></div>
+  <label class="text-sm block">Frecuencia VOR: <b id="fqv" class="text-emerald-400">115.80</b> MHz<input id="fq" type="range" min="108" max="117.95" step=".05" value="115.8"></label>
+  <p id="fz" class="text-xs text-slate-400"></p>
+  <div class="flex flex-wrap gap-1 mt-1"><button class="b" id="idv">🔊 Ident VOR (1020 Hz)</button><button class="b" id="idd">🔊 Ident DME (1350 Hz)</button></div></details>
+ <details open class="card"><summary>Avión</summary>
+  <label class="text-sm block mt-2">Altitud: <b id="alv" class="text-emerald-400">15000</b> ft<input id="al" type="range" min="0" max="40000" step="500" value="15000"></label>
+  <p id="lo" class="text-xs text-slate-400"></p></details>
+ <details open class="card"><summary>Guía rápida</summary><ul class="text-xs text-slate-400 list-disc pl-4 mt-1 space-y-1"><li>El avión se comparte entre los apartados 2, 3 y 4: gira α en el 2, vuela en el 3 y mira cómo cambia el retardo en el 4.</li><li>Atajos: <b>espacio</b> = volar/pausar (apartado 3); flechas ← → = ±1° de OBS cuando el indicador está enfocado.</li><li>Todo es simulación didáctica con los parámetros del temario.</li></ul></details>
+</aside></main>
+<footer id="nl-foot">
+<span>BeaconSim · Radiodeterminación · ETSIT, Universidad de Valladolid</span>
+<div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Universidad de Valladolid</div>
+</footer>
+<script>
+// ====================== utilidades ======================
+const $=s=>document.querySelector(s),PI=Math.PI,D2R=PI/180,clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),lerp=(a,b,t)=>a+(b-a)*t;
+const n360=a=>((a%360)+360)%360,n180=a=>{a=n360(a);return a>180?a-360:a};
+const NMm=1852,US_NM=2*NMm/299.792458;                    // 12,355 µs de ida y vuelta por milla náutica
+const CV={};
+function setup(id){const c=$('#'+id),r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);CV[id]={c,x,w:r.width,h:r.height}}
+const CIDS=['c1','c1b','c1c','c2a','c2b','c2c','c3a','c3b','c6a','c6b','c7a','c7b','c7c'];
+function mk(el,opts,cur,cb){el.innerHTML='';opts.forEach(o=>{const b=document.createElement('button');b.className='b mr-1 mb-1';b.textContent=o;b.onclick=()=>{[...el.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(o)};if(o===cur)b.classList.add('on');el.appendChild(b)})}
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const gn=()=>Math.sqrt(-2*Math.log(Math.random()+1e-12))*Math.cos(2*PI*Math.random());
+function bind(id,cb,fmt){const e=$('#'+id);e.oninput=()=>{const v=+e.value;const o=$('#'+id+'v');if(o)o.textContent=fmt?fmt(v):v;cb(v)};const o=$('#'+id+'v');if(o)o.textContent=fmt?fmt(+e.value):e.value}
+function setv(id,v,fmt){const e=$('#'+id);e.value=v;const o=$('#'+id+'v');if(o)o.textContent=fmt?fmt(+e.value):e.value}
+const f1=v=>v.toFixed(1),f0=v=>Math.round(v),pad3=a=>String(Math.round(n360(a))%360).padStart(3,'0');
+const txt=(x,s,px,py,col,font,al)=>{x.fillStyle=col||'#94a3b8';x.font=font||'11px system-ui';x.textAlign=al||'left';x.fillText(s,px,py);x.textAlign='left'};
+function bessel(n,xv){let s=0;const M=400;for(let i=0;i<M;i++){const t=(i+.5)*PI/M;s+=Math.cos(n*t-xv*Math.sin(t))}return s/M}
+
+// ====================== estado global ======================
+const ST={f:115.8,name:'VAB',alt:15000};
+const AC={x:-30,y:25,hdg:90,tgt:90,fly:false,spd:120,sx:10,trail:[]};
+function geo(){const g=Math.hypot(AC.x,AC.y),R=n360(Math.atan2(AC.x,AC.y)/D2R),h=ST.alt/6076.12,sl=Math.hypot(g,h),el=Math.atan2(h,g)/D2R,los=1.23*(Math.sqrt(ST.alt)+Math.sqrt(30)),cone=el>60,cov=g<=Math.min(los,200);return{g,R,h,sl,el,los,cone,cov,coneR:h/Math.tan(60*D2R)}}
+function setRadial(r){const g=Math.max(Math.hypot(AC.x,AC.y),1);AC.x=g*Math.sin(r*D2R);AC.y=g*Math.cos(r*D2R)}
+function setGround(d){const R=geo().R;AC.x=d*Math.sin(R*D2R);AC.y=d*Math.cos(R*D2R)}
+// ---- Estación (panel lateral)
+const PRE=[['Albacete VAB 115.80',115.8,'VAB'],['Ejemplo terminal 109.20',109.2,'TRM'],['Ejemplo aerovía 113.40',113.4,'AVA']];
+function stUI(){setv('fq',ST.f,v=>v.toFixed(2));const z=ST.f<112?'Terminal (108–112 MHz): 40 canales de 50 kHz, banda compartida con el ILS.':'Aerovías (112–118 MHz): 120 canales separados 50 kHz.';$('#fz').textContent=z+' λ = '+(299.79/ST.f).toFixed(2)+' m.';
+ const g=geo();$('#lo').textContent=`Línea de visión directa ≈ ${g.los.toFixed(0)} NM (1,23·(√h<sub>avión</sub>+√h<sub>antena</sub>)) · alcance DME ≤ 200 NM · cono de silencio de radio ${g.coneR.toFixed(1)} NM a esta altitud.`.replace(/<[^>]+>/g,'')}
+mk($('#pst'),PRE.map(p=>p[0]),PRE[0][0],l=>{const p=PRE.find(q=>q[0]===l);ST.f=p[1];ST.name=p[2];stUI();recalc()});
+bind('fq',v=>{ST.f=v;ST.name=v<112?'TRM':'AVA';[...$('#pst').children].forEach(b=>b.classList.remove('on'));stUI();recalc()},v=>v.toFixed(2));
+bind('al',v=>{ST.alt=v;stUI()},f0);
+// audio Morse
+const MORSE={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..'};
+function morse(freq,u){try{const A=new(window.AudioContext||window.webkitAudioContext)(),o=A.createOscillator(),g=A.createGain();o.frequency.value=freq;o.connect(g);g.connect(A.destination);g.gain.value=0;let t=A.currentTime+.05;
+ for(const ch of ST.name){for(const s of MORSE[ch]){g.gain.setValueAtTime(.15,t);t+=(s==='.'?1:3)*u;g.gain.setValueAtTime(0,t);t+=u}t+=2*u}o.start();o.stop(t+.1)}catch(e){}}
+$('#idv').onclick=()=>morse(1020,.09);$('#idd').onclick=()=>morse(1350,.06);
+
+function recalc(){stUI();setv('a2',Math.round(geo().R)%360,f0);MD.dirty=true}
+// ====================== sección 1: problemas VOR ======================
+function drawPlane(x,px,py,hdg,col,k){x.save();x.translate(px,py);x.rotate(hdg*D2R);x.scale(k,k);x.fillStyle=col;x.strokeStyle='#0a1020';x.beginPath();x.moveTo(0,-11);x.lineTo(3,-2);x.lineTo(12,3);x.lineTo(12,5);x.lineTo(3,3);x.lineTo(2,9);x.lineTo(5,11);x.lineTo(5,12);x.lineTo(0,11);x.lineTo(-5,12);x.lineTo(-5,11);x.lineTo(-2,9);x.lineTo(-3,3);x.lineTo(-12,5);x.lineTo(-12,3);x.lineTo(-3,-2);x.closePath();x.fill();x.stroke();x.restore()}
+const sd=v=>Math.sin(v*D2R),fmt=(v,d=2)=>(v<-5e-3?'−':'')+Math.abs(v).toFixed(d).replace('.',',');
+// Reglas del equipo de a bordo: d = k·sen(α − 90° − θ) (TO si d > 0) · e = k'·sen(θ − α) (aguja a la derecha si e > 0)
+function vorRead(R,obs){const d=sd(R-90-obs),e=sd(obs-R);return{d,e,flag:Math.abs(d)<.001?'OFF':d>0?'TO':'FROM',needle:Math.asin(clamp(e,-1,1))/D2R,nd:Math.abs(e)<.0087?'centrada':e>0?'derecha':'izquierda'}}
+const PB={alpha:140,delta:5,part:'a',an:140,th:320,dist:25,hdg:320,tgt:null,anim:null,ex:false,rev:true,ans:{th:null,flag:null,nd:null}};
+const PARTS=['a','b','c','d','l'],plab=p=>({a:'(a) Hacia la estación',b:`(b) Radial ${PB.delta}° a la derecha`,c:`(c) Radial ${PB.delta}° a la izquierda`,d:'(d) Tras sobrevolarla',l:'Libre'}[p]);
+function pbScn(p){const a=PB.alpha,d=PB.delta;
+ if(p==='a')return{an:a,th:n360(a+180),hdg:n360(a+180),tgt:null};
+ if(p==='b')return{an:a,th:n360(a-d+180),hdg:n360(a+180),tgt:n360(a-d)};
+ if(p==='c')return{an:a,th:n360(a+d+180),hdg:n360(a+180),tgt:n360(a+d)};
+ if(p==='d')return{an:n360(a+180),th:n360(a+180),hdg:n360(a+180),tgt:null};
+ return{an:a,th:PB.th,hdg:n360(a+180),tgt:null}}
+function pbApply(){const s=pbScn(PB.part);PB.an=s.an;PB.th=s.th;PB.hdg=s.hdg;PB.tgt=s.tgt;PB.dist=25;PB.anim=null;setv('po',Math.round(PB.th)%360,f0)}
+function mkParts(){mk($('#p1a'),PARTS.map(plab),plab(PB.part),l=>{PB.part=PARTS.find(p=>plab(p)===l);if(PB.ex&&PB.part==='l'){PB.part='a';mkParts()}pbApply();if(PB.ex)PB.rev=false;pbSync()})}
+const PRE1=[['Problema 1 · α = 140°, δ = 5°',140,5],['Problema 2 · α = 20°, δ = 5°',20,5],['Problema 3 · α = 300°, δ = 15°',300,15],['Problema 4 · α = 50°, δ = 20°',50,20]];
+mk($('#p1p'),PRE1.map(p=>p[0]),PRE1[0][0],l=>{const p=PRE1.find(q=>q[0]===l);PB.alpha=p[1];PB.delta=p[2];PB.part='a';setv('pa',PB.alpha,f0);setv('pd',PB.delta,f0);mkParts();pbApply();if(PB.ex)PB.rev=false;pbSync()});
+bind('pa',v=>{PB.alpha=v;pbApply();if(PB.ex)PB.rev=false;pbSync()},f0);bind('pd',v=>{PB.delta=v;mkParts();pbApply();if(PB.ex)PB.rev=false;pbSync()},f0);bind('po',v=>{PB.th=v;PB.anim=null;pbSync()},f0);
+const ai=v=>(v<0?'−':'')+Math.abs(v),rulesTxt=(an,th)=>{const v=vorRead(an,th),A=Math.round(an),T=Math.round(th);return `<b>Regla 1:</b> d = k·sen(${A}° − 90° − ${T}°) = k·sen(${ai(A-90-T)}°) = <b>${fmt(v.d)}·k</b> ⇒ <b>${v.flag}</b><br><b>Regla 2:</b> e = k′·sen(${T}° − ${A}°) = k′·sen(${ai(T-A)}°) = <b>${fmt(v.e)}·k′</b> ⇒ aguja <b>${v.nd==='centrada'?'centrada':'a la '+v.nd}</b>`};
+function pbEval(){const v=vorRead(PB.an,PB.th);if(PB.dist<1.2)v.flag='OFF';return v}
+function pbText(){const v=pbEval();return (PB.dist<1.2?'<b class="text-red-400">Sobre la estación (cono de silencio): bandera OFF.</b><br>':'')+rulesTxt(PB.an,PB.th)}
+function pbSol(p){const a=Math.round(PB.alpha),d=PB.delta,s=pbScn(p==='l'?'a':p),A=n360(a+180);let h='';
+ if(p==='a'||p==='l')h=`El avión está en el radial α = ${a}° (la estación queda en dirección ${A}°). Para dirigirse a ella vuela con rumbo α + 180° = ${A}° y el piloto selecciona θ = ${A}°.<br>${rulesTxt(s.an,s.th)}<br>⇒ El equipo indica <b>TO</b> y la aguja está centrada: se dirige hacia la estación por su radial. ✔`;
+ else if(p==='b'||p==='c'){const r=p==='b',tg=n360(a+(r?-d:d));h=`Volando hacia la estación (rumbo ${A}°), la ${r?'derecha':'izquierda'} del avión corresponde a radiales de ${r?'menor':'mayor'} ángulo: radial deseado = α ${r?'−':'+'} δ = ${tg}°. El piloto selecciona θ = ${tg}° + 180° = ${s.th}°.<br>${rulesTxt(s.an,s.th)}<br>⇒ <b>TO</b> y aguja a la <b>${r?'derecha':'izquierda'}</b>: la ruta seleccionada queda a la ${r?'derecha':'izquierda'}, así que vira a la ${r?'derecha':'izquierda'}. A medida que se acerca al radial ${tg}°, e → 0: la aguja se desplaza hacia el centro y se centra al llegar, siempre en TO.`}
+ else h=`Tras sobrevolar la estación y seguir en la misma dirección, el avión está en el radial α + 180° = ${A}° y el OBS sigue en θ = ${A}°.<br>${rulesTxt(s.an,s.th)}<br>⇒ <b>FROM</b> con la aguja centrada: sigue sobre la misma ruta, pero alejándose de la estación. ✔`;
+ return h}
+function pbSync(){const hide=PB.ex&&!PB.rev;$('#p1t').innerHTML=hide?'<span class="text-slate-400">Predice θ, TO/FROM y la posición de la aguja, y pulsa «Comprobar».</span>':pbText();$('#p1s').innerHTML='<b>Solución del apartado:</b><br>'+pbSol(PB.part);$('#p1s').classList.toggle('hidden',hide);$('#p1sim').disabled=hide||PB.part==='l'}
+// ejercicio
+const stmt=()=>{const a=Math.round(PB.alpha),d=PB.delta,A=n360(a+180),p=PB.part;return `Un avión se aproxima a una estación VOR con un ángulo α = ${a}° respecto al norte magnético (sentido horario). `+(p==='a'?'¿Qué ruta θ fija el piloto para dirigirse a la estación y qué indica el equipo?':p==='b'?`El piloto desea aproximarse por un radial situado ${d}° a la derecha del que navega. ¿Qué θ debe indicar y qué señalará el equipo en ese momento?`:p==='c'?`El piloto desea aproximarse por un radial situado ${d}° a la izquierda del que navega. ¿Qué θ debe indicar y qué señalará el equipo en ese momento?`:`Ya ha sobrevolado la estación y continúa en la misma dirección, con el OBS aún en θ = ${A}°. ¿Qué indica el equipo?`)};
+function exUI(){PB.ans={th:null,flag:null,nd:null};const dis=PB.part==='d';$('#p1x').innerHTML=`<b>🎯 Ejercicio.</b> ${stmt()}<br><span class="text-xs">θ = </span><input id="pxt" type="number" min="0" max="359" ${dis?'disabled placeholder="—"':''}> ° <span id="pxf"></span> <span id="pxn"></span> <button class="b" id="pxc">Comprobar</button> <button class="b" id="pxs">Ver solución</button><div id="pxr" class="mt-1"></div>`;
+ mk($('#pxf'),['TO','FROM'],null,l=>PB.ans.flag=l);mk($('#pxn'),['izquierda','centrada','derecha'],null,l=>PB.ans.nd=l);
+ $('#pxc').onclick=()=>{const s=pbScn(PB.part),sol=vorRead(s.an,s.th),t=parseFloat($('#pxt').value),okT=PB.part==='d'||(!isNaN(t)&&Math.abs(n180(t-s.th))<=1),okF=PB.ans.flag===sol.flag,okN=PB.ans.nd===sol.nd,m=b=>b?'✅':'❌';
+  $('#pxr').innerHTML=`${PB.part==='d'?'':m(okT)+' θ = '+s.th+'° · '}${m(okF)} ${sol.flag} · ${m(okN)} aguja ${sol.nd}`;PB.rev=true;PB.th=PB.part==='d'||isNaN(t)?s.th:n360(t);setv('po',Math.round(PB.th)%360,f0);pbSync()};
+ $('#pxs').onclick=()=>{PB.rev=true;PB.th=pbScn(PB.part).th;setv('po',Math.round(PB.th)%360,f0);pbSync()}}
+$('#pxe').onchange=e=>{PB.ex=e.target.checked;$('#p1x').classList.toggle('hidden',!PB.ex);if(PB.ex){if(PB.part==='l'){PB.part='a';mkParts()}pbApply();PB.rev=false;exUI()}else PB.rev=true;pbSync()};
+$('#p1rnd').onclick=()=>{PB.alpha=10*Math.floor(Math.random()*36);PB.delta=[5,10,15,20][Math.floor(Math.random()*4)];PB.part=['a','b','c','d'][Math.floor(Math.random()*4)];setv('pa',PB.alpha,f0);setv('pd',PB.delta,f0);mkParts();pbApply();PB.ex=true;$('#pxe').checked=true;PB.rev=false;$('#p1x').classList.remove('hidden');exUI();pbSync()};
+// animación de la evolución de las indicaciones
+$('#p1sim').onclick=()=>{if(PB.part==='b'||PB.part==='c'){const s=pbScn(PB.part);PB.an=PB.alpha;PB.th=s.th;PB.dist=25;PB.anim={k:'bc',t:0,from:PB.alpha,to:s.tgt}}else if(PB.part==='d'){PB.th=n360(PB.alpha+180);PB.an=PB.alpha;PB.dist=25;PB.anim={k:'d',t:0}}else if(PB.part==='a'){const s=pbScn('a');PB.an=PB.alpha;PB.th=s.th;PB.dist=25;PB.anim={k:'a',t:0}}};
+function pbStep(dtr){const A=PB.anim;if(!A)return;A.t+=dtr/(A.k==='d'?9000:5000);const p=Math.min(1,A.t),e=p*p*(3-2*p);
+ if(A.k==='bc'){PB.an=n360(A.from+n180(A.to-A.from)*e);PB.dist=25-3*e}else if(A.k==='a'){PB.dist=25*(1-p)}else{const u=25-50*p;PB.an=u>0?PB.alpha:n360(PB.alpha+180);PB.dist=Math.abs(u)}
+ if(p>=1){PB.anim=null;if(A.k==='d'){PB.an=n360(PB.alpha+180);PB.dist=25}else if(A.k==='a'){PB.dist=25}}
+ if(!(PB.ex&&!PB.rev))$('#p1t').innerHTML=pbText()}
+function drawC1(){
+ const{x,w,h}=CV.c1,RG=32,s=Math.min(w,h)/2*.9/RG,cx=w/2,cy=h/2,hide=PB.ex&&!PB.rev;x.clearRect(0,0,w,h);
+ x.strokeStyle='#1e293b';[10,20,30].forEach(k=>{x.beginPath();x.arc(cx,cy,k*s,0,2*PI);x.stroke();txt(x,k+' NM',cx+3,cy-k*s-2,'#475569','9px system-ui')});
+ for(let a=0;a<360;a+=30){x.strokeStyle='#121a2d';x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+RG*s*Math.sin(a*D2R),cy-RG*s*Math.cos(a*D2R));x.stroke();txt(x,pad3(a),cx+(RG*s+4)*Math.sin(a*D2R)-8,cy-(RG*s+4)*Math.cos(a*D2R)+3,'#64748b','9px system-ui')}
+ const L=RG*s;
+ if(PB.tgt!=null){x.strokeStyle='#34d399';x.setLineDash([3,4]);x.lineWidth=2;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.sin(PB.tgt*D2R)*L,cy-Math.cos(PB.tgt*D2R)*L);x.stroke();x.setLineDash([]);x.lineWidth=1;txt(x,'radial deseado '+pad3(PB.tgt)+'°',cx+Math.sin(PB.tgt*D2R)*L*.62+5,cy-Math.cos(PB.tgt*D2R)*L*.62,'#34d399','10px system-ui')}
+ if(!hide){const o=PB.th*D2R;x.strokeStyle='#a78bfa';x.setLineDash([6,4]);x.lineWidth=2;x.beginPath();x.moveTo(cx-Math.sin(o)*L,cy+Math.cos(o)*L);x.lineTo(cx+Math.sin(o)*L,cy-Math.cos(o)*L);x.stroke();x.setLineDash([]);x.lineWidth=1;
+  const ex=cx+Math.sin(o)*L,ey=cy-Math.cos(o)*L;x.fillStyle='#a78bfa';x.beginPath();x.moveTo(ex,ey);x.lineTo(ex-Math.sin(o)*10+Math.cos(o)*5,ey+Math.cos(o)*10+Math.sin(o)*5);x.lineTo(ex-Math.sin(o)*10-Math.cos(o)*5,ey+Math.cos(o)*10-Math.sin(o)*5);x.fill();txt(x,'ruta θ = '+pad3(PB.th)+'° (OBS)',clamp(ex+6,4,w-110),clamp(ey-4,12,h-4),'#a78bfa','10px system-ui')}
+ const px=cx+PB.dist*s*Math.sin(PB.an*D2R),py=cy-PB.dist*s*Math.cos(PB.an*D2R);x.strokeStyle='#22d3ee88';x.beginPath();x.moveTo(cx,cy);x.lineTo(px,py);x.stroke();
+ x.strokeStyle='#22d3ee';x.beginPath();x.arc(cx,cy,24,-PI/2,-PI/2+PB.an*D2R);x.stroke();txt(x,'α = '+pad3(PB.an)+'°',cx+30*Math.sin(PB.an*D2R/2)+4,cy-30*Math.cos(PB.an*D2R/2),'#22d3ee','bold 11px system-ui');
+ x.fillStyle='#facc15';x.beginPath();for(let i=0;i<5;i++){const a=i*2*PI/5-PI/2;i?x.lineTo(cx+7*Math.cos(a),cy+7*Math.sin(a)):x.moveTo(cx+7*Math.cos(a),cy+7*Math.sin(a))}x.fill();
+ drawPlane(x,px,py,PB.hdg,'#f8fafc',.9);txt(x,'rumbo '+pad3(PB.hdg)+'°',6,h-6,'#94a3b8','10px system-ui');
+}
+// indicador VOR genérico (apartados 1 y 3)
+function drawC1b(){const v=pbEval(),hide=PB.ex&&!PB.rev;drawInst('c1b',v.flag,v.needle,PB.th,hide)}
+(function(){const c=$('#c1b');let lastA=0,dn=false;const ang=e=>{const r=c.getBoundingClientRect();return Math.atan2(e.clientX-r.left-r.width/2,-(e.clientY-r.top-r.height/2))/D2R};
+ c.addEventListener('pointerdown',e=>{dn=true;lastA=ang(e);c.setPointerCapture&&c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointermove',e=>{if(!dn)return;const a=ang(e);PB.th=n360(PB.th+n180(a-lastA));lastA=a;PB.anim=null;setv('po',Math.round(PB.th)%360,f0);pbSync()});c.addEventListener('pointerup',()=>dn=false)})();
+// reglas 1 y 2 en función de θ (para el α actual)
+function drawC1c(){
+ const{x,w,h}=CV.c1c;x.clearRect(0,0,w,h);if(PB.ex&&!PB.rev){txt(x,'Se muestra al comprobar la respuesta',10,h/2,'#64748b','12px system-ui');return}
+ const L=40,T=16,pw=w-L-8,ph=h-T-30,X=t=>L+pw*t/360,Y=v=>T+ph*(1-(v+1)/2),a=PB.an;
+ for(let i=0;i<pw;i++){const t=i/pw*360,d=sd(a-90-t);x.fillStyle=d>0?'rgba(34,211,238,.08)':'rgba(251,146,60,.08)';x.fillRect(L+i,T,1.5,ph)}
+ x.strokeStyle='#1e293b';[-1,0,1].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(L+pw,Y(v));x.stroke();txt(x,v,8,Y(v)+3,'#64748b','9px system-ui')});for(let t=0;t<=360;t+=45)txt(x,t+'°',X(t)-8,h-14,'#64748b','9px system-ui');txt(x,'θ (ruta del OBS)',L+pw/2-30,h-2,'#64748b','9px system-ui');
+ const curve=(f,c)=>{x.strokeStyle=c;x.lineWidth=2;x.beginPath();for(let t=0;t<=360;t+=2){const v=f(t);t?x.lineTo(X(t),Y(v)):x.moveTo(X(t),Y(v))}x.stroke();x.lineWidth=1};
+ curve(t=>sd(a-90-t),'#a78bfa');curve(t=>sd(t-a),'#fbbf24');
+ txt(x,'d/k (Regla 1): >0 TO · <0 FROM',L+4,12,'#a78bfa','10px system-ui');txt(x,'e/k′ (Regla 2): >0 derecha · <0 izquierda',L+pw*.5,12,'#fbbf24','10px system-ui');
+ [[n360(a),'FROM, centrada'],[n360(a+180),'TO, centrada']].forEach(([t,l])=>{x.fillStyle='#fff';x.beginPath();x.arc(X(t),Y(0),3.5,0,2*PI);x.fill();txt(x,l,clamp(X(t)-30,L,w-90),Y(0)-8,'#e2e8f0','9px system-ui')});
+ x.strokeStyle='#34d399';x.lineWidth=2;x.beginPath();x.moveTo(X(PB.th),T);x.lineTo(X(PB.th),T+ph);x.stroke();x.lineWidth=1;const dv=sd(a-90-PB.th),ev=sd(PB.th-a);
+ [[dv,'#a78bfa'],[ev,'#fbbf24']].forEach(([v,c])=>{x.fillStyle=c;x.beginPath();x.arc(X(PB.th),Y(v),5,0,2*PI);x.fill()});
+}
+// ====================== sección 2: modulación y demodulación ======================
+const RX={rot:.5,ang:0,hist:[]};
+const setOn=(el,o)=>[...el.children].forEach(b=>b.classList.toggle('on',b.textContent===o));
+mk($('#rs'),['Parado','0,25 vuelta/s','0,5 vuelta/s','1 vuelta/s'],'0,5 vuelta/s',l=>RX.rot={'Parado':0,'0,25 vuelta/s':.25,'0,5 vuelta/s':.5,'1 vuelta/s':1}[l]);
+bind('a2',v=>{setRadial(v);AC.trail.length=0;recalc()},f0);
+function drawC2a(){
+ const{x,w,h}=CV.c2a;x.clearRect(0,0,w,h);const cx=w/2,cy=104,R0=84,al=geo().R,th=RX.ang;
+ x.strokeStyle='#1e293b';[.5,1].forEach(k=>{x.beginPath();x.arc(cx,cy,R0*k,0,2*PI);x.stroke()});x.beginPath();x.moveTo(cx,cy-R0-6);x.lineTo(cx,cy+R0+6);x.moveTo(cx-R0-6,cy);x.lineTo(cx+R0+6,cy);x.stroke();txt(x,'N',cx-4,cy-R0-9,'#e2e8f0','bold 11px system-ui');
+ x.fillStyle='rgba(34,211,238,.18)';x.strokeStyle='#22d3ee';x.lineWidth=2;x.beginPath();for(let b=0;b<=360;b+=3){const r=R0*.5*(1+Math.cos((b-th)*D2R)),px=cx+r*Math.sin(b*D2R),py=cy-r*Math.cos(b*D2R);b?x.lineTo(px,py):x.moveTo(px,py)}x.closePath();x.fill();x.stroke();x.lineWidth=1;
+ const ax=cx+R0*1.02*Math.sin(al*D2R),ay=cy-R0*1.02*Math.cos(al*D2R);x.strokeStyle='#64748b';x.setLineDash([3,3]);x.beginPath();x.moveTo(cx,cy);x.lineTo(ax,ay);x.stroke();x.setLineDash([]);
+ const env=.5*(1+Math.cos((al-th)*D2R));drawPlane(x,ax,ay,al+180,'#f8fafc',.7);x.fillStyle='#facc15';x.beginPath();x.arc(cx,cy,4,0,2*PI);x.fill();
+ const tY=cy+R0+26,tH=48;x.strokeStyle='#1e293b';x.strokeRect(6,tY,w-12,tH);txt(x,'Intensidad que recibe el avión (últimos 4 s) · ▮ = pasa el norte',8,tY-4,'#64748b','9px system-ui');
+ const H=RX.hist;x.strokeStyle='#34d399';x.beginPath();H.forEach((p,i)=>{const px=6+(w-12)*i/239,py=tY+tH-4-(tH-8)*p[0];i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
+ x.fillStyle='#facc15';H.forEach((p,i)=>{if(p[1])x.fillRect(6+(w-12)*i/239-1,tY,2,tH)});
+ txt(x,'α = '+pad3(al)+'° · intensidad en el avión: '+(env*100).toFixed(0)+' %',8,14,'#34d399','10px system-ui');
+}
+// --- Parámetros de la práctica: fc = 112 kHz (en lugar de 112 MHz), fs = 1120 kHz
+const FS=1.12e6,FC=112e3,FMo=30,FU=9960,BETA=16,MM1=.3,MM2=.3,WM=2*PI*FMo,WU=2*PI*FU,WC=2*PI*FC;
+const MD={step:1,tw:'0,2 s',fw:'±560 kHz',fm:'sen',cur:[.05,.15],drag:-1,dirty:true,key:null,data:null};
+const alr=()=>geo().R*D2R;
+const phFM=t=>MD.fm==='sen'?-BETA*Math.cos(WM*t):BETA*Math.sin(WM*t);          // fase FM según la moduladora
+const sFM=t=>Math.cos(WU*t+phFM(t)),aV=t=>MM1*Math.sin(WM*t-alr()),w1=t=>1+aV(t)+MM2*sFM(t),vr=t=>Math.cos(WC*t)*w1(t);
+const refS=t=>MD.fm==='sen'?Math.sin(WM*t):Math.cos(WM*t),varS=t=>Math.sin(WM*t-alr());
+const JN=[];for(let n=-25;n<=25;n++)JN.push([n,Math.abs(bessel(n,BETA))]);
+const sp=arr=>{const o=[];arr.forEach(([f,a,c])=>{o.push({f,a,c});if(f!==0)o.push({f:-f,a,c})});return o};
+const comb=(f0,sc,c)=>JN.map(([n,j])=>[f0+n*FMo,sc*j,c]);
+const fiFM=t=>FU+BETA*FMo*(MD.fm==='sen'?Math.sin(WM*t):Math.cos(WM*t));
+const CY='#38bdf8',OR='#fb923c',GR='#34d399',PU='#c084fc';
+const STEPS=[
+{n:'1 · Portadora',tw:'100 µs',fw:'±560 kHz',pt:'tx',ser:()=>[[t=>Math.cos(WC*t),CY]],sp:()=>sp([[FC,.5,CY]]),
+ d:()=>`<b>Portadora</b> c(t) = A<sub>c</sub> cos(2πf<sub>c</sub>t), con A<sub>c</sub> = 1 V, f<sub>c</sub> = 112 kHz (en un VOR real, 108–118 <b>MHz</b>) y f<sub>s</sub> = 1120 kHz (10 muestras por ciclo). En frecuencia aparecen dos líneas en ±112 kHz de amplitud ½: la práctica representa el espectro <i>bilateral</i> (−f<sub>s</sub>/2 … f<sub>s</sub>/2).`},
+{n:'2 · Moduladoras',tw:'67 ms',fw:'±150 Hz',pt:'tx',meas:1,ser:()=>[[t=>Math.sin(WM*t),'#60a5fa'],[varS,OR]],sp:()=>sp([[FMo,.5,'#60a5fa']]),
+ d:()=>`<b>Moduladoras</b> m(t) = A<sub>m</sub> sen(2πf<sub>m</sub>t) (azul) y m₁(t) = A<sub>m</sub> sen(2πf<sub>m</sub>t − α) (naranja), con A<sub>m</sub> = 1 V y f<sub>m</sub> = 30 Hz. Tienen la misma amplitud y frecuencia: el espectro es idéntico y <b>la información está en la fase</b>. Mide el desfase de forma gráfica con los cursores A y B: Δt = α/360 · T, con T = 33,3 ms.`},
+{n:'3 · Subportadora FM',tw:'5 ms',fw:'±12 kHz',pt:'tx',lane2:1,ser:()=>[[sFM,GR]],sp:()=>sp(comb(FU,.5,GR)),
+ d:()=>`<b>Subportadora de 9960 Hz modulada en FM</b> por el tono de 30 Hz con β = Δf/f<sub>m</sub> = 16 ⇒ Δf = 480 Hz: la frecuencia instantánea oscila 9960 ± 480 Hz (gráfica inferior). El espectro es un peine de líneas cada 30 Hz con amplitudes ½|J<sub>n</sub>(16)| que ocupa ≈ ±(β + 1)f<sub>m</sub> ≈ ±510 Hz (regla de Carson). Con <code>modulate</code>, el parámetro opt = 2πβf<sub>m</sub>/(f<sub>s</sub>A<sub>m</sub>) ≈ ${(2*PI*BETA*FMo/FS).toExponential(2).replace('.',',')}.`+FMNOTE()},
+{n:'4 · Señal total',tw:'67 ms',fw:'100–124 kHz',pt:'tx',ser:()=>[[vr,'#e2e8f0']],sp:()=>sp([[FC,.5,CY],[FC+FMo,.075,OR],[FC-FMo,.075,OR],...comb(FC+FU,.075,GR),...comb(FC-FU,.075,GR)]),
+ d:()=>`<b>Señal total</b> (sin el Morse): v<sub>r</sub>(t) = cos(ω<sub>c</sub>t)·[1 + m₁ sen(ω<sub>m</sub>t − α) + m₂·(FM de 9960 Hz)]. La envolvente contiene la señal de 30 Hz (variable) y la subportadora. En frecuencia: la portadora, dos líneas a ±30 Hz (AM con información de α) y dos bandas de 9960 Hz con su peine FM a cada lado.`},
+{n:'5 · Punto ①',tw:'67 ms',fw:'±12 kHz',pt:'1',ser:()=>[[w1,PU]],sp:()=>sp([[0,1,PU],[FMo,.15,OR],...comb(FU,.15,GR)]),
+ d:()=>`<b>Punto ①: tras el detector AM</b> (demodulación AM) se recupera la envolvente: 1 + m₁ sen(ω<sub>m</sub>t − α) + m₂·FM(9960 Hz). Hay un nivel continuo de 1 V, la señal variable de 30 Hz y la subportadora de ~10 kHz. Esta mezcla es también la salida de audio (con el Morse de 1020 Hz).`},
+{n:'6 · Punto ②',tw:'5 ms',fw:'±12 kHz',pt:'2',lane2:1,ser:()=>[[t=>MM2*sFM(t),GR]],sp:()=>sp(comb(FU,.15,GR)),
+ d:()=>`<b>Punto ②: filtro1 paso banda 8–12 kHz</b> (FIR de ventana Hamming, orden 10000). Deja solo la subportadora FM y elimina la continua y los 30 Hz. La frecuencia instantánea sigue siendo 9960 ± 480 Hz (gráfica inferior).`+FMNOTE()},
+{n:'7 · Punto ③',tw:'67 ms',fw:'±150 Hz',pt:'3',ser:()=>[[refS,GR]],sp:()=>sp([[FMo,.5,GR]]),
+ d:()=>`<b>Punto ③: discriminador FM.</b> Convierte la desviación de frecuencia en amplitud y recupera la moduladora de 30 Hz: es la <b>señal de referencia</b>, con la misma fase para cualquier radial.`+FMNOTE()},
+{n:'8 · Punto ④',tw:'67 ms',fw:'±150 Hz',pt:'4',ser:()=>[[t=>1+aV(t),OR]],sp:()=>sp([[0,1,OR],[FMo,.15,OR]]),
+ d:()=>`<b>Punto ④: filtro2 paso bajo de 1 kHz</b> aplicado al punto ① (FIR Hamming, orden 10000). Elimina la subportadora de 9960 Hz y deja 1 + m₁ sen(ω<sub>m</sub>t − α): la <b>señal variable</b> con la información radial (más la continua de 1 V).`},
+{n:'9 · Desfase',tw:'67 ms',fw:'±150 Hz',pt:'cmp',meas:1,ser:()=>[[refS,GR],[varS,OR]],sp:()=>sp([[FMo,.5,GR]]),
+ d:()=>`<b>Comparación de fase.</b> Se representan juntas la referencia (③, verde) y la variable (④ sin continua, naranja). El retardo entre cruces por cero ascendentes da φ = 360·f<sub>m</sub>·Δt. ¿Es correcto el resultado? ¿Qué ángulo representa? Mídelo con los cursores y compáralo con la medida automática.`+FMNOTE()}];
+function FMNOTE(){return `<div class="try">Ojo con la fase: en (14) la FM aparece como β·sen(ω<sub>m</sub>t), que corresponde a modular con cos(ω<sub>m</sub>t) (el discriminador devolvería cos, adelantada 90° respecto a sen). Con moduladora sen(ω<sub>m</sub>t), como en la práctica, la fase FM es −β·cos(ω<sub>m</sub>t) y el discriminador devuelve directamente sen(ω<sub>m</sub>t). Cambia la «moduladora de la FM» y observa el desfase medido en el paso 9.</div>`}
+const TWS={'0,2 s':.2,'67 ms':2/30,'5 ms':.005,'100 µs':1e-4},FWS={'±560 kHz':[-560e3,560e3],'100–124 kHz':[100e3,124e3],'±12 kHz':[-12e3,12e3],'±150 Hz':[-150,150]};
+function dgHtml(pt){const b=(id,t)=>`<span class="blk" style="${pt===id?'border-color:#34d399;background:#06281f':''}">${t}</span>`,p=n=>`<b style="color:${pt===String(n)?'#34d399':'#64748b'};font-size:1.05rem">${'①②③④'[n-1]}</b>`;
+ if(pt==='tx')return `${b('tx','Moduladoras: AM 30 Hz · FM (30 Hz → 9960 Hz)')}→${b('tx','Modulador AM')}→${b('tx','v<sub>r</sub>(t)')}→<span class="blk">antena</span> <span class="text-slate-500">(transmisor)</span>`;
+ return `<span class="blk">Antena + receptor</span>→${b('1','Detector AM')}→${p(1)}→${b('2','Filtro1 · 8–12 kHz')}→${p(2)}→${b('3','Discriminador FM')}→${p(3)}→${b('cmp','Comparador de fase')}←${p(4)}←${b('4','Filtro2 · paso bajo 1 kHz (desde ①)')}→<span class="blk">radial α</span>`}
+function stepUI(){const st=STEPS[MD.step-1];$('#m2d').innerHTML=st.d();$('#dg').innerHTML=dgHtml(st.pt);MD.key=null;MD.dirty=true}
+mk($('#stp'),STEPS.map(s=>s.n),STEPS[0].n,l=>{MD.step=STEPS.findIndex(s=>s.n===l)+1;const st=STEPS[MD.step-1];MD.tw=st.tw;MD.fw=st.fw;setOn($('#tw'),MD.tw);setOn($('#fw'),MD.fw);stepUI()});
+mk($('#tw'),Object.keys(TWS),MD.tw,l=>{MD.tw=l;MD.key=null;MD.dirty=true});mk($('#fw'),Object.keys(FWS),MD.fw,l=>{MD.fw=l;MD.dirty=true});
+mk($('#fmm'),['sen(ωm t) (práctica)','cos(ωm t) (literal de (14))'],'sen(ωm t) (práctica)',l=>{MD.fm=l.startsWith('sen')?'sen':'cos';stepUI()});
+const fmtT=(t,T)=>T>=.1?t.toFixed(2)+' s':T>=1e-3?(t*1e3).toFixed(T>=.02?0:1)+' ms':(t*1e6).toFixed(0)+' µs';
+function drawMod(){
+ const st=STEPS[MD.step-1],T=TWS[MD.tw],sg=st.ser();
+ const key=[MD.step,Math.round(alr()*1e3),MD.fm,MD.tw].join('|');
+ if(MD.key!==key){const n=Math.min(Math.round(T*FS)+1,224001);MD.data=sg.map(([fn])=>{const a=new Float32Array(n);const dt=T/(n-1);for(let i=0;i<n;i++)a[i]=fn(i*dt);return a});MD.key=key}
+ // ---- tiempo
+ {const{x,w,h}=CV.c2b,L=44,R=8,pw=Math.floor(w-L-R),y0=st.lane2?14:14,hA=st.lane2?h*.58:h-44;x.clearRect(0,0,w,h);
+  let ym=1e-6;MD.data.forEach(a=>{for(let i=0;i<a.length;i+=Math.max(1,a.length/4000|0))ym=Math.max(ym,Math.abs(a[i]))});ym*=1.15;
+  const cyA=y0+(hA-y0)/2,sc=(hA-y0)/2/ym;x.strokeStyle='#1e293b';x.beginPath();x.moveTo(L,cyA);x.lineTo(L+pw,cyA);x.stroke();[-ym/1.15,ym/1.15].forEach(v=>{txt(x,v.toFixed(2),2,cyA-v*sc+3,'#64748b','9px system-ui')});txt(x,'tensión (V)',L,10,'#94a3b8','9px system-ui');
+  MD.data.forEach((a,k)=>{const n=a.length,col=sg[k][1];x.strokeStyle=col;x.lineWidth=1.6;
+   if(n/pw<=2.2){x.beginPath();for(let i=0;i<n;i++){const px=L+pw*i/(n-1),py=cyA-a[i]*sc;i?x.lineTo(px,py):x.moveTo(px,py)}x.stroke()}
+   else{const mn=new Float32Array(pw).fill(1e9),mx=new Float32Array(pw).fill(-1e9);for(let i=0;i<n;i++){const c=Math.min(pw-1,Math.floor(i/n*pw));if(a[i]<mn[c])mn[c]=a[i];if(a[i]>mx[c])mx[c]=a[i]}x.beginPath();for(let c=0;c<pw;c++){x.moveTo(L+c+.5,cyA-mx[c]*sc);x.lineTo(L+c+.5,cyA-mn[c]*sc)}x.stroke()}x.lineWidth=1});
+  if(st.lane2){const yb=hA+16,hb=h-yb-24;x.strokeStyle='#1e293b';x.strokeRect(L,yb,pw,hb);txt(x,'frecuencia instantánea (Hz)',L+4,yb+10,'#94a3b8','9px system-ui');txt(x,'10440',2,yb+8,'#64748b','8px system-ui');txt(x,'9480',8,yb+hb,'#64748b','8px system-ui');
+   x.strokeStyle=GR;x.lineWidth=2;x.beginPath();for(let i=0;i<=pw;i+=2){const t=T*i/pw,f=fiFM(t),py=yb+hb*(1-(f-9480)/960);i?x.lineTo(L+i,py):x.moveTo(L+i,py)}x.stroke();x.lineWidth=1}
+  for(let k=0;k<=4;k++){const px=L+pw*k/4;txt(x,fmtT(T*k/4,T),px-(k?(k==4?32:16):0),h-6,'#64748b','9px system-ui')}
+  let ms='';if(st.meas){MD.cur.forEach((c,i)=>{const px=L+pw*c;x.strokeStyle=i?'#f472b6':'#facc15';x.setLineDash([5,3]);x.lineWidth=2;x.beginPath();x.moveTo(px,6);x.lineTo(px,h-18);x.stroke();x.setLineDash([]);x.lineWidth=1;txt(x,'AB'[i],px+3,16,i?'#f472b6':'#facc15','bold 11px system-ui')});
+   const dt=Math.abs(MD.cur[1]-MD.cur[0])*T,ph=360*FMo*dt;ms=`Cursores: Δt = <b>${(dt*1e3).toFixed(2)} ms</b> → φ = 360·f<sub>m</sub>·Δt = <b>${ph.toFixed(1)}°</b>. `;
+   if(MD.step===2)ms+=`Medida exacta: α = ${(alr()/D2R).toFixed(1)}° ⇒ Δt = ${(alr()/D2R/360/FMo*1e3).toFixed(2)} ms.`;
+   else{const tr=MD.fm==='sen'?0:.75/FMo,tv=alr()/WM,d=((tv-tr)%(1/FMo)+1/FMo)%(1/FMo),phi=360*d*FMo,ok=Math.abs(n180(phi-alr()/D2R))<.5;ms+=`Medida automática (cruces por cero ascendentes): Δt = ${(d*1e3).toFixed(2)} ms → φ = <b>${phi.toFixed(1)}°</b> ${ok?'<span class="text-emerald-400">= α ✔ es el radial del avión (ángulo desde el norte magnético, sentido horario).</span>':'<span class="text-amber-300">≠ α = '+(alr()/D2R).toFixed(1)+'°: aparece un desfase de 90° (φ = α + 90°) porque el discriminador devuelve cos(ωm t).</span>'}`}}
+  $('#m2m').innerHTML=ms}
+ // ---- espectro
+ {const{x,w,h}=CV.c2c,L=44,R=10,T0=14,B=34,pw=w-L-R,ph=h-T0-B,[f0,f1]=FWS[MD.fw];x.clearRect(0,0,w,h);const X=f=>L+pw*(f-f0)/(f1-f0),lines=st.sp().filter(l=>l.f>=f0-1e-6&&l.f<=f1+1e-6);
+  const am=Math.max(1e-6,...lines.map(l=>l.a))*1.15,Y=a=>T0+ph*(1-a/am);x.strokeStyle='#1e293b';x.beginPath();x.moveTo(L,T0+ph);x.lineTo(L+pw,T0+ph);x.stroke();txt(x,'amplitud (espectro bilateral)',L,10,'#94a3b8','9px system-ui');
+  [0,.5,1].forEach(v=>txt(x,(am/1.15*v).toFixed(3),2,Y(am/1.15*v)+3,'#64748b','8px system-ui'));
+  for(let k=0;k<=4;k++){const f=f0+(f1-f0)*k/4,lab=Math.abs(f)>=1e3?(f/1e3).toFixed(Math.abs(f1-f0)>=3e4?0:1)+' kHz':f.toFixed(0)+' Hz';txt(x,lab,X(f)-(k==4?44:k?18:0),h-18,'#64748b','9px system-ui')}
+  lines.forEach(l=>{x.strokeStyle=l.c;x.lineWidth=2;x.beginPath();x.moveTo(X(l.f),T0+ph);x.lineTo(X(l.f),Y(l.a));x.stroke();x.lineWidth=1;x.fillStyle=l.c;x.beginPath();x.arc(X(l.f),Y(l.a),2.5,0,2*PI);x.fill()});
+  if(lines.length&&lines.length<=8)lines.forEach(l=>txt(x,(Math.abs(l.f)>=1e3?(l.f/1e3).toFixed(2)+'k':l.f.toFixed(0))+' · '+l.a.toFixed(3),X(l.f)-22,Y(l.a)-7,'#e2e8f0','9px system-ui'));
+  if(!lines.length)txt(x,'No hay componentes en este rango: prueba otro rango del espectro',L+10,h/2,'#64748b','11px system-ui')}
+}
+(function(){const c=$('#c2b');let dn=-1;const fr=e=>{const r=c.getBoundingClientRect(),L=44,R=8;return clamp((e.clientX-r.left-L)/(r.width-L-R),0,1)};
+ c.addEventListener('pointerdown',e=>{if(!STEPS[MD.step-1].meas)return;const f=fr(e);dn=Math.abs(f-MD.cur[0])<Math.abs(f-MD.cur[1])?0:1;MD.cur[dn]=f;MD.dirty=true;c.setPointerCapture&&c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointermove',e=>{if(dn<0)return;MD.cur[dn]=fr(e);MD.dirty=true});c.addEventListener('pointerup',()=>dn=-1)})();
+// ====================== sección 3: indicador VOR ======================
+const IN={obs:345,drag:false,last:0};
+bind('ob',v=>{IN.obs=v},f0);bind('hd',v=>{AC.tgt=v},f0);
+function reading(){const g=geo();if(g.cone||!g.cov)return{g,flag:'OFF',dev:0,needle:0};const v=vorRead(g.R,IN.obs);return{g,flag:v.flag==='OFF'?'FROM':v.flag,dev:v.needle,needle:v.needle}}
+function drawInst(id,flag,needle,obs,cover){
+ const{x,w,h}=CV[id];x.clearRect(0,0,w,h);const cx=w/2,cy=h/2,R=Math.min(w,h)/2-8,r={flag,needle};
+ x.fillStyle='#050810';x.beginPath();x.arc(cx,cy,R,0,2*PI);x.fill();x.strokeStyle='#e2e8f0';x.lineWidth=3;x.stroke();x.lineWidth=1;
+ x.save();x.translate(cx,cy);x.rotate(-obs*D2R);
+ for(let a=0;a<360;a+=5){const big=a%10===0,r1=R*.86,r2=R*(big?.78:.82);x.strokeStyle='#e2e8f0';x.beginPath();x.moveTo(r1*Math.sin(a*D2R),-r1*Math.cos(a*D2R));x.lineTo(r2*Math.sin(a*D2R),-r2*Math.cos(a*D2R));x.stroke()}
+ for(let a=0;a<360;a+=30){const lab=a%90===0?'NESW'[a/90]:String(a/10);x.save();x.rotate(a*D2R);x.translate(0,-R*.68);x.fillStyle='#fff';x.font='bold 15px system-ui';x.textAlign='center';x.fillText(lab,0,5);x.restore()}x.restore();
+ x.fillStyle='#fff';x.beginPath();x.moveTo(cx,cy-R-2);x.lineTo(cx-6,cy-R+10);x.lineTo(cx+6,cy-R+10);x.fill();
+ // puntos de escala
+ const dx=R*.1;for(let k=-5;k<=5;k++){if(!k)continue;x.fillStyle='#e2e8f0';x.beginPath();x.arc(cx+k*dx,cy,2.2,0,2*PI);x.fill()}x.strokeStyle='#e2e8f0';x.beginPath();x.arc(cx,cy,6,0,2*PI);x.stroke();
+ // CDI
+ const nx=cx+clamp(r.needle/2,-5,5)*dx;x.strokeStyle=r.flag==='OFF'?'#475569':'#fff';x.lineWidth=4;x.beginPath();x.moveTo(nx,cy-R*.5);x.lineTo(nx,cy+R*.5);x.stroke();x.lineWidth=1;
+ // TO / FROM / OFF
+ if(r.flag==='TO'){x.fillStyle='#fff';x.beginPath();x.moveTo(cx+R*.28,cy-R*.3);x.lineTo(cx+R*.2,cy-R*.15);x.lineTo(cx+R*.36,cy-R*.15);x.fill();txt(x,'TO',cx+R*.17,cy-R*.35,'#fff','bold 12px system-ui')}
+ else if(r.flag==='FROM'){x.fillStyle='#fff';x.beginPath();x.moveTo(cx+R*.28,cy+R*.3);x.lineTo(cx+R*.2,cy+R*.15);x.lineTo(cx+R*.36,cy+R*.15);x.fill();txt(x,'FR',cx+R*.2,cy+R*.4,'#fff','bold 12px system-ui')}
+ else{x.fillStyle='#dc2626';x.fillRect(cx+R*.18,cy-R*.1,R*.3,R*.2);txt(x,'OFF',cx+R*.21,cy+5,'#fff','bold 12px system-ui')}
+ x.fillStyle='#1f2937';x.strokeStyle='#e2e8f0';x.beginPath();x.arc(cx-R*.78,cy+R*.78,R*.17,0,2*PI);x.fill();x.stroke();txt(x,'OBS',cx-R*.78-11,cy+R*.78+3,'#fff','bold 10px system-ui');
+ txt(x,'A: corona de rumbo  B: OBS  C: TO/FROM  D: CDI',6,h-4,'#64748b','9px system-ui');
+ if(cover){x.fillStyle='rgba(7,11,20,.88)';x.beginPath();x.arc(cx,cy,R-2,0,2*PI);x.fill();txt(x,'Predice y pulsa «Comprobar»',cx,cy,'#94a3b8','12px system-ui','center')}
+}
+function drawC3a(){const r=reading();drawInst('c3a',r.flag,r.needle,IN.obs)}
+(function(){const c=$('#c3a');c.tabIndex=0;let lastA=0;const ang=e=>{const r=c.getBoundingClientRect();return Math.atan2(e.clientX-r.left-r.width/2,-(e.clientY-r.top-r.height/2))/D2R};
+ c.addEventListener('pointerdown',e=>{IN.drag=true;lastA=ang(e);c.setPointerCapture&&c.setPointerCapture(e.pointerId);c.focus()});
+ c.addEventListener('pointermove',e=>{if(!IN.drag)return;const a=ang(e);IN.obs=n360(IN.obs+n180(a-lastA));lastA=a;setv('ob',Math.round(IN.obs)%360,f0)});c.addEventListener('pointerup',()=>IN.drag=false);
+ c.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){IN.obs=n360(IN.obs+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?10:1));setv('ob',Math.round(IN.obs)%360,f0);e.preventDefault()}});
+ c.addEventListener('wheel',e=>{IN.obs=n360(IN.obs+(e.deltaY>0?1:-1)*2);setv('ob',Math.round(IN.obs)%360,f0);e.preventDefault()},{passive:false})})();
+// mapa de vuelo
+function drawC3b(){
+ const{x,w,h}=CV.c3b;x.clearRect(0,0,w,h);const RG=30,s=Math.min(w,h)/2*.92/RG,cx=w/2,cy=h/2,g=geo();
+ x.strokeStyle='#1e293b';[10,20,30].forEach(k=>{x.beginPath();x.arc(cx,cy,k*s,0,2*PI);x.stroke();txt(x,k+' NM',cx+3,cy-k*s-2,'#475569','9px system-ui')});
+ for(let a=0;a<360;a+=30){x.strokeStyle='#121a2d';x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+RG*s*Math.sin(a*D2R),cy-RG*s*Math.cos(a*D2R));x.stroke();txt(x,pad3(a),cx+(RG*s+4)*Math.sin(a*D2R)-8,cy-(RG*s+4)*Math.cos(a*D2R)+3,'#475569','9px system-ui')}
+ // ruta OBS (línea de ida y de vuelta)
+ x.strokeStyle='#a78bfa';x.setLineDash([6,4]);x.lineWidth=2;const o=IN.obs*D2R;x.beginPath();x.moveTo(cx-Math.sin(o)*RG*s,cy+Math.cos(o)*RG*s);x.lineTo(cx+Math.sin(o)*RG*s,cy-Math.cos(o)*RG*s);x.stroke();x.setLineDash([]);x.lineWidth=1;
+ // flecha del sentido de la ruta (OBS)
+ const ax0=cx+Math.sin(o)*RG*s*.9,ay0=cy-Math.cos(o)*RG*s*.9;txt(x,'OBS '+pad3(IN.obs),ax0+4,ay0-4,'#a78bfa','10px system-ui');
+ x.fillStyle='#facc15';x.beginPath();for(let i=0;i<5;i++){const a=i*2*PI/5-PI/2;i?x.lineTo(cx+7*Math.cos(a),cy+7*Math.sin(a)):x.moveTo(cx+7*Math.cos(a),cy+7*Math.sin(a))}x.fill();
+ x.strokeStyle='#38bdf866';x.beginPath();AC.trail.forEach((p,i)=>{const px=cx+p[0]*s,py=cy-p[1]*s;i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
+ if(CH.on&&!CH.done){x.strokeStyle='#34d39988';x.setLineDash([2,4]);x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.sin(CH.Rt*D2R)*RG*s,cy-Math.cos(CH.Rt*D2R)*RG*s);x.stroke();x.setLineDash([]);txt(x,'radial '+pad3(CH.Rt),cx+Math.sin(CH.Rt*D2R)*RG*s*.8+4,cy-Math.cos(CH.Rt*D2R)*RG*s*.8,'#34d399','10px system-ui')}
+ const px=clamp(cx+AC.x*s,8,w-8),py=clamp(cy-AC.y*s,8,h-8);drawPlane(x,px,py,AC.hdg,'#e2e8f0',.9);
+ txt(x,'Rumbo '+pad3(AC.hdg)+'° · '+AC.spd+' kt · '+g.g.toFixed(1)+' NM',6,h-6,'#94a3b8','10px system-ui');
+}
+mk($('#fs'),['×5','×10','×20'],'×10',l=>AC.sx=parseInt(l.slice(1)));
+$('#fy').onclick=()=>{AC.fly=!AC.fly;$('#fy').textContent=AC.fly?'⏸ Pausar':'▶ Volar'};
+$('#fr').onclick=()=>{AC.x=-30;AC.y=25;AC.hdg=90;AC.tgt=90;setv('hd',90,f0);AC.fly=false;AC.trail.length=0;CH.on=false;$('#c3t').classList.add('hidden');$('#fy').textContent='▶ Volar';recalc()};
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','BUTTON','TEXTAREA'].includes(e.target.tagName)){e.preventDefault();$('#fy').click()}});
+const CH={on:false,done:false,Rt:0,sum:0,n:0};
+$('#chb').onclick=()=>{CH.on=true;CH.done=false;CH.Rt=30*Math.floor(Math.random()*12);CH.sum=0;CH.n=0;const a=CH.Rt+(Math.random()<.5?-1:1)*(50+Math.random()*50),d=22+Math.random()*6;AC.x=d*Math.sin(a*D2R);AC.y=d*Math.cos(a*D2R);
+ AC.hdg=n360(a+180+(Math.random()<.5?-1:1)*50);AC.tgt=Math.round(AC.hdg);setv('hd',AC.tgt,f0);AC.trail.length=0;AC.fly=true;$('#fy').textContent='⏸ Pausar';
+ const c=$('#c3t');c.classList.remove('hidden');c.innerHTML=`🎯 <b>Reto:</b> llega a la estación volando <b>hacia ella por el radial ${pad3(CH.Rt)}°</b> (es decir, con rumbo ${pad3(CH.Rt+180)}°). Pon el OBS en ${pad3(CH.Rt+180)}° (indicador TO), intercepta y mantén la aguja centrada. Termina a menos de 1,2 NM de la estación.`;recalc()};
+function flyStep(dtr){
+ if(!AC.fly)return;const dt=dtr/1000*AC.sx,g=geo();const dh=n180(AC.tgt-AC.hdg),st=3*dt;AC.hdg=n360(AC.hdg+clamp(dh,-st,st));const v=AC.spd/3600*dt;AC.x+=Math.sin(AC.hdg*D2R)*v;AC.y+=Math.cos(AC.hdg*D2R)*v;
+ const last=AC.trail[AC.trail.length-1];if(!last||Math.hypot(last[0]-AC.x,last[1]-AC.y)>.25){AC.trail.push([AC.x,AC.y]);if(AC.trail.length>300)AC.trail.shift()}
+ if(CH.on&&!CH.done&&g.g<12){CH.sum+=Math.abs(n180(g.R-CH.Rt))*dt;CH.n+=dt}
+ if(g.g<1.2&&CH.on&&!CH.done){CH.done=true;AC.fly=false;$('#fy').textContent='▶ Volar';const m=CH.n?CH.sum/CH.n:99,c=$('#c3t');c.innerHTML=`🏁 Sobrevuelas la estación. Desviación media del radial en los últimos 12 NM: <b>${m.toFixed(1)}°</b> → ${m<3?'🏆 ¡Clavado!':m<8?'👍 Bien, con alguna corrección.':'🙈 Te saliste del radial; repite y vira antes.'}`}
+ else if(g.g<.3&&!CH.on){AC.fly=false;$('#fy').textContent='▶ Volar'}
+ if(g.g>260){AC.fly=false;$('#fy').textContent='▶ Volar'}
+}
+function updT3(){const r=reading(),g=r.g;let t=`Estás en el radial <b>${pad3(g.R)}°</b>. OBS = <b>${pad3(IN.obs)}°</b> → `;
+ if(r.flag==='OFF')t+='<b class="text-red-400">bandera OFF</b> ('+(g.cone?'cono de silencio':'fuera de cobertura')+').';
+ else{const dots=Math.abs(r.needle)/2;t+=`<b>${r.flag}</b>, aguja ${Math.abs(r.needle)<.5?'centrada':dots.toFixed(1)+' puntos a la '+(r.needle<0?'izquierda':'derecha')}. `+(Math.abs(r.needle)<.5?'Estás sobre la ruta seleccionada.':`La ruta seleccionada queda a tu ${r.needle<0?'izquierda: vira a la izquierda':'derecha: vira a la derecha'} (si vuelas con rumbo ≈ OBS${r.flag==='TO'?'':' sentido FROM'}).`)+` Desviación angular: ${Math.abs(r.dev).toFixed(1)}° (plena escala = 10°).`}
+ $('#t3').innerHTML=t}
+
+// ====================== sección 6: búsqueda y seguimiento ======================
+const SR={N:100,ps:5,K:4,tr:[],hist:{},locked:false,est:0,miss:0,n:0,auto:false,acc:0,hits:0,false:false,showOwn:true,vel:0,prevT:0,prevTau:0,lastT:0};
+bind('n6',v=>{SR.N=v;updO6()},f0);bind('p6',v=>{SR.ps=v;updO6()},f0);bind('k6',v=>{SR.K=v},f0);
+const effic=(N,ps)=>{const lam=N*(ps/100*150+(1-ps/100)*24);return 1/(1+lam*60e-6)};
+const pois=l=>{let L=Math.exp(-l),k=0,p=1;do{k++;p*=Math.random()}while(p>L);return k-1};
+function resetSearch(){SR.tr=[];SR.locked=false;SR.miss=0;SR.n=0;SR.hits=0;SR.false=false;SR.est=0;$('#m6').textContent='Modo: búsqueda (ventana 2400 µs · 150 int/s)'}
+function interrogate(){
+ const g=geo(),tau=g.sl*US_NM+50,W=2400,P=effic(SR.N,SR.ps),own=g.cov&&tau<W&&Math.random()<P;SR.n++;
+ if(SR.locked){const nowT=performance.now(),dts=SR.lastT?(nowT-SR.lastT)/1000:0;SR.lastT=nowT;SR.est+=SR.vel*dts;           // memoria: extrapola con la velocidad estimada
+  const hit=own&&Math.abs(tau-SR.est)<10;if(hit){if(SR.prevT){const dv=(tau-SR.prevTau)/Math.max(.02,(nowT-SR.prevT)/1000);SR.vel=SR.vel*.6+dv*.4}SR.prevTau=tau;SR.prevT=nowT;SR.est=tau+gn()*.15;SR.miss=0;SR.hits++}else SR.miss++;
+  SR.tr.push({own:hit?tau:null,o:[],nz:[],loc:true});if(SR.tr.length>8)SR.tr.shift();if(SR.miss>=8){resetSearch()}return}
+ const rate=SR.ps/100*150+(1-SR.ps/100)*24,o=[],nz=[];for(let i=0,n=pois((SR.N-1)*rate*W*1e-6*P);i<n;i++)o.push(Math.random()*W);for(let i=0,n=pois(1.2);i<n;i++)nz.push(Math.random()*W);
+ SR.tr.push({own:own?tau:null,o,nz});if(SR.tr.length>8)SR.tr.shift();
+ const bins={};SR.tr.forEach(t=>{[t.own,...t.o,...t.nz].forEach(d=>{if(d==null)return;const b=Math.floor(d/6);bins[b]=(bins[b]||0)+1})});SR.hist=bins;
+ let best=-1,bc=0;for(const b in bins)if(bins[b]>bc){bc=bins[b];best=+b}
+ if(SR.tr.length>=SR.K&&bc>=SR.K){SR.locked=true;SR.est=(best+.5)*6;SR.miss=0;SR.vel=0;SR.prevT=0;SR.lastT=performance.now();SR.false=!(own||SR.tr.some(t=>t.own!=null))||Math.abs(SR.est-tau)>12;
+  $('#m6').innerHTML=SR.false?'<span class="text-red-400">¡Falso enganche! (coincidencia casual con otra aeronave)</span>':'<span class="text-emerald-400">Enganchado tras '+SR.n+' interrogaciones ('+(SR.n/150*1000).toFixed(0)+' ms a 150 int/s). Modo: seguimiento (ventana 20 µs · 24 int/s)</span>';
+  if(SR.false){setTimeout(resetSearch,1800)}}
+}
+function drawC6a(){
+ const{x,w,h}=CV.c6a;x.clearRect(0,0,w,h);const L=70,R=10,pw=w-L-R,T=22,rh=(h-T-96)/8,W=2400,X=d=>L+pw*d/W;
+ x.strokeStyle='#1e293b';for(let d=0;d<=W;d+=400){x.beginPath();x.moveTo(X(d),T);x.lineTo(X(d),h-78);x.stroke();txt(x,d+' µs',X(d)-12,h-66,'#64748b','9px system-ui')}
+ txt(x,'Retardo desde la interrogación (µs): ventana de búsqueda',L,12,'#94a3b8','10px system-ui');
+ const tgt=geo().sl*US_NM+50;
+ for(let i=0;i<8;i++){const t=SR.tr[SR.tr.length-8+i],y=T+i*rh;x.strokeStyle='#1e293b';x.beginPath();x.moveTo(L,y+rh-3);x.lineTo(L+pw,y+rh-3);x.stroke();if(!t)continue;txt(x,'int. '+(SR.n-(SR.tr.length-1-(i-(8-SR.tr.length)))),4,y+rh-6,'#475569','9px system-ui');
+  const one=(d,c)=>{x.strokeStyle=c;x.lineWidth=c==='#34d399'?3:2;x.beginPath();x.moveTo(X(d),y+rh-3);x.lineTo(X(d),y+3);x.stroke();x.lineWidth=1};
+  t.o.forEach(d=>one(d,(SR.hist[Math.floor(d/6)]||0)>=2?'#fb923c':'#94a3b8'));t.nz.forEach(d=>one(d,'#475569'));if(t.own!=null)one(t.own,SR.showOwn?'#34d399':((SR.hist[Math.floor(t.own/6)]||0)>=2?'#fb923c':'#94a3b8'))}
+ if(SR.locked){x.fillStyle='rgba(52,211,153,.18)';x.fillRect(X(SR.est)-3,T,6,h-T-78);x.strokeStyle='#34d399';x.setLineDash([4,3]);x.beginPath();x.moveTo(X(SR.est),T);x.lineTo(X(SR.est),h-78);x.stroke();x.setLineDash([]);txt(x,'ventana de seguimiento 20 µs · retardo '+SR.est.toFixed(1)+' µs → '+((SR.est-50)/US_NM).toFixed(1)+' NM',Math.min(X(SR.est)+8,w-250),T+12,'#34d399','bold 11px system-ui')}
+ // histograma de coincidencias
+ const hy=h-12,hh=44;x.strokeStyle='#334155';x.beginPath();x.moveTo(L,hy);x.lineTo(L+pw,hy);x.stroke();txt(x,'coincidencias',4,hy-14,'#fb923c','9px system-ui');
+ for(const b in SR.hist){const c=SR.hist[b];x.fillStyle=c>=SR.K?'#34d399':c>=2?'#fb923c':'#475569';x.fillRect(X(b*6)-1,hy-c*hh/8,3,c*hh/8)}x.strokeStyle='#f87171';x.setLineDash([3,3]);x.beginPath();x.moveTo(L,hy-SR.K*hh/8);x.lineTo(L+pw,hy-SR.K*hh/8);x.stroke();x.setLineDash([]);txt(x,'umbral '+SR.K,L+pw-48,hy-SR.K*hh/8-3,'#f87171','9px system-ui');
+ [['#94a3b8','otras aeronaves / ruido'],['#fb923c','coincidencia repetida'],['#34d399','tus respuestas']].forEach(([c,l],i)=>{x.fillStyle=c;x.fillRect(L+i*150,h-hh-40,8,8);txt(x,l,L+i*150+12,h-hh-33,'#94a3b8','9px system-ui')});
+}
+function updO6(){const lam=SR.N*(SR.ps/100*150+(1-SR.ps/100)*24),P=effic(SR.N,SR.ps);
+ $('#o6').innerHTML=`<div><b>${lam.toFixed(0)}/s</b><small>Interrogaciones totales que recibe la estación</small></div><div><b>${(SR.ps/100*150+(1-SR.ps/100)*24).toFixed(1)}/s</b><small>Media por avión (5 % búsqueda ⇒ 30)</small></div><div><b>${(lam*60e-6*100).toFixed(1)} %</b><small>Tiempo ciego (60 µs por interrogación)</small></div><div><b>${(P*100).toFixed(1)} %</b><small>Eficiencia de respuesta 1/(1 + λ·60 µs)</small></div>`}
+function drawC6b(){
+ const{x,w,h}=CV.c6b;x.clearRect(0,0,w,h);const L=40,T=18,pw=w-L-10,ph=h-T-32,X=n=>L+pw*n/150,Y=p=>T+ph*(1-(p-.4)/.6);
+ x.strokeStyle='#1e293b';[.5,.75,1].forEach(p=>{x.beginPath();x.moveTo(L,Y(p));x.lineTo(L+pw,Y(p));x.stroke();txt(x,Math.round(p*100)+'%',4,Y(p)+3,'#64748b','9px system-ui')});
+ [[5,'#34d399'],[20,'#facc15'],[50,'#fb7185']].forEach(([ps,c])=>{x.strokeStyle=c;x.lineWidth=2;x.beginPath();for(let n=1;n<=150;n+=2){const p=effic(n,ps);n>1?x.lineTo(X(n),Y(p)):x.moveTo(X(n),Y(p))}x.stroke();x.lineWidth=1;txt(x,ps+' % en búsqueda',L+pw-110,Y(effic(150,ps))-4,c,'10px system-ui')});
+ x.fillStyle='#fff';x.beginPath();x.arc(X(SR.N),Y(effic(SR.N,SR.ps)),5,0,2*PI);x.fill();txt(x,'Eficiencia de respuesta frente al nº de aviones',L,12,'#94a3b8','10px system-ui');for(let n=0;n<=150;n+=50)txt(x,n,X(n)-6,h-16,'#64748b','9px system-ui');txt(x,'aviones',L+pw/2-18,h-4,'#64748b','9px system-ui');
+}
+$('#i6').onclick=interrogate;$('#a6').onclick=()=>{SR.auto=!SR.auto;$('#a6').textContent=SR.auto?'⏸ Pausar':'▶ Automático'};$('#z6').onclick=resetSearch;
+$('#g6').onchange=e=>SR.showOwn=e.target.checked;bind('dd6',v=>{setGround(v);AC.trail.length=0;recalc()},f1);
+const pN=t=>t>=0&&t<=7?Math.pow(Math.sin(PI*t/7),2):0;
+function pP(t){if(t<=0||t>=6.542)return 0;if(t<=.3)return t;if(t<=1.5)return .3+.7*Math.sin(PI/2*(t-.3)/1.2);return .5*(1+Math.cos(PI*(t-1.5)/5.042))}
+// ====================== sección 7: DME/P ======================
+const D7={A:-6,tau:95,snr:30,k:0,e:500,r:30,mc:null};
+bind('av',v=>{D7.A=v;mc7()},v=>v.toFixed(1));bind('ta',v=>{D7.tau=v;mc7()},f0);bind('s7',v=>{D7.snr=v;mc7()},f0);bind('k7',v=>{D7.k=v;mc7()},f0);bind('e7',v=>{D7.e=v;mc7()},f0);bind('r7',v=>{D7.r=v},f1);
+const comp=(p,t,k,e)=>p(t)+k*p(t-e/1000);
+function detN(k,e,nz){const pk=Math.max(...Array.from({length:1400},(_,i)=>comp(pN,i*.005,k,e))),thr=.5*pk;for(let t=0;t<7;t+=.005){const v=comp(pN,t,k,e)+(nz?nz(t):0);if(v>=thr)return t*1000}return NaN}
+function detD(k,e,nz,sg){const A=Math.pow(10,D7.A/20),tau=D7.tau/1000,gate=Math.max(.02,6*(sg||0));for(let t=0;t<2;t+=.005){const a=comp(pP,t,k,e)+(nz?nz(t):0),b=comp(pP,t-tau,k,e)+(nz?nz(t-tau):0);if(a>gate&&b>=A*a)return t*1000}return NaN}
+function mc7(){
+ const k=D7.k/100,sg=Math.pow(10,-D7.snr/20),i0N=detN(0,0),i0D=detD(0,0,null,0),bN=detN(k,D7.e)-i0N,bD=detD(k,D7.e,null,0)-i0D,r=rng(5);let sN=0,sD=0,nN=0,nD=0;
+ for(let it=0;it<140;it++){const nzv=new Float32Array(400);for(let i=0;i<400;i++)nzv[i]=sg*Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(2*PI*r());const nz=t=>{const u=(t+1)/.025,i=Math.floor(u),f=u-i;return i<0||i>=399?0:nzv[i]*(1-f)+nzv[i+1]*f};
+  const a=detN(0,0,nz),b=detD(0,0,nz,sg);if(!isNaN(a)){sN+=(a-i0N)**2;nN++}if(!isNaN(b)){sD+=(b-i0D)**2;nD++}}
+ D7.mc={i0N,i0D,bN,bD,rN:nN?Math.sqrt(sN/nN):NaN,rD:nD?Math.sqrt(sD/nD):NaN};const m=.14990;
+ const tau=D7.tau/1000,A=Math.pow(10,D7.A/20);
+ $('#o7').innerHTML=`<div><b>${(D7.tau/(1-A)).toFixed(0)} ns</b><small>t<sub>d</sub> = τ/(1−A) (teoría, rampa lineal)</small></div><div><b>${(i0D).toFixed(0)} ns · ${(pP(i0D/1000)*100).toFixed(0)} %</b><small>Disparo del DAC (simulado) y amplitud</small></div><div><b>${i0N.toFixed(0)} ns</b><small>Disparo del detector al 50 % (DME/N)</small></div><div><b>${isNaN(bN)?'—':(bN*m).toFixed(0)} m · ${isNaN(bD)?'—':(bD*m).toFixed(0)} m</b><small>Error por multitrayecto: DME/N · DAC</small></div>`}
+function drawC7a(){
+ const{x,w,h}=CV.c7a;x.clearRect(0,0,w,h);const k=D7.k/100,L=34,T=16,B=26,mw=w*.57,ph=h-T-B,X=t=>L+(mw-L-6)*t/7,Y=a=>T+ph*(1-a/1.1);
+ x.strokeStyle='#1e293b';[0,.5,1].forEach(a=>{x.beginPath();x.moveTo(L,Y(a));x.lineTo(mw,Y(a));x.stroke();txt(x,Math.round(a*100)+'%',2,Y(a)+3,'#64748b','9px system-ui')});for(let t=0;t<=7;t++)txt(x,t+' µs',X(t)-8,h-12,'#64748b','9px system-ui');
+ const curve=(p,c,dash)=>{x.strokeStyle=c;x.lineWidth=2;x.setLineDash(dash||[]);x.beginPath();for(let i=0;i<=420;i++){const t=7*i/420,v=comp(p,t,k,D7.e);i?x.lineTo(X(t),Y(v)):x.moveTo(X(t),Y(v))}x.stroke();x.setLineDash([]);x.lineWidth=1};
+ curve(pN,'#22d3ee');curve(pP,'#34d399');txt(x,'DME/N',X(3.6)-14,Y(1)-5,'#22d3ee','bold 11px system-ui');txt(x,'DME/P',X(1.2)-6,Y(1)-5,'#34d399','bold 11px system-ui');
+ const m=D7.mc;if(m){x.fillStyle='#22d3ee';x.beginPath();x.arc(X((m.i0N+(isNaN(m.bN)?0:m.bN))/1000),Y(.5),4,0,2*PI);x.fill();x.fillStyle='#facc15';x.beginPath();x.arc(X(m.i0D/1000),Y(pP(m.i0D/1000)),4,0,2*PI);x.fill()}
+ // detalle DAC (0–600 ns)
+ const ix=w*.62,iw=w-ix-8,X2=t=>ix+iw*t/600,Y2=a=>T+ph*(1-a/.5);x.strokeStyle='#334155';x.strokeRect(ix,T,iw,ph);txt(x,'Detector DAC (0–600 ns)',ix+4,T+11,'#94a3b8','10px system-ui');
+ const A=Math.pow(10,D7.A/20),tau=D7.tau;x.lineWidth=2;
+ x.strokeStyle='#fb923c';x.beginPath();for(let i=0;i<=120;i++){const t=600*i/120,v=A*comp(pP,t/1000,k,D7.e);i?x.lineTo(X2(t),Y2(v)):x.moveTo(X2(t),Y2(v))}x.stroke();
+ x.strokeStyle='#a78bfa';x.beginPath();for(let i=0;i<=120;i++){const t=600*i/120,v=comp(pP,(t-tau)/1000,k,D7.e);i?x.lineTo(X2(t),Y2(v)):x.moveTo(X2(t),Y2(v))}x.stroke();x.lineWidth=1;
+ txt(x,'atenuado A·p(t)',ix+6,T+ph-24,'#fb923c','10px system-ui');txt(x,'retardado p(t−τ)',ix+6,T+ph-10,'#a78bfa','10px system-ui');
+ if(m&&!isNaN(m.i0D)){const td=m.i0D+(isNaN(m.bD)?0:m.bD),v=A*comp(pP,td/1000,k,D7.e);x.fillStyle='#facc15';x.beginPath();x.arc(X2(td),Y2(v),5,0,2*PI);x.fill();txt(x,'t_d = '+td.toFixed(0)+' ns',Math.min(X2(td)+8,w-90),Y2(v)-8,'#facc15','bold 11px system-ui')}
+}
+function drawC7b(){
+ const{x,w,h}=CV.c7b;x.clearRect(0,0,w,h);const m=D7.mc;if(!m)return;const L=44,T=22,pw=w-L-8,ph=h-T-34,cc=.1499;
+ const v=[[Math.abs(m.bN)*cc,Math.abs(m.bD)*cc],[m.rN*cc,m.rD*cc]],mx=Math.max(5,...v.flat().filter(a=>!isNaN(a)))*1.15,Y=a=>T+ph*(1-a/mx);
+ x.strokeStyle='#1e293b';[0,.5,1].forEach(f=>{x.beginPath();x.moveTo(L,Y(mx*f));x.lineTo(L+pw,Y(mx*f));x.stroke();txt(x,(mx*f).toFixed(0)+' m',2,Y(mx*f)+3,'#64748b','9px system-ui')});txt(x,'Error de distancia (m)',L,12,'#94a3b8','10px system-ui');
+ ['Multitrayecto (sesgo)','Ruido (error rms)'].forEach((l,gi)=>{const gx=L+pw*(gi+.5)/2;v[gi].forEach((a,i)=>{const bw=Math.min(60,pw/7),bx=gx+(i?6:-bw-6),bh=isNaN(a)?0:ph*a/mx;x.fillStyle=i?'#34d399':'#22d3ee';x.fillRect(bx,T+ph-bh,bw,bh);txt(x,isNaN(a)?'sin disparo':a.toFixed(1)+' m',bx+bw/2,T+ph-bh-3,'#e2e8f0','10px system-ui','center')});txt(x,l,gx,h-8,'#94a3b8','10px system-ui','center')});
+ x.fillStyle='#22d3ee';x.fillRect(w-190,6,8,8);txt(x,'DME/N (50 %)',w-178,14,'#cbd5e1','10px system-ui');x.fillStyle='#34d399';x.fillRect(w-96,6,8,8);txt(x,'DME/P FA (DAC)',w-84,14,'#cbd5e1','10px system-ui');
+}
+function drawC7c(){
+ const{x,w,h}=CV.c7c;x.clearRect(0,0,w,h);const L=14,pw=w-2*L,X=d=>L+pw*(35-d)/35,r=D7.r;
+ [[35,22,'#fb7185','DME/N · en ruta'],[22,8,'#facc15','DME/P · aprox. inicial (IA)'],[8,7,'#a78bfa','trans.'],[7,0,'#34d399','FA']].forEach(([a,b,c,l])=>{x.fillStyle=c+'33';x.fillRect(X(a),30,X(b)-X(a),30);x.strokeStyle=c;x.strokeRect(X(a),30,X(b)-X(a),30);txt(x,l,l==='trans.'?X(a)-8:X(a)+4,l==='trans.'?26:49,c,'10px system-ui')});
+ for(let d=0;d<=35;d+=5)txt(x,d,X(d)-5,h-8,'#64748b','9px system-ui');txt(x,'NM a la pista →',L,12,'#64748b','10px system-ui');drawPlane(x,X(r),20,90,'#e2e8f0',.55);
+ const mode=r>22?'DME/N':r>8?'IA':r>=7?'transición':'FA';const sp={ 'DME/N':'12 µs','IA':'12 µs','transición':'12 → 18 µs','FA':'18 µs'}[mode];
+ $('#t7').innerHTML=`A <b>${r.toFixed(1)} NM</b> el interrogador usa <b class="text-amber-300">${mode==='DME/N'?'DME/N (detección al 50 %)':mode==='IA'?'aproximación inicial: detección al 50 %, como DME/N':mode==='FA'?'aproximación final: detección DAC al inicio del pulso':'la zona de transición: cambia de modo'}</b> · separación del par de interrogación: ${sp}.`}
+
+// ====================== sección 8: test ======================
+const QZ=[
+['¿Qué magnitud determina un VOR?',['La distancia a la estación','El ángulo entre la dirección estación–avión y el norte magnético','La altitud del avión','La velocidad respecto al suelo'],1,'El VOR da el radial: ángulo respecto al norte magnético. La distancia la da el DME.'],
+['En un VOR convencional, ¿qué señal actúa como referencia de fase?',['La AM de 30 Hz creada al girar la cardioide','La subportadora de 9960 Hz modulada en FM a 30 Hz, emitida por la antena omnidireccional','El tono Morse de 1020 Hz','La portadora de 112 MHz'],1,'En el CVOR la referencia es FM (omni) y la variable es AM (cardioide girando). En el DVOR se invierten los papeles.'],
+['El patrón cardioide del VOR convencional gira a…',['30 vueltas por segundo','9960 vueltas por segundo','1 vuelta por segundo','360 vueltas por segundo'],0,'30 vueltas/s ⇒ una señal de 30 Hz cuya fase depende de la dirección.'],
+['¿Qué resuelve el indicador TO–OFF–FROM?',['La distancia a la estación','La ambigüedad de 180° de la ruta seleccionada','El multitrayecto','La frecuencia del VOR'],1,'Una ruta (OBS) coincide con dos semirradiales opuestos; TO/FROM dice si vuelas hacia la estación o desde ella.'],
+['La aguja del CDI está a la izquierda. ¿Qué haces?',['Viras a la derecha','Viras a la izquierda: la ruta seleccionada está a tu izquierda','Cambias la frecuencia','Nada: estás centrado'],1,'La aguja apunta hacia donde está la ruta deseada.'],
+['¿Qué diferencia a un DVOR de un VOR convencional?',['La variable es FM (por conmutación de antenas) y la referencia es AM','Usa otra banda de frecuencias','Mide distancias','No necesita receptor a bordo'],0,'Mismo receptor y mismo principio (φFM − φAM = α), pero con una antena virtual mayor: más directividad y precisión.'],
+['En el DME/N, el retardo total medido es t = 2d/c + …',['12 µs','50 µs','2400 µs','3,5 µs'],1,'La estación espera exactamente 50 µs antes de responder; el avión los resta.'],
+['¿Cuántos microsegundos de ida y vuelta corresponden a 1 milla náutica?',['≈ 6 µs','≈ 12,36 µs','≈ 50 µs','≈ 100 µs'],1,'2 · 1852 m / 299,79 m/µs ≈ 12,36 µs.'],
+['Si todos los aviones usan la misma frecuencia, ¿cómo reconoce el DME del avión sus respuestas?',['Por una frecuencia distinta para cada avión','Porque llegan siempre con el mismo retardo respecto a sus propias interrogaciones (intervalos irregulares)','Por el código Morse','Por la polarización'],1,'La coincidencia repetida en el mismo retardo identifica las respuestas propias.'],
+['En DME/P aproximación final, con A = −6 dB y τ = 95 ns, el detector DAC dispara a…',['≈ 190 ns','≈ 1,75 µs','≈ 50 µs','≈ 3,5 µs'],0,'t_d = τ/(1 − A) = 95 / (1 − 0,5) = 190 ns, frente a ~1,75 µs al 50 %.'],
+['¿Por qué se usa DME/P cerca del aeropuerto?',['Porque tiene más alcance','Porque ±100 m de DME/N no bastan en aproximación y aterrizaje','Porque no usa pulsos','Porque no necesita estación en tierra'],1,'DME/P se creó como complemento del MLS: pulsos más empinados y detección al principio del pulso.'],
+['Sobrevuelas la estación VOR y el indicador muestra bandera OFF. ¿Por qué?',['La estación se apagó','Estás en el cono de silencio sobre la antena','Has cambiado la frecuencia','El DME está saturado'],1,'Justo encima de la estación el diagrama no da información direccional útil: cono de silencio.']];
+const Z={i:0,sc:0,done:false};
+function showQ(){const q=QZ[Z.i];Z.done=false;$('#qs').textContent=`· pregunta ${Z.i+1}/${QZ.length} · aciertos ${Z.sc}`;$('#qz').innerHTML=`<p class="text-sm mb-2">${q[0]}</p>`;
+ q[1].forEach((o,k)=>{const b=document.createElement('button');b.className='b q';b.textContent=o;b.onclick=()=>{if(Z.done)return;Z.done=true;if(k===q[2])Z.sc++;[...$('#qz').querySelectorAll('.q')].forEach((e,j)=>{if(j===q[2])e.classList.add('ok');else if(j===k)e.classList.add('ko')});$('#qs').textContent=`· pregunta ${Z.i+1}/${QZ.length} · aciertos ${Z.sc}`;const p=document.createElement('p');p.className='text-xs text-slate-300 mt-1';p.innerHTML=(k===q[2]?'✅ ':'❌ ')+q[3];$('#qz').appendChild(p)};$('#qz').appendChild(b)});
+ $('#qn').textContent=Z.i===QZ.length-1?'Ver resultado ▶':'Siguiente pregunta ▶'}
+$('#qn').onclick=()=>{if(Z.i>=QZ.length){Z.i=0;Z.sc=0;showQ();return}if(Z.i===QZ.length-1){Z.i=QZ.length;$('#qz').innerHTML=`<p class="text-sm">Has acertado <b class="text-emerald-400">${Z.sc} de ${QZ.length}</b>. ${Z.sc>=10?'¡Excelente!':Z.sc>=7?'Bien: repasa los apartados donde has fallado.':'Vuelve a explorar los apartados 2, 3 y 5 y repite el test.'}</p>`;$('#qn').textContent='↺ Repetir test';return}Z.i++;showQ()};
+
+// ====================== bucle principal ======================
+let lastT=performance.now(),fc=0,srT=0;
+function frame(now){const dtr=Math.min(now-lastT,50);lastT=now;
+ const old=RX.ang;RX.ang=n360(RX.ang+dtr/1000*RX.rot*360);const al=geo().R;RX.hist.push([.5*(1+Math.cos((al-RX.ang)*D2R)),RX.ang<old&&RX.rot>0?1:0]);if(RX.hist.length>240)RX.hist.shift();
+ flyStep(dtr);pbStep(dtr);
+ if(SR.auto){srT+=dtr;if(srT>(SR.locked?420:110)){srT=0;interrogate()}}
+ if(fc++%6===0){updT3();updO6();if(AC.fly){setv('a2',Math.round(al)%360,f0);setv('dd6',Math.min(190,+geo().g.toFixed(1)),f1);MD.dirty=true}}
+ if(MD.dirty){drawMod();MD.dirty=false}
+ [drawC1,drawC1b,drawC1c,drawC2a,drawC3a,drawC3b,drawC6a,drawC6b,drawC7a,drawC7b,drawC7c].forEach(f=>f());requestAnimationFrame(frame)}
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{CIDS.forEach(setup);MD.key=null;MD.dirty=true},150)});
+CIDS.forEach(setup);stUI();mkParts();pbApply();pbSync();stepUI();showQ();resetSearch();mc7();updO6();setv('dd6',+geo().g.toFixed(1),f1);requestAnimationFrame(frame);
+
+</script>
+<script>
+/* NeuroLab UVa: fondo de nodos, enlaces al índice y logos (independiente del resto de la app) */
+(function(){
+var base=/\/apps\/[^\/]*$/i.test(location.pathname)?'../':'';
+document.querySelectorAll('.nl-idx').forEach(function(a){a.href=base+'index.html'});
+document.querySelectorAll('#nl-foot img').forEach(function(im){var f=im.getAttribute('data-f');im.src=base+f;
+ im.onerror=function(){if(!im.dataset.t){im.dataset.t=1;im.src=(base?'':'../')+f}else{im.onerror=null;var sp=document.createElement('span');sp.textContent=im.alt;im.replaceWith(sp)}}});
+var c=document.getElementById('nl-bg');if(!c||!c.getContext)return;var x=c.getContext('2d'),W=0,H=0,P=[],last=0,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function build(){W=c.width=innerWidth;H=c.height=innerHeight;var n=Math.min(60,Math.floor(W*H/20000));P=[];for(var i=0;i<n;i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.4+1})}
+function draw(k){x.clearRect(0,0,W,H);for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx*k;p.y+=p.vy*k;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;x.beginPath();x.arc(p.x,p.y,p.r,0,6.2832);x.fillStyle='rgba(56,189,248,.4)';x.fill();
+ for(var j=i+1;j<P.length;j++){var q=P[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){x.beginPath();x.moveTo(p.x,p.y);x.lineTo(q.x,q.y);x.strokeStyle='rgba(99,102,241,'+((1-d/120)*.18)+')';x.lineWidth=.8;x.stroke()}}}}
+function frame(t){requestAnimationFrame(frame);if(document.hidden||t-last<33)return;var k=Math.min(3,(t-last)/16.7);last=t;draw(k)}
+build();draw(0);if(!still)requestAnimationFrame(frame);
+addEventListener('resize',function(){if(Math.abs(innerWidth-W)>2||Math.abs(innerHeight-H)>150){build();draw(0)}else{c.width=W=innerWidth;c.height=H=innerHeight}});
+})();
+</script></body></html>
