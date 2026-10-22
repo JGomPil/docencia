@@ -1,0 +1,567 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BioDataSim · Datos biomédicos</title><meta name="theme-color" content="#070b14">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#070b14;color:#cbd5e1;font-family:system-ui,sans-serif}
+canvas{width:100%;display:block;background:#0a1020;border-radius:.5rem;border:1px solid #1e293b}
+.ia{touch-action:none;cursor:crosshair}
+.card{background:#0d1424;border:1px solid #1e293b;border-radius:.75rem;padding:.7rem}
+.b{padding:.35rem .7rem;border-radius:.5rem;border:1px solid #334155;background:#111b30;font-size:.82rem;min-height:40px}
+.b.on{border-color:#22d3ee;color:#22d3ee;background:#06323d}
+.b:disabled{opacity:.4}
+input[type=range]{width:100%;accent-color:#34d399}
+input[type=number]{background:#0a1020;border:1px solid #334155;border-radius:.4rem;padding:.3rem .5rem;width:6rem;color:#e2e8f0}
+summary{cursor:pointer;color:#22d3ee;font-weight:600;min-height:32px}
+.bd{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:9999px;color:#000;font-weight:700;margin-right:.4rem}
+.hd{font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;flex-wrap:wrap;gap:.25rem}
+.key{background:#06281f;border:1px solid #047857;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#a7f3d0;margin:.4rem 0}
+.try{background:#2a1a05;border:1px solid #b45309;border-radius:.5rem;padding:.4rem .6rem;font-size:.85rem;color:#fde68a;margin:.4rem 0}
+.m b{color:#34d399;font-size:1.15rem}.m small{display:block;color:#94a3b8;font-size:.68rem;line-height:1.1}
+.led{font-family:ui-monospace,monospace;color:#fb923c;background:#1a0f08;border:2px solid #44403c;border-radius:.4rem;padding:.2rem .5rem;font-size:1.3rem;letter-spacing:.05em}
+.blk{border:1px solid #334155;border-radius:.4rem;padding:.25rem .45rem;background:#0a1020;font-size:.72rem;text-align:center}.blk b{color:#34d399}
+.q{display:block;width:100%;text-align:left;margin-bottom:.3rem}.q.ok{border-color:#34d399;color:#34d399;background:#064e3b55}.q.ko{border-color:#f87171;color:#f87171;background:#7f1d1d55}
+table{width:100%;font-size:.78rem}td,th{padding:.2rem .35rem;text-align:left;border-bottom:1px solid #1e293b}
+:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
+</style>
+<style id="nl-style">
+/* Elementos comunes NeuroLab UVa: fondo de nodos, enlace al índice y pie */
+html{background:radial-gradient(circle at 82% 8%,rgba(34,211,238,.10),transparent 45%),radial-gradient(circle at 12% 88%,rgba(167,139,250,.08),transparent 45%),#070b14;background-attachment:fixed}
+body{background:transparent!important}
+#nl-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block;background:transparent!important;border:0!important;border-radius:0!important}
+.nl-hd{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
+.nl-back{font-size:.72rem;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);border-radius:9999px;padding:.25rem .7rem;text-decoration:none;white-space:nowrap;background:rgba(8,16,36,.55)}
+.nl-back:hover{background:rgba(14,116,144,.35);color:#e0f2fe}
+#nl-foot{margin-top:1.25rem;padding:.8rem 0 calc(.8rem + env(safe-area-inset-bottom));border-top:1px solid rgba(51,65,85,.6);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem 1rem;font-size:.68rem;line-height:1.3;color:#64748b}
+#nl-foot a{color:inherit;text-decoration:none}#nl-foot a:hover{color:#cbd5e1}
+#nl-foot .nl-logos{display:flex;align-items:center;gap:.9rem}
+#nl-foot img{height:26px;width:auto;opacity:.85}#nl-foot img:hover{opacity:1}
+@media print{#nl-bg,#nl-foot,.nl-back{display:none!important}}
+</style></head>
+<body class="p-2 md:p-4 max-w-7xl mx-auto">
+<canvas id="nl-bg" aria-hidden="true"></canvas>
+<header class="mb-3"><div class="nl-hd"><a class="nl-back nl-idx" href="../index.html" title="Volver al índice de simuladores">← DataLab UVa</a><h1 class="text-xl md:text-2xl font-bold text-white">BioDataSim <span class="text-cyan-400 text-sm md:text-base font-normal">Datos biomédicos: señales, redes y estadística</span></h1><span class="text-xs text-slate-400">IA y Datos Biomédicos · Tema 1</span></div>
+<div class="card mt-2 text-sm"><b class="text-white">La idea en 20 segundos.</b> Una <b class="text-cyan-300">señal biomédica</b> es una variable física que cambia con el tiempo y refleja un proceso fisiológico; sus desviaciones respecto a lo típico pueden indicar enfermedad. Antes de aplicar IA hay que <b class="text-amber-300">entender los datos</b>: clasificarlos, explorarlos con estadística (<i>¿distribución normal? ¿grupos distintos? ¿variables relacionadas?</i>) y, si hay muchas variables, representarlas como una <b class="text-violet-300">red de correlación</b>.</div></header>
+<main class="grid lg:grid-cols-3 gap-3">
+<div class="lg:col-span-2 space-y-3">
+
+<section class="card"><div class="hd"><span class="bd bg-cyan-400">1</span>Señales biomédicas y su clasificación</div>
+ <p class="text-sm mb-2">Una <b>señal</b> es la variación medible de una cantidad física respecto a una variable independiente (normalmente el tiempo). Si depende de dos variables de espacio es una <b>imagen</b>; con una tercera variable de tiempo, un <b>vídeo</b>. Se clasifican según sus <b>características</b> (punto de vista técnico), su <b>fuente</b> y su <b>aplicación</b>.</p>
+ <div class="text-xs">① Por sus características: elige una señal, mira las herramientas y clasifícala</div><div id="sg1"></div>
+ <canvas id="c1a" style="height:200px" aria-label="Señal en el tiempo"></canvas>
+ <div class="grid sm:grid-cols-2 gap-2 mt-2"><canvas id="c1b" style="height:140px" aria-label="Autocorrelación"></canvas><canvas id="c1c" style="height:140px" aria-label="Espectro"></canvas></div>
+ <p id="s1w" class="text-xs text-slate-300 mt-1"></p>
+ <div class="try mt-2"><div class="text-xs mb-1" id="a1q"></div><div id="a1"></div><div id="a2"></div><div class="flex flex-wrap items-center gap-1"><button class="b" id="a1c">Comprobar</button><button class="b" id="a1m">🎯 Señal misteriosa</button><span id="a1s" class="text-xs ml-2"></span></div><p id="a1f" class="text-sm mt-1"></p></div>
+ <div class="text-xs mt-3">② Por su fuente: ¿eléctrica, mecánica o bioquímica?</div>
+ <div class="rounded-lg border border-slate-700 p-2 mt-1"><div class="text-sm" id="g1"></div><div id="g1b" class="mt-1"></div><p id="g1f" class="text-xs mt-1"></p><span id="g1s" class="text-xs text-slate-400"></span></div>
+ <div class="key"><b>Clave:</b> <b>determinista</b> (se describe con una fórmula: periódica, cuasi-periódica o transitoria) frente a <b>estocástica</b> (solo se describe con sus propiedades estadísticas: estacionaria o no estacionaria). Todas las señales biológicas reales son estocásticas: el ECG es «casi determinista» y el EEG «poco determinista». El potencial de acción es el origen de todos los biopotenciales.</div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-amber-400">2</span>EEG, retinografía y evaluación de clasificadores</div>
+ <p class="text-sm mb-2">Dos ejemplos en los que se aplicó <i>deep learning</i> con IA explicable (XAI): clasificar las <b>fases del sueño</b> con un EEG de un solo canal y valorar la <b>calidad y la gravedad</b> de retinografías. Para entender sus resultados hay que dominar las métricas de un clasificador.</p>
+ <div class="text-xs">A · Tipos de onda: frecuencia y amplitud</div><div id="bw"></div>
+ <canvas id="c2a" style="height:110px" aria-label="Ritmo EEG puro"></canvas>
+ <div class="grid sm:grid-cols-2 gap-3"><label class="text-xs block">Frecuencia: <b id="fqv" class="text-emerald-400">10</b> Hz<input id="fq" type="range" min=".5" max="45" step=".5" value="10"></label><label class="text-xs block">Amplitud: <b id="amv" class="text-emerald-400">30</b> µV<input id="am" type="range" min="5" max="120" step="1" value="30"></label></div>
+ <p id="t2w" class="text-xs text-slate-300 mt-1"></p>
+ <div class="text-xs mt-3">B · Fases del sueño: toca una fase o un tramo del hipnograma</div><div id="st"></div>
+ <canvas id="c2b" style="height:150px" aria-label="Época de EEG"></canvas>
+ <div class="grid sm:grid-cols-2 gap-2 mt-2"><canvas id="c2c" style="height:140px" aria-label="Potencia por bandas"></canvas><canvas id="c2d" class="ia" style="height:140px" aria-label="Hipnograma"></canvas></div>
+ <p id="t2" class="text-sm mt-1"></p>
+ <div class="try mt-2"><div id="q2a"></div><div class="flex flex-wrap items-center gap-1"><button class="b" id="q2b">🎯 ¿Qué fase es? (época oculta)</button><span id="q2s" class="text-xs ml-2"></span></div><p id="q2f" class="text-sm mt-1"></p></div>
+ <div class="text-xs mt-3">C · Evaluar un clasificador (control frente a patológico)</div>
+ <div class="grid sm:grid-cols-2 gap-3"><div><canvas id="c2e" style="height:200px" aria-label="Distribuciones de puntuaciones"></canvas></div><div><canvas id="c2f" style="height:200px" aria-label="Curva ROC"></canvas></div></div>
+ <div class="grid sm:grid-cols-3 gap-3 mt-2"><label class="text-xs block">Separación de clases d′: <b id="dpv" class="text-emerald-400">2</b><input id="dp" type="range" min="0" max="4" step=".1" value="2"></label><label class="text-xs block">Prevalencia: <b id="pvv" class="text-emerald-400">50</b> %<input id="pv" type="range" min="1" max="50" step="1" value="50"></label><label class="text-xs block">Umbral de decisión: <b id="thv" class="text-emerald-400">1</b><input id="th" type="range" min="-2" max="5" step=".05" value="1"></label></div>
+ <div class="grid sm:grid-cols-3 gap-2 mt-2"><div class="overflow-x-auto"><table id="cm"></table></div><div class="grid grid-cols-3 gap-2 m sm:col-span-2" id="mt"></div></div>
+ <p id="t2c" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">D · Retinografía: etapas del análisis automático</div><div id="rs"></div>
+ <div class="grid sm:grid-cols-3 gap-3 mt-1"><div class="sm:col-span-2"><canvas id="c2g" style="height:250px" aria-label="Retinografía simulada"></canvas></div><div class="text-sm"><label class="text-xs block">Lesiones: <b id="lsv" class="text-emerald-400">8</b><input id="ls" type="range" min="0" max="60" value="8"></label><label class="text-xs block">Desenfoque: <b id="blv" class="text-emerald-400">0</b><input id="bl" type="range" min="0" max="6" step=".5" value="0"></label><label class="text-xs"><input type="checkbox" id="nv"> Neovasos (proliferativa)</label><p id="t2g" class="text-xs text-slate-300 mt-2"></p></div></div>
+ <div class="key"><b>Clave:</b> EEG: la actividad eléctrica cortical por sinapsis síncronas; delta &lt; 4 Hz (sueño profundo, gran amplitud), theta 4–8, alfa 8–13, beta &gt; 13 Hz. Sensibilidad = TP/(TP+FN) · especificidad = TN/(TN+FP) · precisión = TP/(TP+FP) · F1 = 2TP/(2TP+FP+FN) · κ corrige el acuerdo por azar. Ejemplos del temario: sueño pediátrico (exactitud 86,9 %, κ = 0,827); calidad de retinografía (exactitud 99,48 % / 96 %, AUC 0,996 / 0,944).</div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-violet-400">3</span>Redes de correlación (WGCNA)</div>
+ <p class="text-sm mb-2">Una <b>red de correlación</b> convierte una tabla de sujetos × variables en un grafo: <b>nodo = variable</b>, <b>enlace = correlación</b> entre dos variables. Se usa con muchas variables y pocos sujetos (genes, neurociencia…) para explorar, reducir datos, agrupar y seleccionar características.</p>
+ <div class="text-xs">① Red = grafo = matriz (edita la matriz de pesos)</div>
+ <div class="grid sm:grid-cols-2 gap-3"><div class="overflow-x-auto" id="mx"></div><canvas id="c3t" style="height:170px" aria-label="Grafo de 4 nodos"></canvas></div>
+ <div class="text-xs mt-3">② Genera una red: datos → imputación → transformación → correlación → umbral → visualización</div>
+ <div class="grid sm:grid-cols-3 gap-x-3 gap-y-1"><div><div class="text-xs">Correlación</div><div id="me3"></div></div><div><div class="text-xs">Transformación</div><div id="tr3"></div></div><div><div class="text-xs">Datos faltantes</div><div id="im3"></div></div></div>
+ <div class="grid sm:grid-cols-3 gap-3 mt-1"><label class="text-xs block">Sujetos n: <b id="n3v" class="text-emerald-400">60</b><input id="n3" type="range" min="8" max="300" value="60"></label><label class="text-xs block">Cohesión de los módulos: <b id="cov" class="text-emerald-400">0.6</b><input id="co" type="range" min="0" max=".9" step=".05" value=".6"></label><label class="text-xs block">Umbral |r|: <b id="t3v" class="text-emerald-400">0.4</b><input id="th3" type="range" min="0" max=".95" step=".01" value=".4"></label>
+  <label class="text-xs block">% de valores perdidos: <b id="nav" class="text-emerald-400">0</b><input id="na" type="range" min="0" max="40" value="0"></label><label class="text-xs block">Regularización λ (glasso): <b id="lav" class="text-emerald-400">0.15</b><input id="la" type="range" min="0" max=".6" step=".01" value=".15"></label><div><div class="text-xs">Filtro de significación</div><div id="fl3"></div></div></div>
+ <div class="grid sm:grid-cols-2 gap-3 mt-2"><div><canvas id="c3a" style="height:280px" aria-label="Matriz de correlación"></canvas></div><div><canvas id="c3b" style="height:280px" aria-label="Red de correlación"></canvas><div class="flex flex-wrap items-center gap-1 mt-1"><span class="text-xs text-slate-400">Disposición</span><span id="ly3"></span></div></div></div>
+ <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 m mt-2" id="o3"></div><p id="t3" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">③ Correlaciones indirectas o espurias: B y C dependen de A</div>
+ <div class="grid sm:grid-cols-3 gap-3"><div class="sm:col-span-2"><canvas id="c3c" style="height:170px" aria-label="Correlación parcial"></canvas></div><div><label class="text-xs block">Ruido propio de B y C: <b id="niv" class="text-emerald-400">0.6</b><input id="ni" type="range" min=".1" max="2" step=".05" value=".6"></label><p id="t3c" class="text-xs text-slate-300 mt-2"></p></div></div>
+ <div class="text-xs mt-3">④ Grupos desequilibrados: ¿red con todos los sujetos o con «bootstrapping»?</div>
+ <div class="grid sm:grid-cols-2 gap-3 mt-1"><canvas id="c3d" style="height:210px" aria-label="Redes con y sin bootstrapping"></canvas><div><label class="text-xs block">Repeticiones B: <b id="bbv" class="text-emerald-400">200</b><input id="bb" type="range" min="1" max="500" value="200"></label><label class="text-xs block">Sujetos por grupo m: <b id="bmv" class="text-emerald-400">10</b><input id="bm" type="range" min="4" max="40" value="10"></label><p id="t3d" class="text-xs text-slate-300 mt-2"></p></div></div>
+ <div class="key"><b>Clave:</b> pasos: <b>imputación</b> (media, mediana, moda, MICE…) → <b>transformaciones</b> (log, rangos) → <b>correlación</b> (Pearson, Spearman, parcial, <i>graphical lasso</i>…) → <b>visualización</b> (Fruchterman–Reingold o ForceAtlas2). La correlación parcial y el <i>glasso</i> eliminan correlaciones indirectas; el <i>bootstrapping</i> equilibra grupos con muy distinto tamaño. Con pocos sujetos y muchas variables aparecen enlaces por puro azar.</div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-rose-400">4</span>Estadística (I): normalidad, homocedasticidad y comparación de grupos</div>
+ <p class="text-sm mb-2">Antes de extraer características: comprobar la fuente, la naturaleza (continuos, discretos, categóricos), estructurar, <b>explorar</b> (histogramas, boxplots, normalidad, homocedasticidad, tests de hipótesis), limpiar e imputar, y normalizar o transformar.</p>
+ <div class="text-xs">A · ¿Mi distribución es normal?</div><div id="dn"></div>
+ <div class="grid sm:grid-cols-2 gap-3"><canvas id="c4a" style="height:180px" aria-label="Histograma"></canvas><canvas id="c4b" style="height:180px" aria-label="Gráfico Q-Q"></canvas></div>
+ <label class="text-xs block mt-1">Tamaño muestral n: <b id="n4v" class="text-emerald-400">30</b><input id="n4" type="range" min="5" max="1000" value="30"></label>
+ <p id="t4n" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">B · ¿Mis grupos tienen la misma varianza (homocedasticidad)?</div>
+ <div class="grid sm:grid-cols-3 gap-3"><div class="sm:col-span-2"><canvas id="c4c" style="height:150px" aria-label="Dos grupos"></canvas></div><div><label class="text-xs block">Razón de desviaciones B/A: <b id="rsv" class="text-emerald-400">1.5</b><input id="rs4" type="range" min="1" max="4" step=".1" value="1.5"></label><label class="text-xs block">n por grupo: <b id="n4hv" class="text-emerald-400">30</b><input id="n4h" type="range" min="5" max="300" value="30"></label><div class="text-xs">Datos</div><div id="dh"></div></div></div>
+ <p id="t4h" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">C · Comparar distribuciones: H₀ «las muestras tienen el mismo origen»</div>
+ <div class="grid sm:grid-cols-2 gap-3"><div><canvas id="c4d" style="height:170px" aria-label="Grupos A y B"></canvas></div><div><canvas id="c4e" style="height:170px" aria-label="Distribución de p"></canvas></div></div>
+ <div class="grid sm:grid-cols-3 gap-3 mt-1"><label class="text-xs block">Efecto d (diferencia/DE): <b id="efv" class="text-emerald-400">0.5</b><input id="ef" type="range" min="0" max="2" step=".05" value=".5"></label><label class="text-xs block">n por grupo: <b id="n4cv" class="text-emerald-400">30</b><input id="n4c" type="range" min="4" max="500" value="30"></label><label class="text-xs block">Razón de DE B/A: <b id="srv" class="text-emerald-400">1</b><input id="sr" type="range" min=".5" max="3" step=".1" value="1"></label></div>
+ <div class="grid sm:grid-cols-3 gap-x-3"><div><div class="text-xs">Datos</div><div id="d4c"></div></div><div><div class="text-xs">Muestras</div><div id="p4c"></div></div><div><div class="text-xs">Test</div><div id="t4c"></div></div></div>
+ <label class="text-xs block" id="rpw">Correlación entre medidas repetidas ρ: <b id="rpv" class="text-emerald-400">0.6</b><input id="rp" type="range" min="0" max=".95" step=".05" value=".6"></label>
+ <div class="flex flex-wrap items-center gap-1 mt-1"><button class="b" id="e1">▶ Repetir el experimento</button><button class="b" id="e1k">▶▶ 1000 experimentos</button></div>
+ <p id="t4t" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">D · Muchos tests a la vez: ¿cuántos genes «significativos» salen por azar?</div>
+ <div class="grid sm:grid-cols-2 gap-3"><canvas id="c4f" style="height:200px" aria-label="Volcán de genes"></canvas><div><label class="text-xs block">Genes m: <b id="mgv" class="text-emerald-400">1000</b><input id="mg" type="range" min="100" max="5000" step="100" value="1000"></label><label class="text-xs block">% genes realmente diferentes: <b id="piv" class="text-emerald-400">10</b><input id="pi" type="range" min="0" max="50" value="10"></label><label class="text-xs block">Efecto d de los diferentes: <b id="d4v" class="text-emerald-400">1</b><input id="d4" type="range" min=".3" max="2" step=".1" value="1"></label><label class="text-xs block">n por grupo: <b id="n4mv" class="text-emerald-400">12</b><input id="n4m" type="range" min="4" max="60" value="12"></label></div></div>
+ <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 m mt-2" id="o4m"></div><p id="t4m" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">E · ¿Qué test uso?</div><div id="dt"></div><p id="t4d" class="text-sm mt-1"></p>
+ <div class="key"><b>Clave:</b> el <b>p-valor</b> es la probabilidad de obtener datos tan extremos <i>suponiendo que H₀ es cierta</i> (no la probabilidad de que H₀ sea cierta). Se rechaza H₀ si p &lt; α (típico 0,05). Normalidad: Shapiro–Wilk (n pequeña, típicamente &lt; 50) o Lilliefors (n grande, &gt; 50). Homocedasticidad: Bartlett (sensible a la no normalidad), Levene, Brown–Forsythe, O′Brien. <b>El tamaño muestral importa mucho</b>: con n grande cualquier diferencia mínima es «significativa».</div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-emerald-400">5</span>Estadística (II): correlación y asociación</div>
+ <p class="text-sm mb-2">Los tests de correlación miden la relación entre dos variables: dan un <b>coeficiente</b> (−1 a 1) y un <b>p-valor</b>. <b>Pearson</b> mide relación lineal (datos continuos, aprox. normales); <b>Spearman</b> mide relación monótona (con rangos). Para variables categóricas se usa la asociación <b>χ²</b> (sin signo).</p>
+ <div class="text-xs">A · Arrastra los puntos y mira cómo cambian r, ρ y p</div>
+ <div class="grid sm:grid-cols-3 gap-3"><div class="sm:col-span-2"><canvas id="c5a" class="ia" style="height:250px" aria-label="Diagrama de dispersión"></canvas></div>
+  <div><label class="text-xs block">Correlación verdadera ρ: <b id="rhv" class="text-emerald-400">0.5</b><input id="rho" type="range" min="-1" max="1" step=".05" value=".5"></label><label class="text-xs block">n: <b id="n5v" class="text-emerald-400">30</b><input id="n5" type="range" min="4" max="500" value="30"></label><label class="text-xs block">Atípicos: <b id="ouv" class="text-emerald-400">0</b><input id="ou" type="range" min="0" max="5" value="0"></label><div class="text-xs">Forma de la relación</div><div id="sh5"></div></div></div>
+ <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 m mt-2" id="o5a"></div><p id="t5a" class="text-sm mt-1"></p>
+ <div class="text-xs mt-3">B · Cuarteto de Anscombe: mismas estadísticas, datos muy distintos</div><div id="an"></div>
+ <canvas id="c5b" style="height:210px" aria-label="Cuarteto de Anscombe"></canvas><p id="t5b" class="text-xs text-slate-300"></p>
+ <div class="text-xs mt-3">C · El tamaño muestral y la «significación»</div>
+ <div class="grid sm:grid-cols-3 gap-3"><div class="sm:col-span-2"><canvas id="c5c" style="height:190px" aria-label="r crítico frente a n"></canvas></div><div><label class="text-xs block">r observado: <b id="rov" class="text-emerald-400">0.3</b><input id="ro" type="range" min=".02" max=".95" step=".01" value=".3"></label><p id="t5c" class="text-xs text-slate-300 mt-2"></p></div></div>
+ <div class="text-xs mt-3">D · Asociación entre variables categóricas (χ²): edita la tabla</div>
+ <div class="grid sm:grid-cols-2 gap-3"><div class="overflow-x-auto" id="ct"></div><canvas id="c5d" style="height:170px" aria-label="Frecuencias"></canvas></div><p id="t5d" class="text-sm mt-1"></p>
+ <div class="key"><b>Clave:</b> H₀ del test de correlación: <b>no hay correlación (ρ = 0)</b>; se rechaza si p &lt; α. Un p pequeño dice que la relación <i>probablemente no es nula</i>, no que sea fuerte (mira r) ni que haya causalidad. Siempre hay que <b>dibujar</b> los datos: los atípicos y las relaciones no lineales engañan a Pearson.</div></section>
+
+<section class="card"><div class="hd"><span class="bd bg-sky-400">6</span>Preguntas del temario<span id="qs" class="text-xs text-slate-400 font-normal ml-1"></span></div>
+ <div class="text-xs">Tema</div><div id="qt"></div><div id="qz" class="mt-2"></div><button class="b mt-1" id="qn">Siguiente pregunta ▶</button>
+ <details class="mt-3"><summary>Chuleta de conceptos</summary><div class="text-xs mt-1 overflow-x-auto"><table>
+ <tr><td>Señal / imagen / vídeo</td><td>1 variable independiente (tiempo) / 2 de espacio / 2 de espacio + tiempo</td></tr>
+ <tr><td>Clasificación</td><td>Características (determinista: periódica, cuasi-periódica, transitoria; estocástica: estacionaria, no estacionaria) · fuente (eléctrica, mecánica, bioquímica) · aplicación (diagnóstico, monitorización, investigación, deporte, control)</td></tr>
+ <tr><td>EEG</td><td>sEEG (intracortical), ECoG (sobre el córtex), EEG (cuero cabelludo) · sistemas 10-20, 10-10, 10-5 · monopolar/bipolar · delta, theta, alfa, beta · N1, N2, N3, REM</td></tr>
+ <tr><td>Retinografía</td><td>Cribado de retinopatía diabética (5 niveles); etapas: calidad, disco y fóvea, lesiones, gradación</td></tr>
+ <tr><td>Redes de correlación</td><td>Nodo = variable, enlace = correlación · imputación → transformación → correlación → visualización · parcial/glasso · bootstrapping · Fruchterman–Reingold, ForceAtlas2</td></tr>
+ <tr><td>Estadística</td><td>Shapiro–Wilk (n &lt; 50), Lilliefors (n &gt; 50) · Bartlett, Levene, Brown–Forsythe · α = 0,05 · paramétricos / no paramétricos · pareados · Pearson, Spearman, χ²</td></tr></table></div></details></section>
+</div>
+<aside class="space-y-2 lg:sticky lg:top-2 self-start lg:max-h-[96vh] lg:overflow-auto">
+ <details open class="card"><summary>Significación</summary><label class="text-sm block mt-2">Nivel α: <b id="alv" class="text-emerald-400">0.05</b><input id="al" type="range" min=".001" max=".2" step=".001" value=".05"></label><p class="text-xs text-slate-400">Umbral por debajo del cual se rechaza H₀. Se usa en todos los tests.</p></details>
+ <details open class="card"><summary>Datos simulados</summary><button class="b mt-2" id="ns">🎲 Nuevos datos (semilla <span id="nsv">1</span>)</button><p class="text-xs text-slate-400 mt-1">Todos los datos son sintéticos. Cada semilla genera muestras distintas: observa cómo cambian los p-valores.</p></details>
+ <details open class="card"><summary>Guía rápida</summary><ul class="text-xs text-slate-400 list-disc pl-4 mt-1 space-y-1"><li>Los apartados 1, 3, 4 y 5 son los centrales: clasificación de señales, redes de correlación y estadística.</li><li>En el apartado 5, <b>arrastra</b> los puntos del diagrama.</li><li>Los experimentos repetidos del apartado 4 muestran qué significa α, la potencia y los falsos positivos.</li></ul></details>
+</aside></main>
+
+<footer id="nl-foot">
+<span>BioDataSim · IA y Datos Biomédicos · Universidad de Valladolid</span>
+<div>© 2026 <a href="https://gib.uva.es/member.php?id=16" target="_blank" rel="noopener">Javier Gómez Pilar</a> · Universidad de Valladolid</div>
+</footer>
+<script>
+// ====================== biblioteca estadística (sin dependencias) ======================
+const PI=Math.PI;
+function lgamma(x){const c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];if(x<.5)return Math.log(PI/Math.sin(PI*x))-lgamma(1-x);x-=1;let a=c[0];const t=x+7.5;for(let i=1;i<9;i++)a+=c[i]/(x+i);return .5*Math.log(2*PI)+(x+.5)*Math.log(t)-t+Math.log(a)}
+function betacf(a,b,x){const FP=1e-300;let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;if(Math.abs(d)<FP)d=FP;d=1/d;let h=d;for(let m=1;m<=300;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<1e-14)break}return h}
+function ibeta(x,a,b){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*betacf(a,b,x)/a:1-bt*betacf(b,a,1-x)/b}
+function gammaP(a,x){if(x<=0)return 0;if(x<a+1){let s=1/a,t=s;for(let n=1;n<500;n++){t*=x/(a+n);s+=t;if(Math.abs(t)<Math.abs(s)*1e-15)break}return s*Math.exp(-x+a*Math.log(x)-lgamma(a))}let b=x+1-a,c=1e300,d=1/b,h=d;for(let i=1;i<500;i++){const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<1e-300)d=1e-300;c=b+an/c;if(Math.abs(c)<1e-300)c=1e-300;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<1e-15)break}return 1-Math.exp(-x+a*Math.log(x)-lgamma(a))*h}
+const ncdf=x=>x>=0?.5+.5*gammaP(.5,x*x/2):.5-.5*gammaP(.5,x*x/2);
+function nppf(p){if(p<=0)return-Infinity;if(p>=1)return Infinity;const a=[-3.969683028665376e1,2.209460984245205e2,-2.759285104469687e2,1.383577518672690e2,-3.066479806614716e1,2.506628277459239],b=[-5.447609879822406e1,1.615858368580409e2,-1.556989798598866e2,6.680131188771972e1,-1.328068155288572e1],c=[-7.784894002430293e-3,-3.223964580411365e-1,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783],d=[7.784695709041462e-3,3.224671290700398e-1,2.445134137142996,3.754408661907416];let x;if(p<.02425){const q=Math.sqrt(-2*Math.log(p));x=(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}else if(p>1-.02425){const q=Math.sqrt(-2*Math.log(1-p));x=-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}else{const q=p-.5,r=q*q;x=(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)}const e=ncdf(x)-p,u=e*Math.sqrt(2*PI)*Math.exp(x*x/2);return x-u/(1+x*u/2)}
+const tp2=(t,df)=>ibeta(df/(df+t*t),df/2,.5),tcdf=(t,df)=>{const p=.5*tp2(t,df);return t>0?1-p:p};
+const fsf=(f,d1,d2)=>f<=0?1:1-ibeta(d1*f/(d1*f+d2),d1/2,d2/2),chi2sf=(x,k)=>x<=0?1:1-gammaP(k/2,x/2);
+function tppf(p,df){let lo=-60,hi=60;for(let i=0;i<80;i++){const m=(lo+hi)/2;tcdf(m,df)<p?lo=m:hi=m}return(lo+hi)/2}
+// ---- descriptivos
+const mean=a=>a.reduce((p,q)=>p+q,0)/a.length,vr=a=>{const m=mean(a);return a.reduce((p,q)=>p+(q-m)**2,0)/(a.length-1)},sd=a=>Math.sqrt(vr(a));
+const median=a=>{const s=[...a].sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2};
+function ranks(a){const idx=a.map((v,i)=>[v,i]).sort((x,y)=>x[0]-y[0]),r=new Array(a.length);let i=0;while(i<idx.length){let j=i;while(j+1<idx.length&&idx[j+1][0]===idx[i][0])j++;const rk=(i+j)/2+1;for(let k=i;k<=j;k++)r[idx[k][1]]=rk;i=j+1}return r}
+function tieSum(a){const m={};a.forEach(v=>m[v]=(m[v]||0)+1);return Object.values(m).reduce((p,c)=>p+c*c*c-c,0)}
+// ---- contrastes de comparación
+function tWelch(a,b){const na=a.length,nb=b.length,va=vr(a),vb=vr(b),se2=va/na+vb/nb,t=(mean(a)-mean(b))/Math.sqrt(se2),df=se2*se2/((va/na)**2/(na-1)+(vb/nb)**2/(nb-1));return{stat:t,df,p:tp2(t,df)}}
+function tStudent(a,b){const na=a.length,nb=b.length,sp=((na-1)*vr(a)+(nb-1)*vr(b))/(na+nb-2),t=(mean(a)-mean(b))/Math.sqrt(sp*(1/na+1/nb));return{stat:t,df:na+nb-2,p:tp2(t,na+nb-2)}}
+function tPaired(a,b){const d=a.map((v,i)=>v-b[i]),n=d.length,t=mean(d)/(sd(d)/Math.sqrt(n));return{stat:t,df:n-1,p:tp2(t,n-1)}}
+function mannWhitney(a,b){const n1=a.length,n2=b.length,r=ranks([...a,...b]),R1=r.slice(0,n1).reduce((p,q)=>p+q,0),U1=R1-n1*(n1+1)/2,U=Math.max(U1,n1*n2-U1),N=n1+n2,mu=n1*n2/2,s2=n1*n2/12*((N+1)-tieSum([...a,...b])/(N*(N-1))),z=(U-mu-.5)/Math.sqrt(s2);return{stat:U1,p:Math.min(1,2*(1-ncdf(z)))}}
+function wilcoxon(a,b){const d=a.map((v,i)=>v-b[i]).filter(v=>v!==0),n=d.length;if(n<1)return{stat:0,p:1};const ab=d.map(Math.abs),r=ranks(ab);let Wp=0;d.forEach((v,i)=>{if(v>0)Wp+=r[i]});const Wm=n*(n+1)/2-Wp,W=Math.min(Wp,Wm),mu=n*(n+1)/4,s2=n*(n+1)*(2*n+1)/24-tieSum(ab)/48,z=(Math.abs(W-mu)-.5)/Math.sqrt(s2);return{stat:W,p:Math.min(1,2*(1-ncdf(z)))}}
+const cohenD=(a,b)=>{const na=a.length,nb=b.length,sp=Math.sqrt(((na-1)*vr(a)+(nb-1)*vr(b))/(na+nb-2));return(mean(a)-mean(b))/sp};
+// ---- homocedasticidad
+function levene(groups,center){const Z=groups.map(g=>{const c=center==='median'?median(g):mean(g);return g.map(v=>Math.abs(v-c))}),k=Z.length,N=Z.reduce((p,z)=>p+z.length,0),zm=Z.map(mean),zt=Z.flat().reduce((p,q)=>p+q,0)/N;let num=0,den=0;Z.forEach((z,i)=>{num+=z.length*(zm[i]-zt)**2;z.forEach(v=>den+=(v-zm[i])**2)});const F=num/(k-1)/(den/(N-k));return{stat:F,p:fsf(F,k-1,N-k)}}
+function bartlett(groups){const k=groups.length,ni=groups.map(g=>g.length),N=ni.reduce((p,q)=>p+q,0),v=groups.map(vr),sp=v.reduce((p,x,i)=>p+(ni[i]-1)*x,0)/(N-k);let num=(N-k)*Math.log(sp)-v.reduce((p,x,i)=>p+(ni[i]-1)*Math.log(x),0),c=1+(ni.reduce((p,n)=>p+1/(n-1),0)-1/(N-k))/(3*(k-1)),T=num/c;return{stat:T,p:chi2sf(T,k-1)}}
+// ---- normalidad: Shapiro–Wilk (Royston 1992, AS R94) y Lilliefors (p por Monte Carlo)
+function shapiroWilk(x){const n=x.length;if(n<4)return{stat:NaN,p:NaN};const s=[...x].sort((p,q)=>p-q),m=[];for(let i=1;i<=n;i++)m.push(nppf((i-.375)/(n+.25)));const mm=m.reduce((p,q)=>p+q*q,0),u=1/Math.sqrt(n),poly=(c,u)=>c[0]+c[1]*u+c[2]*u**2+c[3]*u**3+c[4]*u**4+c[5]*u**5,a=new Array(n).fill(0),an=poly([0,.221157,-.147981,-2.07119,4.434685,-2.706056],u)+m[n-1]/Math.sqrt(mm);
+  let phi,i1;if(n>5){const an1=poly([0,.042981,-.293762,-1.752461,5.682633,-3.582633],u)+m[n-2]/Math.sqrt(mm);phi=(mm-2*m[n-1]**2-2*m[n-2]**2)/(1-2*an**2-2*an1**2);a[n-1]=an;a[0]=-an;a[n-2]=an1;a[1]=-an1;i1=2}else{phi=(mm-2*m[n-1]**2)/(1-2*an**2);a[n-1]=an;a[0]=-an;i1=1}
+  for(let i=i1;i<n-i1;i++)a[i]=m[i]/Math.sqrt(phi);const xm=mean(s);let num=0,den=0;for(let i=0;i<n;i++){num+=a[i]*s[i];den+=(s[i]-xm)**2}const W=Math.min(1,num*num/den);let p;
+  if(n<=11){const g=-2.273+.459*n,mu=.544-.39978*n+.025054*n**2-.0006714*n**3,sg=Math.exp(1.3822-.77857*n+.062767*n**2-.0020322*n**3),y=-Math.log(g-Math.log(1-W));p=1-ncdf((y-mu)/sg)}else{const xl=Math.log(n),mu=.0038915*xl**3-.083751*xl**2-.31082*xl-1.5861,sg=Math.exp(.0030302*xl**2-.082676*xl-.4803);p=1-ncdf((Math.log(1-W)-mu)/sg)}return{stat:W,p}}
+function ksD(x){const n=x.length,m=mean(x),s=sd(x),z=[...x].sort((p,q)=>p-q).map(v=>ncdf((v-m)/s));let D=0;for(let i=0;i<n;i++)D=Math.max(D,(i+1)/n-z[i],z[i]-i/n);return D}
+function lilliefors(x,nsim){nsim=nsim||400;const n=x.length,D=ksD(x);let s=12345,r=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296},g=()=>Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(2*PI*r()),c=0;for(let k=0;k<nsim;k++){const y=Array.from({length:n},g);if(ksD(y)>=D)c++}return{stat:D,p:(c+1)/(nsim+1)}}
+// ---- correlación y asociación
+function pearson(x,y){const n=x.length,mx=mean(x),my=mean(y);let sxy=0,sxx=0,syy=0;for(let i=0;i<n;i++){sxy+=(x[i]-mx)*(y[i]-my);sxx+=(x[i]-mx)**2;syy+=(y[i]-my)**2}const r=sxy/Math.sqrt(sxx*syy);let p=1,lo=r,hi=r;if(n>2&&Math.abs(r)<1){const t=r*Math.sqrt((n-2)/(1-r*r));p=tp2(t,n-2);if(n>3){const z=Math.atanh(r),se=1/Math.sqrt(n-3);lo=Math.tanh(z-1.959964*se);hi=Math.tanh(z+1.959964*se)}}else if(Math.abs(r)>=1)p=0;return{r,p,lo,hi,n}}
+const spearman=(x,y)=>pearson(ranks(x),ranks(y));
+function chi2ind(T){const R=T.length,C=T[0].length,rs=T.map(r=>r.reduce((p,q)=>p+q,0)),cs=T[0].map((_,j)=>T.reduce((p,r)=>p+r[j],0)),N=rs.reduce((p,q)=>p+q,0),E=T.map((r,i)=>r.map((_,j)=>rs[i]*cs[j]/N));let x2=0;T.forEach((r,i)=>r.forEach((o,j)=>{if(E[i][j]>0)x2+=(o-E[i][j])**2/E[i][j]}));const df=(R-1)*(C-1);return{stat:x2,df,p:chi2sf(x2,df),V:Math.sqrt(x2/(N*Math.min(R-1,C-1))),E,N}}
+// ---- corrección por múltiples comparaciones
+function bhAdjust(p){const m=p.length,idx=p.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]),q=new Array(m);let mn=1;for(let k=m-1;k>=0;k--){mn=Math.min(mn,idx[k][0]*m/(k+1));q[idx[k][1]]=mn}return q}
+// ---- generadores aleatorios
+function RNG(seed){let s=seed>>>0;const u=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296};const g=()=>Math.sqrt(-2*Math.log(u()+1e-12))*Math.cos(2*PI*u());return{u,g}}
+
+// ====================== utilidades comunes ======================
+const $=s=>document.querySelector(s),clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),lerp=(a,b,t)=>a+(b-a)*t;
+const CV={};
+function setup(id){const c=$('#'+id);if(!c)return;const r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=Math.max(2,Math.round(r.width*d));c.height=Math.max(2,Math.round(r.height*d));const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);CV[id]={c,x,w:r.width,h:r.height}}
+function mk(el,opts,cur,cb){el.innerHTML='';opts.forEach(o=>{const b=document.createElement('button');b.className='b mr-1 mb-1';b.textContent=o;b.onclick=()=>{[...el.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(o)};if(o===cur)b.classList.add('on');el.appendChild(b)})}
+const setOn=(el,o)=>[...el.children].forEach(b=>b.classList.toggle('on',b.textContent===o));
+function bind(id,cb,fmt){const e=$('#'+id);const sh=()=>{const o=$('#'+id+'v');if(o)o.textContent=fmt?fmt(+e.value):e.value};e.oninput=()=>{sh();cb(+e.value)};sh()}
+const txt=(x,s,px,py,col,font,al)=>{x.fillStyle=col||'#94a3b8';x.font=font||'11px system-ui';x.textAlign=al||'left';x.fillText(s,px,py);x.textAlign='left'};
+const f1=v=>v.toFixed(1),f2=v=>v.toFixed(2),f0=v=>String(Math.round(v)),pf=p=>p<1e-4?'< 0,0001':p.toFixed(4).replace('.',',');
+const fm=(v,d=2)=>(v<0?'−':'')+Math.abs(v).toFixed(d).replace('.',',');
+// ---- estado global (panel lateral)
+const G={alpha:.05,seed:1};
+function R(off){return RNG(G.seed*7919+(off||0)*104729)}
+bind('al',v=>{G.alpha=v;renderAll()},v=>v.toFixed(2));
+$('#ns').onclick=()=>{G.seed++;$('#nsv').textContent=G.seed;renderAll(true)};
+// ---- ejes y gráficos genéricos
+function axes(x,L,T,pw,ph,xl,yl,xt,yt){x.strokeStyle='#334155';x.lineWidth=1;x.beginPath();x.moveTo(L,T);x.lineTo(L,T+ph);x.lineTo(L+pw,T+ph);x.stroke();if(xl)txt(x,xl,L+pw/2,T+ph+21,'#64748b','10px system-ui','center');if(yl){x.save();x.translate(10,T+ph/2);x.rotate(-Math.PI/2);txt(x,yl,0,0,'#64748b','10px system-ui','center');x.restore()}}
+function hist(a,lo,hi,nb){const h=new Array(nb).fill(0),w=(hi-lo)/nb;a.forEach(v=>{const i=Math.floor((v-lo)/w);if(i>=0&&i<nb)h[i]++});return h}
+function colorRB(v){v=clamp(v,-1,1);if(v>=0)return`rgb(${Math.round(30+225*v)},${Math.round(41+30*(1-v))},${Math.round(59-10*v)})`;const u=-v;return`rgb(${Math.round(30*(1-u)+20)},${Math.round(41+120*u)},${Math.round(59+196*u)})`}
+// ---- FFT radix-2 (para espectros)
+function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}for(let len=2;len<=n;len<<=1){const a=-2*Math.PI/len,wr=Math.cos(a),wi=Math.sin(a);for(let i=0;i<n;i+=len){let cr=1,ci=0;for(let k=0;k<len/2;k++){const ur=re[i+k],ui=im[i+k],vr_=re[i+k+len/2]*cr-im[i+k+len/2]*ci,vi=re[i+k+len/2]*ci+im[i+k+len/2]*cr;re[i+k]=ur+vr_;im[i+k]=ui+vi;re[i+k+len/2]=ur-vr_;im[i+k+len/2]=ui-vi;const t=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=t}}}}
+function psd(sig,fs){let n=1;while(n*2<=sig.length)n*=2;const m=mean(sig.slice(0,n)),re=new Float64Array(n),im=new Float64Array(n);for(let i=0;i<n;i++)re[i]=(sig[i]-m)*(0.5-0.5*Math.cos(2*Math.PI*i/(n-1)));fft(re,im);const p=[];for(let k=1;k<n/2;k++)p.push([k*fs/n,(re[k]**2+im[k]**2)/n]);return p}
+
+// ====================== panel 1: clasificación de señales ======================
+const FS1=250,T1=8,N1=FS1*T1,g1=(u,m,s)=>Math.exp(-((u-m)**2)/(2*s*s));
+const SIGS={sin:{n:'Senoidal pura',c:['det','per']},ecg:{n:'Tipo ECG (latidos)',c:['det','cuasi']},cuasi:{n:'Dos tonos inconmensurables',c:['det','cuasi']},trans:{n:'Respuesta transitoria',c:['det','trans']},est:{n:'Ritmo de reposo (ruido filtrado)',c:['sto','est']},noest:{n:'EEG cambiante',c:['sto','noest']}};
+const CNAME={det:'Determinista',sto:'Estocástica',per:'Periódica',cuasi:'Cuasi-periódica',trans:'Transitoria',est:'Estacionaria',noest:'No estacionaria'};
+const CDEF={per:'Se repite exactamente cada periodo T: el espectro son líneas en f₀ y sus armónicos y la autocorrelación vuelve a 1 cada T.',cuasi:'Suma de sinusoides cuyas frecuencias no son múltiplos enteras entre sí (o latidos casi regulares): parece repetirse pero nunca coincide exactamente; el espectro son líneas «incompatibles».',trans:'Ocurre una sola vez y se extingue (p. ej. una respuesta evocada que decae): se describe con una fórmula, pero no se repite.',est:'Solo se describe con propiedades estadísticas (media, varianza, autocorrelación), que se mantienen constantes en el tiempo.',noest:'Solo se describe estadísticamente, y sus propiedades (media, varianza, frecuencias) cambian con el tiempo.'};
+function gen1(k,seed){const r=RNG(seed),x=new Float64Array(N1),W=Math.PI*2;
+ if(k==='sin')for(let i=0;i<N1;i++)x[i]=Math.sin(W*1.2*i/FS1);
+ else if(k==='ecg'){const b=[];let t=.3;while(t<T1){b.push(t);t+=.85*(1+.04*r.g())}for(let i=0;i<N1;i++){const tt=i/FS1;let v=0;b.forEach(bb=>{const u=tt-bb;v+=.12*g1(u,-.18,.04)-.1*g1(u,-.035,.012)+g1(u,0,.014)-.2*g1(u,.03,.012)+.28*g1(u,.25,.07)});x[i]=v+.01*r.g()}}
+ else if(k==='cuasi')for(let i=0;i<N1;i++){const t=i/FS1;x[i]=Math.sin(W*1*t)+.8*Math.sin(W*Math.SQRT2*t)}
+ else if(k==='trans')for(let i=0;i<N1;i++){const t=i/FS1-2.5;x[i]=t>=0?Math.exp(-t/.6)*Math.sin(W*8*t):0}
+ else if(k==='est'){const w=W*10/FS1,a=2*.96*Math.cos(w),b=-.96*.96;let p1=0,p2=0,s=0;for(let i=0;i<N1;i++){const v=a*p1+b*p2+r.g();x[i]=v;p2=p1;p1=v}const sdv=sd(Array.from(x));for(let i=0;i<N1;i++)x[i]/=sdv*1.0}
+ else{let p1=0,p2=0;for(let i=0;i<N1;i++){const t=i/FS1,f=t<3?6:t<5.5?14:9,w=W*f/FS1,rr=.95,gain=.4+1.6*t/T1+(t>5.5&&t<6.5?1.4:0),v=2*rr*Math.cos(w)*p1-rr*rr*p2+r.g();x[i]=v*gain;p2=p1;p1=v}const sdv=sd(Array.from(x))/1.3;for(let i=0;i<N1;i++)x[i]/=sdv}
+ return x}
+function welch(sig,fs,nseg){const segs=[];for(let s=0;s+nseg<=sig.length;s+=nseg/2)segs.push(sig.slice(s,s+nseg));if(!segs.length)return psd(sig,fs);const acc=null;let P=null;segs.forEach(sg=>{const p=psd(Array.from(sg),fs);if(!P)P=p.map(q=>[q[0],0]);p.forEach((q,i)=>P[i][1]+=q[1]/segs.length)});return P}
+const S1={k:'sin',mys:false,mk:null,seed0:0,a1:null,a2:null,ok:0,tot:0,x:null};
+function loadSig(){S1.x=gen1(S1.k,G.seed*31+S1.seed0)}
+function acorr(x,maxLag){const n=x.length,m=mean(Array.from(x)),v=x.reduce((p,q)=>p+(q-m)**2,0),out=[];for(let l=0;l<=maxLag;l++){let s=0;for(let i=0;i+l<n;i++)s+=(x[i]-m)*(x[i+l]-m);out.push(s/v)}return out}
+function drawS1(){
+ if(!S1.x)loadSig();const x=S1.x,{x:c,w,h}=CV.c1a;c.clearRect(0,0,w,h);const L=36,T=8,pw=w-L-8,ph=h-T-24,ym=Math.max(...x.map(Math.abs))*1.15,Y=v=>T+ph/2-v/ym*ph/2;
+ axes(c,L,T,pw,ph,'tiempo (s)');for(let k=0;k<=8;k++)txt(c,k,L+pw*k/8-3,T+ph+12,'#64748b','9px system-ui');
+ // ventanas: media y desviación típica
+ const nw=8,ws=N1/nw,vars=[],means=[];for(let k=0;k<nw;k++){const seg=Array.from(x.slice(k*ws,(k+1)*ws)),m=mean(seg),s=sd(seg);means.push(m);vars.push(s*s);const xa=L+pw*k/nw,xb=L+pw*(k+1)/nw;c.fillStyle='rgba(251,191,36,.10)';c.fillRect(xa,Y(m+s),xb-xa,Y(m-s)-Y(m+s));c.strokeStyle='#22d3ee';c.lineWidth=1.5;c.beginPath();c.moveTo(xa,Y(m));c.lineTo(xb,Y(m));c.stroke();c.strokeStyle='#334155';c.lineWidth=1;c.beginPath();c.moveTo(xa,T);c.lineTo(xa,T+ph);c.stroke()}
+ c.strokeStyle='#e2e8f0';c.lineWidth=1.2;c.beginPath();for(let i=0;i<N1;i+=1){const px=L+pw*i/N1,py=Y(x[i]);i?c.lineTo(px,py):c.moveTo(px,py)}c.stroke();txt(c,'cian: media por ventana · naranja: ±1 DE',L+4,T+10,'#94a3b8','9px system-ui');
+ // autocorrelación
+ {const{x:d,w:w2,h:h2}=CV.c1b;d.clearRect(0,0,w2,h2);const ac=acorr(x,500),L2=34,T2=6,pw2=w2-L2-6,ph2=h2-T2-24;axes(d,L2,T2,pw2,ph2,'retardo (s)');d.strokeStyle='#334155';d.beginPath();d.moveTo(L2,T2+ph2/2);d.lineTo(L2+pw2,T2+ph2/2);d.stroke();d.strokeStyle='#a78bfa';d.lineWidth=1.5;d.beginPath();ac.forEach((v,i)=>{const px=L2+pw2*i/500,py=T2+ph2/2-v*ph2/2;i?d.lineTo(px,py):d.moveTo(px,py)});d.stroke();d.lineWidth=1;txt(d,'autocorrelación',L2+4,T2+10,'#a78bfa','9px system-ui');[0,1,2].forEach(s=>txt(d,s,L2+pw2*s/2-3,T2+ph2+12,'#64748b','9px system-ui'))}
+ // espectro
+ {const{x:d,w:w2,h:h2}=CV.c1c;d.clearRect(0,0,w2,h2);const P=welch(Array.from(x),FS1,512).filter(p=>p[0]<=30),mx=Math.max(...P.map(p=>p[1]))||1,L2=34,T2=6,pw2=w2-L2-6,ph2=h2-T2-24;axes(d,L2,T2,pw2,ph2,'frecuencia (Hz)');d.strokeStyle='#34d399';d.lineWidth=1.5;d.beginPath();P.forEach((p,i)=>{const px=L2+pw2*p[0]/30,py=T2+ph2-p[1]/mx*ph2;i?d.lineTo(px,py):d.moveTo(px,py)});d.stroke();d.lineWidth=1;txt(d,'espectro de potencia',L2+4,T2+10,'#34d399','9px system-ui');[0,10,20,30].forEach(f=>txt(d,f,L2+pw2*f/30-4,T2+ph2+12,'#64748b','9px system-ui'))}
+ const rv=Math.max(...vars)/Math.max(1e-9,Math.min(...vars)),mr=(Math.max(...means)-Math.min(...means))/Math.sqrt(mean(vars));
+ $('#s1w').innerHTML=`Varianza entre ventanas: ×${rv.toFixed(1)} (máx/mín) · dispersión de las medias: ${mr.toFixed(2)} DE. ${rv>3?'<b class="text-amber-300">Las propiedades cambian con el tiempo.</b>':'Las propiedades parecen constantes.'}`}
+function s1UI(){const nm=S1.mys?'Señal misteriosa (¿de qué tipo es?)':SIGS[S1.k].n;$('#a1q').innerHTML=`<b>${nm}</b> · clasifícala: primero ¿determinista o estocástica? y después su subtipo.`+(S1.mys?'':` <span class="text-slate-400">Pista: ${CNAME[SIGS[S1.k].c[0]]} · ${CNAME[SIGS[S1.k].c[1]]}.</span>`)}
+mk($('#sg1'),Object.values(SIGS).map(s=>s.n),SIGS.sin.n,l=>{S1.k=Object.keys(SIGS).find(k=>SIGS[k].n===l);S1.mys=false;S1.seed0=0;S1.a1=S1.a2=null;loadSig();$('#a1f').textContent='';s1Ans();s1UI();drawS1()});
+function s1Ans(){mk($('#a1'),['Determinista','Estocástica'],null,l=>{S1.a1=l==='Determinista'?'det':'sto';S1.a2=null;s1Ans2()});$('#a2').innerHTML=''}
+function s1Ans2(){const o=S1.a1==='det'?['Periódica','Cuasi-periódica','Transitoria']:['Estacionaria','No estacionaria'];mk($('#a2'),o,null,l=>S1.a2=Object.keys(CNAME).find(k=>CNAME[k]===l));setOn($('#a1'),S1.a1==='det'?'Determinista':'Estocástica')}
+$('#a1c').onclick=()=>{if(!S1.a1||!S1.a2){$('#a1f').textContent='Elige primero los dos niveles.';return}const c=SIGS[S1.k].c,ok=S1.a1===c[0]&&S1.a2===c[1];if(S1.mys){S1.tot++;if(ok)S1.ok++;$('#a1s').textContent=`Misteriosas: ${S1.ok}/${S1.tot}`}
+ $('#a1f').innerHTML=(ok?'✅ ':'❌ ')+`Es <b>${CNAME[c[0]]} · ${CNAME[c[1]]}</b> (${SIGS[S1.k].n}). ${CDEF[c[1]]}`+(S1.k==='ecg'?' <span class="text-slate-400">El ECG real es estocástico pero «casi determinista».</span>':S1.k==='noest'?' <span class="text-slate-400">El EEG real es «poco determinista».</span>':'');S1.mys=false;s1UI()};
+$('#a1m').onclick=()=>{const ks=Object.keys(SIGS);S1.k=ks[Math.floor(Math.random()*ks.length)];S1.mys=true;S1.seed0=Math.floor(Math.random()*1000);S1.a1=S1.a2=null;loadSig();$('#a1f').textContent='';[...$('#sg1').children].forEach(b=>b.classList.remove('on'));s1Ans();s1UI();drawS1()};
+// ---- por la fuente
+const SRC=[['ECG','Actividad eléctrica del corazón','el','Diagnóstico y monitorización cardiaca.'],['EEG','Actividad eléctrica cortical','el','Diagnóstico neurológico (p. ej. epilepsia) e investigación.'],['EMG','Actividad eléctrica del músculo','el','Control de prótesis y diagnóstico neuromuscular.'],['EOG','Movimientos oculares (potencial córneo-retiniano)','el','Estudio del sueño y control por la mirada.'],['MEG','Campos magnéticos de la actividad cerebral','el','Localización de actividad cerebral; investigación.'],['Acelerometría','Aceleración del cuerpo','me','Seguimiento de actividad física y deporte.'],['Goniometría','Ángulo de una articulación','me','Rehabilitación y análisis del movimiento.'],['Presión plantar','Presión en el pie al caminar','me','Análisis de la marcha y plantillas.'],['Glucosa en sangre','Concentración de glucosa','bq','Monitorización en la diabetes.'],['Insulina / hormonas','Concentración hormonal','bq','Diagnóstico y control endocrino.'],['Electrolitos (Na⁺, K⁺…)','Concentración de iones','bq','Monitorización clínica y diagnóstico.'],['Gases sanguíneos (O₂, CO₂)','Presiones parciales de gases','bq','Cuidados intensivos y respiratorios.']];
+const GS={i:0,ok:0,tot:0,order:[]};
+function gNew(){GS.order=[...Array(SRC.length).keys()].sort(()=>Math.random()-.5);GS.i=0;GS.ok=GS.tot=0;gShow()}
+function gShow(){const it=SRC[GS.order[GS.i%SRC.length]];$('#g1').innerHTML=`<b class="text-white">${it[0]}</b> — ${it[1]}`;mk($('#g1b'),['Eléctrica','Mecánica','Bioquímica'],null,l=>{const k={'Eléctrica':'el','Mecánica':'me','Bioquímica':'bq'}[l],ok=k===it[2];GS.tot++;if(ok)GS.ok++;$('#g1f').innerHTML=(ok?'✅ ':'❌ ')+`Es <b>${{el:'eléctrica',me:'mecánica',bq:'bioquímica'}[it[2]]}</b>. Aplicación típica: ${it[3]} <button class="b" id="g1n" style="min-height:28px">Siguiente ▶</button>`;$('#g1n').onclick=()=>{GS.i++;$('#g1f').textContent='';gShow()};$('#g1s').textContent=`Aciertos: ${GS.ok}/${GS.tot}`})}
+function render1(nd){if(nd){loadSig();S1.a1=S1.a2=null;s1Ans();$('#a1f').textContent=''}drawS1()}
+
+// ====================== panel 2: EEG, retinografía y clasificadores ======================
+const BANDS={'Delta':[.5,4,70,'sueño profundo'],'Theta':[4,8,35,'somnolencia, sueño ligero'],'Alfa':[8,13,30,'vigilia relajada, ojos cerrados'],'Beta':[13,30,12,'actividad mental, alerta'],'Gamma':[30,45,6,'procesamiento cognitivo']};
+const E2={f:10,a:30};
+mk($('#bw'),Object.keys(BANDS),'Alfa',l=>{const b=BANDS[l];E2.f=(b[0]+b[1])/2;E2.a=b[2];setv('fq',E2.f);setv('am',E2.a);drawWave()});
+function setv(id,v){const e=$('#'+id);e.value=v;const o=$('#'+id+'v');if(o)o.textContent=e.value}
+bind('fq',v=>{E2.f=v;drawWave()},f1);bind('am',v=>{E2.a=v;drawWave()},f0);
+function drawWave(){const{x:c,w,h}=CV.c2a;c.clearRect(0,0,w,h);const L=36,T=6,pw=w-L-8,ph=h-T-20;axes(c,L,T,pw,ph,'1 segundo');c.strokeStyle='#334155';c.beginPath();c.moveTo(L,T+ph/2);c.lineTo(L+pw,T+ph/2);c.stroke();c.strokeStyle='#22d3ee';c.lineWidth=1.6;c.beginPath();for(let i=0;i<=400;i++){const t=i/400,v=E2.a*Math.sin(2*Math.PI*E2.f*t),px=L+pw*t,py=T+ph/2-v/130*ph;i?c.lineTo(px,py):c.moveTo(px,py)}c.stroke();c.lineWidth=1;txt(c,'+100 µV',2,T+ph*.12,'#64748b','8px system-ui');txt(c,'−100 µV',2,T+ph*.92,'#64748b','8px system-ui');
+ const nm=Object.keys(BANDS).find(k=>E2.f>=BANDS[k][0]&&E2.f<BANDS[k][1])||'—';$('#t2w').innerHTML=`${E2.f} Hz · ${E2.a} µV → ritmo <b>${nm}</b>${BANDS[nm]?' ('+BANDS[nm][3]+')':''}. La <b>frecuencia</b> decide el ritmo; la <b>amplitud</b> indica cuántas neuronas se sincronizan.`}
+// ---- fases del sueño
+const FSE=128,NE=2048,STAGES=[['Vigilia','V'],['N1','N1'],['N2','N2'],['N3','N3'],['REM','R']],HYP=['V','N1','N2','N3','N3','N2','R','N2','N3','N2','R','N2','N2','R','N2','V'];
+const S2={st:'V',x:null,hid:false,ans:null,ok:0,tot:0,hi:0};
+function genEEG(st,seed){const r=RNG(seed),x=new Float64Array(NE),W=2*Math.PI;const comp=(f,a,ph)=>{for(let i=0;i<NE;i++)x[i]+=a*Math.sin(W*f*i/FSE+ph)};const bg=a=>{let y=0;for(let i=0;i<NE;i++){y=.92*y+r.g();x[i]+=a*y*.25}};
+ const env=(f,a,m)=>{for(let i=0;i<NE;i++){const t=i/FSE;x[i]+=a*(1+.45*Math.sin(W*.2*t+m))*Math.sin(W*f*t+m)}};
+ if(st==='V'){env(10,22,r.u()*6);comp(20,5,r.u()*6);bg(8)}else if(st==='N1'){comp(6,17,r.u()*6);comp(5,8,1);comp(9,5,2);bg(9)}
+ else if(st==='N2'){comp(5,12,r.u()*6);comp(2,13,1);for(let k=0;k<3;k++){const c=1+r.u()*14;for(let i=0;i<NE;i++){const t=i/FSE;x[i]+=26*Math.exp(-Math.pow((t-c)/.45,2))*Math.sin(W*13*(t-c))}}{const c=2+r.u()*12;for(let i=0;i<NE;i++){const t=(i/FSE-c);x[i]+=-85*Math.exp(-Math.pow((t+.12)/.1,2))+55*Math.exp(-Math.pow((t-.25)/.22,2))}}bg(7)}
+ else if(st==='N3'){comp(1.1,72,r.u()*6);comp(.7,28,2);comp(2.6,16,1);bg(5)}else{comp(6,9,r.u()*6);comp(18,6,1);comp(26,4,2);bg(13)}
+ return x}
+const SDESC={V:['Vigilia (ojos cerrados)','ritmo alfa 8–13 Hz con beta; amplitud baja'],N1:['N1 · sueño ligero','predominio de theta (4–8 Hz) con amplitud baja; desaparece el alfa'],N2:['N2 · sueño ligero estable','ondas theta/delta con husos de sueño (≈13 Hz) y complejos K'],N3:['N3 · sueño profundo (de ondas lentas)','ondas delta (< 4 Hz) de gran amplitud (> 75 µV)'],R:['REM','actividad mixta de baja amplitud, parecida a la vigilia; movimientos oculares rápidos']};
+function loadEEG(){S2.x=genEEG(S2.st,G.seed*17+S2.hi*5+STAGES.findIndex(s=>s[1]===S2.st))}
+function drawEEG(){if(!S2.x)loadEEG();const{x:c,w,h}=CV.c2b;c.clearRect(0,0,w,h);const L=36,T=6,pw=w-L-8,ph=h-T-20;axes(c,L,T,pw,ph,'tiempo (16 s)');c.strokeStyle='#334155';c.beginPath();c.moveTo(L,T+ph/2);c.lineTo(L+pw,T+ph/2);c.stroke();c.strokeStyle='#a78bfa';c.lineWidth=1.2;c.beginPath();for(let i=0;i<NE;i++){const px=L+pw*i/NE,py=T+ph/2-clamp(S2.x[i],-150,150)/150*ph/2;i?c.lineTo(px,py):c.moveTo(px,py)}c.stroke();c.lineWidth=1;txt(c,'±150 µV',2,T+10,'#64748b','8px system-ui');
+ const P=welch(Array.from(S2.x),FSE,512),bd=[['δ',.5,4,'#a78bfa'],['θ',4,8,'#38bdf8'],['α',8,13,'#34d399'],['β',13,30,'#fb923c']],pw_=bd.map(b=>P.filter(p=>p[0]>=b[1]&&p[0]<b[2]).reduce((s,p)=>s+p[1],0)),tot=pw_.reduce((p,q)=>p+q,0)||1;
+ {const{x:d,w:w2,h:h2}=CV.c2c;d.clearRect(0,0,w2,h2);const L2=30,T2=16,pw2=w2-L2-8,ph2=h2-T2-26;axes(d,L2,T2,pw2,ph2);txt(d,'potencia relativa por banda',L2,10,'#94a3b8','9px system-ui');bd.forEach((b,i)=>{const v=pw_[i]/tot,bw=pw2/4-8,bx=L2+8+i*pw2/4;d.fillStyle=b[3];d.fillRect(bx,T2+ph2*(1-v),bw,ph2*v);txt(d,b[0],bx+bw/2,T2+ph2+14,'#e2e8f0','11px system-ui','center');txt(d,Math.round(v*100)+'%',bx+bw/2,T2+ph2*(1-v)-3,'#e2e8f0','9px system-ui','center')})}
+ S2.dom=bd[pw_.indexOf(Math.max(...pw_))][0];
+ {const{x:d,w:w2,h:h2}=CV.c2d;d.clearRect(0,0,w2,h2);const L2=34,T2=6,pw2=w2-L2-6,ph2=h2-T2-18,lv={V:0,R:1,N1:2,N2:3,N3:4},nm=['Vigilia','REM','N1','N2','N3'];axes(d,L2,T2,pw2,ph2);nm.forEach((n,i)=>txt(d,n,2,T2+ph2*(i+.5)/5+3,'#64748b','8px system-ui'));d.strokeStyle='#34d399';d.lineWidth=2;d.beginPath();HYP.forEach((s,i)=>{const xa=L2+pw2*i/HYP.length,xb=L2+pw2*(i+1)/HYP.length,y=T2+ph2*(lv[s]+.5)/5;i?d.lineTo(xa,y):d.moveTo(xa,y);d.lineTo(xb,y)});d.stroke();d.lineWidth=1;d.fillStyle='rgba(250,204,21,.25)';d.fillRect(L2+pw2*S2.hi/HYP.length,T2,pw2/HYP.length,ph2);txt(d,'hipnograma (≈ 8 h)',L2+4,T2+10,'#94a3b8','9px system-ui')}
+ if(S2.hid)$('#t2').innerHTML='<span class="text-slate-400">Época oculta: mira la forma de onda y las bandas, y responde abajo.</span>';else{const d=SDESC[S2.st];$('#t2').innerHTML=`<b>${d[0]}</b>: ${d[1]}. Banda dominante en esta época: <b>${S2.dom}</b>.`}}
+function stButtons(){mk($('#st'),STAGES.map(s=>s[0]),STAGES.find(s=>s[1]===S2.st)[0],l=>{S2.st=STAGES.find(s=>s[0]===l)[1];S2.hid=false;S2.hi=HYP.findIndex(h=>h===S2.st);loadEEG();drawEEG()})}
+(function(){const c=$('#c2d');c.addEventListener('pointerdown',e=>{const r=c.getBoundingClientRect(),L=34,i=clamp(Math.floor((e.clientX-r.left-L)/(r.width-L-6)*HYP.length),0,HYP.length-1);S2.hi=i;S2.st=HYP[i];S2.hid=false;loadEEG();stButtons();drawEEG()})})();
+$('#q2b').onclick=()=>{const k=STAGES[Math.floor(Math.random()*5)][1];S2.st=k;S2.hid=true;S2.ans=null;S2.x=genEEG(k,Math.floor(Math.random()*9999));$('#q2f').textContent='';mk($('#q2a'),STAGES.map(s=>s[0]),null,l=>{const a=STAGES.find(s=>s[0]===l)[1],ok=a===S2.st;S2.tot++;if(ok)S2.ok++;S2.hid=false;$('#q2s').textContent=`Aciertos: ${S2.ok}/${S2.tot}`;$('#q2f').innerHTML=(ok?'✅ ':'❌ ')+`Era <b>${SDESC[S2.st][0]}</b>: ${SDESC[S2.st][1]}.`;drawEEG()});[...$('#st').children].forEach(b=>b.classList.remove('on'));drawEEG()};
+// ---- evaluación de un clasificador (dos poblaciones gaussianas, N = 1000)
+const CL2={d:2,prev:.5,t:1,N:1000};
+bind('dp',v=>{CL2.d=v;drawCL()},f1);bind('pv',v=>{CL2.prev=v/100;drawCL()},f0);bind('th',v=>{CL2.t=v;drawCL()},f2);
+function drawCL(){const{d,prev,t,N}=CL2,P=Math.round(N*prev),Ng=N-P,tpr=1-ncdf(t-d),fpr=1-ncdf(t),TP=Math.round(P*tpr),FN=P-TP,FP=Math.round(Ng*fpr),TN=Ng-FP;
+ {const{x:c,w,h}=CV.c2e;c.clearRect(0,0,w,h);const L=30,T=14,pw=w-L-8,ph=h-T-24,X=v=>L+pw*(v+3)/(d+7),pdf=v=>Math.exp(-v*v/2)/Math.sqrt(2*Math.PI),ym=Math.max(Ng*pdf(0),P*pdf(0),1)*1.15,Y=v=>T+ph*(1-v/ym);axes(c,L,T,pw,ph,'puntuación del clasificador');
+  const area=(mu,cnt,col,from,to)=>{c.fillStyle=col;c.beginPath();c.moveTo(X(from),Y(0));for(let v=from;v<=to;v+=.05)c.lineTo(X(v),Y(cnt*pdf(v-mu)));c.lineTo(X(to),Y(0));c.fill()};
+  area(0,Ng,'rgba(56,189,248,.18)',-3,d+4);area(d,P,'rgba(244,114,182,.18)',-3,d+4);area(0,Ng,'rgba(56,189,248,.55)',t,d+4);area(d,P,'rgba(244,114,182,.55)',t,d+4);
+  [[0,Ng,'#38bdf8'],[d,P,'#f472b6']].forEach(([mu,cnt,col])=>{c.strokeStyle=col;c.lineWidth=2;c.beginPath();for(let v=-3;v<=d+4;v+=.05){const px=X(v),py=Y(cnt*pdf(v-mu));v>-3?c.lineTo(px,py):c.moveTo(px,py)}c.stroke();c.lineWidth=1});
+  c.strokeStyle='#facc15';c.lineWidth=2;c.beginPath();c.moveTo(X(t),T);c.lineTo(X(t),T+ph);c.stroke();c.lineWidth=1;txt(c,'umbral',X(t)+3,T+10,'#facc15','9px system-ui');txt(c,'controles',L+4,T+10,'#38bdf8','9px system-ui');txt(c,'patológicos',L+4,T+22,'#f472b6','9px system-ui')}
+ {const{x:c,w,h}=CV.c2f;c.clearRect(0,0,w,h);const L=34,T=8,pw=w-L-10,ph=h-T-28;axes(c,L,T,pw,ph,'1 − especificidad (FPR)','sensibilidad (TPR)');c.strokeStyle='#334155';c.setLineDash([4,4]);c.beginPath();c.moveTo(L,T+ph);c.lineTo(L+pw,T);c.stroke();c.setLineDash([]);c.strokeStyle='#a78bfa';c.lineWidth=2;c.beginPath();for(let s=-4;s<=d+4;s+=.05){const fx=1-ncdf(s),ty=1-ncdf(s-d),px=L+pw*fx,py=T+ph*(1-ty);s>-4?c.lineTo(px,py):c.moveTo(px,py)}c.stroke();c.lineWidth=1;c.fillStyle='#facc15';c.beginPath();c.arc(L+pw*fpr,T+ph*(1-tpr),5,0,2*Math.PI);c.fill();txt(c,'AUC = '+fm(ncdf(d/Math.SQRT2),3),L+pw*.45,T+ph*.85,'#a78bfa','12px system-ui');[0,.5,1].forEach(v=>{txt(c,v,L+pw*v-4,T+ph+12,'#64748b','9px system-ui');txt(c,v,12,T+ph*(1-v)+3,'#64748b','9px system-ui')})}
+ const acc=(TP+TN)/N,sens=P?TP/P:0,esp=Ng?TN/Ng:0,prec=TP+FP?TP/(TP+FP):0,f1v=2*TP+FP+FN?2*TP/(2*TP+FP+FN):0,pe=((TP+FP)*(TP+FN)+(FN+TN)*(FP+TN))/(N*N),kap=pe<1?(acc-pe)/(1-pe):0;
+ $('#cm').innerHTML=`<tr><th></th><th>Pred. +</th><th>Pred. −</th></tr><tr><td>Real +</td><td style="color:#34d399"><b>${TP}</b> TP</td><td style="color:#f87171"><b>${FN}</b> FN</td></tr><tr><td>Real −</td><td style="color:#f87171"><b>${FP}</b> FP</td><td style="color:#34d399"><b>${TN}</b> TN</td></tr>`;
+ const pc=v=>(v*100).toFixed(1).replace('.',',')+' %';$('#mt').innerHTML=[['Sensibilidad',pc(sens),'TP/(TP+FN)'],['Especificidad',pc(esp),'TN/(TN+FP)'],['Exactitud',pc(acc),'(TP+TN)/N'],['Precisión (VPP)',pc(prec),'TP/(TP+FP)'],['F1',fm(f1v,3),'2TP/(2TP+FP+FN)'],['Kappa κ',fm(kap,3),'acuerdo − azar']].map(m=>`<div><b>${m[1]}</b><small>${m[0]} · ${m[2]}</small></div>`).join('');
+ $('#t2c').innerHTML=prev<=.1&&acc>.85&&sens<.6?`⚠ La <b>exactitud</b> (${pc(acc)}) engaña con clases desequilibradas: un clasificador que dijera siempre «sano» tendría ${pc(1-prev)}. Mira sensibilidad, precisión y κ.`:`Sube el umbral: ↑ especificidad y precisión, ↓ sensibilidad. Cada punto de la curva ROC es un umbral; el AUC resume la separación de clases (0,5 = azar, 1 = perfecta).`}
+// ---- retinografía
+const RS=['1 · Calidad','2 · Disco y fóvea','3 · Lesiones','4 · Gradación'],S2g={st:0};mk($('#rs'),RS,RS[0],l=>{S2g.st=RS.indexOf(l);drawFundus()});
+bind('ls',()=>drawFundus(),f0);bind('bl',()=>drawFundus(),f1);$('#nv').onchange=()=>drawFundus();
+function drawFundus(){const{x:c,w,h}=CV.c2g;c.clearRect(0,0,w,h);const r=RNG(G.seed*13+5),L=+$('#ls').value,bl=+$('#bl').value,nv=$('#nv').checked,cx=w/2,cy=h/2,R=Math.min(w/2,h/2)-6,disc=[cx+R*.45,cy-R*.05],fov=[cx-R*.25,cy+R*.05];
+ const oc=document.createElement('canvas'),k=1/(1+bl*1.4);oc.width=Math.max(8,Math.round(w*k));oc.height=Math.max(8,Math.round(h*k));const o=oc.getContext('2d');o.scale(k,k);
+ o.save();o.beginPath();o.arc(cx,cy,R,0,2*Math.PI);o.clip();const g=o.createRadialGradient(cx-R*.2,cy,R*.1,cx,cy,R);g.addColorStop(0,'#c2410c');g.addColorStop(.7,'#9a3412');g.addColorStop(1,'#431407');o.fillStyle=g;o.fillRect(0,0,w,h);
+ o.strokeStyle='rgba(127,29,29,.9)';o.lineCap='round';const branch=(x,y,a,len,wd,dep)=>{if(dep>4||len<6)return;o.lineWidth=wd;o.beginPath();o.moveTo(x,y);let px=x,py=y,aa=a;for(let s=0;s<len/6;s++){aa+=r.g()*.12;px+=Math.cos(aa)*6;py+=Math.sin(aa)*6;o.lineTo(px,py)}o.stroke();if(r.u()<.9)branch(px,py,aa+.45+r.u()*.3,len*.7,wd*.7,dep+1);branch(px,py,aa-.4-r.u()*.3,len*.75,wd*.7,dep+1)};
+ [[Math.PI*1.15],[Math.PI*0.85],[Math.PI*1.4],[Math.PI*.6]].forEach(a=>branch(disc[0],disc[1],a[0],R*.9,3.2,0));
+ const dg=o.createRadialGradient(disc[0],disc[1],0,disc[0],disc[1],R*.14);dg.addColorStop(0,'#fde68a');dg.addColorStop(1,'rgba(250,204,100,0)');o.fillStyle=dg;o.beginPath();o.arc(disc[0],disc[1],R*.14,0,2*Math.PI);o.fill();
+ const fg=o.createRadialGradient(fov[0],fov[1],0,fov[0],fov[1],R*.12);fg.addColorStop(0,'rgba(60,10,5,.75)');fg.addColorStop(1,'rgba(60,10,5,0)');o.fillStyle=fg;o.beginPath();o.arc(fov[0],fov[1],R*.12,0,2*Math.PI);o.fill();
+ const les=[],nMA=Math.round(L*.6),nH=Math.round(L*.25),nE=L-nMA-nH;const pos=()=>{const a=r.u()*6.28,rr=Math.sqrt(r.u())*R*.8;return[cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]};
+ for(let i=0;i<nMA;i++){const p=pos();les.push([p[0],p[1],2.2,'#ef4444','MA']);}for(let i=0;i<nH;i++){const p=pos();les.push([p[0],p[1],5,'#7f1d1d','H']);}for(let i=0;i<nE;i++){const a=r.u()*6.28,rr=R*.1+r.u()*R*.25,p=[fov[0]+Math.cos(a)*rr,fov[1]+Math.sin(a)*rr];les.push([p[0],p[1],4.5,'#fde047','E'])}
+ les.forEach(l=>{o.fillStyle=l[3];o.beginPath();o.arc(l[0],l[1],l[2],0,2*Math.PI);o.fill()});
+ if(nv){o.strokeStyle='#fecaca';o.lineWidth=1.2;for(let i=0;i<6;i++){o.beginPath();let px=disc[0]-R*.1,py=disc[1]-R*.1+i*4;o.moveTo(px,py);for(let s=0;s<8;s++){px+=r.g()*5-2;py+=r.g()*4+1;o.lineTo(px,py)}o.stroke()}}
+ o.restore();c.imageSmoothingEnabled=true;c.drawImage(oc,0,0,w,h);
+ c.strokeStyle='#334155';c.beginPath();c.arc(cx,cy,R,0,2*Math.PI);c.stroke();
+ const q=clamp(1-bl/6,0,1);let msg='';const st=S2g.st;
+ if(st===0){msg=`<b>Calidad de imagen:</b> ${(q*100).toFixed(0)} % → ${q>=.5?'<span class="text-emerald-400">gradable</span>':'<span class="text-red-400">no gradable: hay que repetir la foto</span>'}. Un primer clasificador descarta las imágenes inservibles.`}
+ if(st>=1){[['Disco óptico',disc,R*.14,'#fde047'],['Fóvea',fov,R*.12,'#38bdf8']].forEach(([n,p,rr,col])=>{c.strokeStyle=col;c.lineWidth=2;c.beginPath();c.arc(p[0],p[1],rr,0,2*Math.PI);c.stroke();txt(c,n,p[0]-18,p[1]-rr-4,col,'bold 10px system-ui')});c.lineWidth=1;if(st===1)msg='<b>Localización:</b> disco óptico (origen de los vasos) y fóvea (visión central). Sirven de referencia para ubicar las lesiones.'}
+ if(st>=2){les.forEach(l=>{const col={MA:'#fb7185',H:'#f87171',E:'#facc15'}[l[4]];c.strokeStyle=col;c.strokeRect(l[0]-l[2]-3,l[1]-l[2]-3,2*l[2]+6,2*l[2]+6)});if(st===2)msg=`<b>Lesiones:</b> ${nMA} microaneurismas · ${nH} hemorragias · ${nE} exudados detectados (segmentación).`}
+ if(st===3){const lev=nv?4:L===0?0:L<=5?1:L<=20?2:3,nm=['Sin retinopatía','Leve','Moderada','Grave','Proliferativa'][lev];msg=`<b>Gradación:</b> nivel <b>${lev} · ${nm}</b> (5 niveles). <span class="text-slate-400">Regla ilustrativa por nº de lesiones; el modelo real aprende estos criterios de miles de imágenes.</span>`}
+ $('#t2g').innerHTML=msg}
+function render2(){drawWave();loadEEG();stButtons();drawEEG();drawCL();drawFundus()}
+
+// ====================== panel 3: redes de correlación ======================
+const PV3=24,MODC=['#22d3ee','#fbbf24','#a78bfa','#34d399'],mod3=j=>Math.floor(j/8);
+function corrMat(X){ // matriz de correlación de Pearson por pares con datos faltantes (NaN)
+ const n=X.length,p=X[0].length,R=[],P=[],N=[];for(let i=0;i<p;i++){R.push(new Float64Array(p));P.push(new Float64Array(p));N.push(new Int32Array(p))}
+ for(let a=0;a<p;a++)for(let b=a;b<p;b++){let sx=0,sy=0,m=0;for(let i=0;i<n;i++){const u=X[i][a],v=X[i][b];if(u===u&&v===v){sx+=u;sy+=v;m++}}const mx=sx/m,my=sy/m;let sxy=0,sxx=0,syy=0;for(let i=0;i<n;i++){const u=X[i][a],v=X[i][b];if(u===u&&v===v){sxy+=(u-mx)*(v-my);sxx+=(u-mx)**2;syy+=(v-my)**2}}const r=a===b?1:sxy/Math.sqrt(sxx*syy||1);R[a][b]=R[b][a]=r;N[a][b]=N[b][a]=m;let p_=1;if(a!==b&&m>2&&Math.abs(r)<1)p_=tp2(r*Math.sqrt((m-2)/(1-r*r)),m-2);else if(a!==b&&Math.abs(r)>=1)p_=0;P[a][b]=P[b][a]=p_}
+ return{R,P,N}}
+function invMat(A){const n=A.length,M=A.map((r,i)=>[...r,...Array.from({length:n},(_,j)=>i===j?1:0)]);for(let i=0;i<n;i++){let mx=i;for(let k=i+1;k<n;k++)if(Math.abs(M[k][i])>Math.abs(M[mx][i]))mx=k;[M[i],M[mx]]=[M[mx],M[i]];const d=M[i][i]||1e-12;for(let j=0;j<2*n;j++)M[i][j]/=d;for(let k=0;k<n;k++)if(k!==i){const f=M[k][i];if(f)for(let j=0;j<2*n;j++)M[k][j]-=f*M[i][j]}}return M.map(r=>r.slice(n))}
+function partialFrom(R,ridge){const n=R.length,A=R.map((r,i)=>Array.from(r).map((v,j)=>v+(i===j?ridge:0))),T=invMat(A),C=T.map((r,i)=>r.map((v,j)=>i===j?1:-v/Math.sqrt(T[i][i]*T[j][j])));return C}
+function glasso(S,lam){const p=S.length;let W=S.map(r=>Array.from(r)),B=Array.from({length:p},()=>new Float64Array(p));
+ for(let sw=0;sw<25;sw++){let ch=0;for(let j=0;j<p;j++){const idx=[...Array(p).keys()].filter(i=>i!==j),b=idx.map(i=>B[j][i]);for(let it=0;it<40;it++){let mc=0;idx.forEach((ii,a)=>{let r=S[ii][j];idx.forEach((kk,c)=>{if(c!==a)r-=W[ii][kk]*b[c]});const nb=Math.abs(r)<=lam?0:(r>0?r-lam:r+lam)/W[ii][ii];mc=Math.max(mc,Math.abs(nb-b[a]));b[a]=nb});if(mc<1e-5)break}
+  idx.forEach((ii,a)=>{ch=Math.max(ch,Math.abs(B[j][ii]-b[a]));B[j][ii]=b[a]});idx.forEach((ii,a)=>{let s=0;idx.forEach((kk,c)=>s+=W[ii][kk]*b[c]);W[ii][j]=W[j][ii]=s})}if(ch<1e-4)break}
+ const th=Array.from({length:p},()=>new Float64Array(p));for(let j=0;j<p;j++){let s=0;for(let k=0;k<p;k++)if(k!==j)s+=W[j][k]*B[j][k];const tjj=1/(W[j][j]-s);th[j][j]=tjj;for(let i=0;i<p;i++)if(i!==j)th[j][i]=-B[j][i]*tjj}
+ const O=Array.from({length:p},()=>new Float64Array(p));for(let i=0;i<p;i++)for(let j=0;j<p;j++)O[i][j]=i===j?1:-((th[i][j]+th[j][i])/2)/Math.sqrt(th[i][i]*th[j][j]);
+ return O}
+const S3={n:60,co:.6,thr:.4,na:0,lam:.15,me:'Pearson',tr:'Ninguna',im:'Media',fl:'Solo umbral',ly:'Fruchterman–Reingold',X:null,res:null,pos:null,T:.1,edges:[]};
+function gen3(){const r=RNG(G.seed*101+7),X=[];for(let i=0;i<S3.n;i++){const f=[r.g(),r.g(),r.g()],row=[];for(let j=0;j<PV3;j++)row.push(Math.exp(.8*(Math.sqrt(S3.co)*f[mod3(j)]+Math.sqrt(1-S3.co)*r.g())));X.push(row)}S3.X=X}
+function rankCols(X){const p=X[0].length,Y=X.map(r=>r.slice());for(let j=0;j<p;j++){const idx=[];X.forEach((r,i)=>{if(r[j]===r[j])idx.push(i)});const rk=ranks(idx.map(i=>X[i][j]));idx.forEach((i,k)=>Y[i][j]=rk[k])}return Y}
+function pipe3(){let X=S3.X.map(r=>r.slice());const r=RNG(G.seed*53+3);if(S3.na>0)X.forEach(row=>row.forEach((v,j)=>{if(r.u()<S3.na/100)row[j]=NaN}));
+ if(S3.im!=='Eliminar pares'){for(let j=0;j<PV3;j++){const obs=X.map(r=>r[j]).filter(v=>v===v),f=S3.im==='Media'?mean(obs):median(obs);X.forEach(row=>{if(row[j]!==row[j])row[j]=f})}}
+ if(S3.tr==='Log')X=X.map(row=>row.map(v=>Math.log(v)));
+ if(S3.tr==='Rangos'||S3.me==='Spearman')X=rankCols(X);
+ const cm=corrMat(X);let C=cm.R,notes='';
+ if(S3.me==='Parcial'){C=partialFrom(cm.R,S3.n<=PV3+2?.3:1e-3);if(S3.n<=PV3+2)notes='Con n ≤ p+2 la matriz no es invertible: se usa una regularización fuerte (resultados poco fiables).'}
+ else if(S3.me==='Glasso')C=glasso(cm.R,S3.lam);
+ S3.res={C,P:cm.P,N:cm.N,notes}}
+function edges3(){const{C,P}=S3.res,E=[],m=PV3*(PV3-1)/2;for(let i=0;i<PV3;i++)for(let j=i+1;j<PV3;j++){const c=C[i][j];if(Math.abs(c)<=S3.thr||Math.abs(c)<1e-9)continue;if((S3.me==='Pearson'||S3.me==='Spearman')){if(S3.fl==='p < α'&&P[i][j]>=G.alpha)continue;if(S3.fl==='Bonferroni'&&P[i][j]>=G.alpha/m)continue}E.push([i,j,c])}S3.edges=E;return E}
+function layoutInit(){S3.pos=Array.from({length:PV3},(_,i)=>{const a=i/PV3*2*Math.PI;return[.5+.4*Math.cos(a),.5+.4*Math.sin(a)]});S3.T=.12}
+function layoutStep(){const n=PV3,pos=S3.pos,E=S3.edges,deg=new Array(n).fill(0);E.forEach(e=>{deg[e[0]]++;deg[e[1]]++});const d=pos.map(()=>[0,0]);
+ if(S3.ly.startsWith('Fruch')){const k=.9*Math.sqrt(.55/n);for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){let dx=pos[i][0]-pos[j][0],dy=pos[i][1]-pos[j][1],dd=Math.max(.001,Math.hypot(dx,dy)),f=k*k/dd;dx/=dd;dy/=dd;d[i][0]+=dx*f;d[i][1]+=dy*f;d[j][0]-=dx*f;d[j][1]-=dy*f}
+  E.forEach(([a,b,c])=>{let dx=pos[a][0]-pos[b][0],dy=pos[a][1]-pos[b][1],dd=Math.max(.001,Math.hypot(dx,dy)),f=dd*dd/k*Math.abs(c);dx/=dd;dy/=dd;d[a][0]-=dx*f;d[a][1]-=dy*f;d[b][0]+=dx*f;d[b][1]+=dy*f});
+  for(let i=0;i<n;i++){d[i][0]+=(.5-pos[i][0])*.3;d[i][1]+=(.5-pos[i][1])*.3;const l=Math.hypot(d[i][0],d[i][1])||1,m=Math.min(l,S3.T);pos[i][0]+=d[i][0]/l*m;pos[i][1]+=d[i][1]/l*m}S3.T=Math.max(.004,S3.T*.985)}
+ else{for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){let dx=pos[i][0]-pos[j][0],dy=pos[i][1]-pos[j][1],dd=Math.max(.01,Math.hypot(dx,dy)),f=.0009*(deg[i]+1)*(deg[j]+1)/dd;dx/=dd;dy/=dd;d[i][0]+=dx*f;d[i][1]+=dy*f;d[j][0]-=dx*f;d[j][1]-=dy*f}
+  E.forEach(([a,b,c])=>{const dx=pos[a][0]-pos[b][0],dy=pos[a][1]-pos[b][1],f=.35*Math.abs(c);d[a][0]-=dx*f;d[a][1]-=dy*f;d[b][0]+=dx*f;d[b][1]+=dy*f});
+  for(let i=0;i<n;i++){d[i][0]+=(.5-pos[i][0])*.05*(deg[i]+1)*.4;d[i][1]+=(.5-pos[i][1])*.05*(deg[i]+1)*.4;const l=Math.hypot(d[i][0],d[i][1]),m=Math.min(l,.02);if(l>0){pos[i][0]+=d[i][0]/l*m;pos[i][1]+=d[i][1]/l*m}}}
+ pos.forEach(p=>{p[0]=clamp(p[0],.05,.95);p[1]=clamp(p[1],.05,.95)})}
+function drawNet(){const{x:c,w,h}=CV.c3b;c.clearRect(0,0,w,h);const deg=new Array(PV3).fill(0);S3.edges.forEach(e=>{deg[e[0]]++;deg[e[1]]++});
+ S3.edges.forEach(([a,b,v])=>{c.strokeStyle=v>0?`rgba(52,211,153,${.25+.5*Math.abs(v)})`:`rgba(248,113,113,${.25+.5*Math.abs(v)})`;c.lineWidth=.6+2.4*Math.abs(v);c.beginPath();c.moveTo(S3.pos[a][0]*w,S3.pos[a][1]*h);c.lineTo(S3.pos[b][0]*w,S3.pos[b][1]*h);c.stroke()});
+ S3.pos.forEach((p,i)=>{c.fillStyle=MODC[mod3(i)];c.beginPath();c.arc(p[0]*w,p[1]*h,3.5+Math.sqrt(deg[i])*1.7,0,2*Math.PI);c.fill()});
+ [['módulo 1',0],['módulo 2',1],['módulo 3',2]].forEach(([n,i])=>{c.fillStyle=MODC[i];c.fillRect(8,8+i*13,8,8);txt(c,n,20,16+i*13,'#94a3b8','9px system-ui')});txt(c,'verde: r > 0 · rojo: r < 0',8,h-6,'#64748b','9px system-ui')}
+function drawMat(){const{x:c,w,h}=CV.c3a;c.clearRect(0,0,w,h);const L=14,s=Math.min(w-L-4,h-L-4)/PV3,C=S3.res.C,E=new Set(S3.edges.map(e=>e[0]*100+e[1]));for(let i=0;i<PV3;i++)for(let j=0;j<PV3;j++){c.fillStyle=i===j?'#1e293b':colorRB(C[i][j]);c.fillRect(L+j*s,L+i*s,s-.5,s-.5);if(i<j&&E.has(i*100+j)||j<i&&E.has(j*100+i)){c.strokeStyle='#fff';c.lineWidth=1;c.strokeRect(L+j*s+1,L+i*s+1,s-2.5,s-2.5)}}
+ for(let m=0;m<3;m++){c.fillStyle=MODC[m];c.fillRect(L+m*8*s,2,8*s-1,5);c.fillRect(2,L+m*8*s,5,8*s-1)}}
+function stats3(){const E=S3.edges,m=PV3*(PV3-1)/2,wi=E.filter(e=>mod3(e[0])===mod3(e[1])).length,be=E.length-wi,wp=3*28,bp=m-wp,dens=E.length/m,md=2*E.length/PV3;
+ $('#o3').innerHTML=[[E.length,'enlaces (|r| > umbral)'],[(dens*100).toFixed(0)+' %','densidad de la red'],[md.toFixed(1),'grado medio'],[wi+' / '+be,'enlaces dentro / entre módulos']].map(a=>`<div><b>${a[0]}</b><small>${a[1]}</small></div>`).join('');
+ let t='';const nul=S3.co===0;if(nul&&E.length)t=`<b class="text-amber-300">Con cohesión 0 no hay estructura real:</b> estos ${E.length} enlaces son <b>puro azar</b> (con n = ${S3.n} aparecen correlaciones grandes entre variables independientes). Sube n, el umbral o exige significación (Bonferroni).`;
+ else if(be>wi&&E.length)t='Hay más enlaces entre módulos que dentro: el umbral es demasiado bajo o la correlación no es la adecuada.';
+ else if(E.length)t=`Dentro de módulo: ${wi}/${wp} posibles (${(wi/wp*100).toFixed(0)} %); entre módulos: ${be}/${bp} (${(be/bp*100).toFixed(1)} %).`;else t='Ningún enlace supera el umbral.';
+ if(S3.tr==='Ninguna'&&S3.me==='Pearson')t+=' <span class="text-slate-400">Los datos son asimétricos (log-normales): prueba «Log» o «Rangos» y compara.</span>';if(S3.res.notes)t+=' <span class="text-amber-300">'+S3.res.notes+'</span>';$('#t3').innerHTML=t}
+function render3main(reset){if(reset||!S3.X)gen3();pipe3();edges3();if(!S3.pos)layoutInit();S3.T=Math.max(S3.T,.05);drawMat();stats3()}
+mk($('#me3'),['Pearson','Spearman','Parcial','Glasso'],'Pearson',l=>{S3.me=l;render3main()});mk($('#tr3'),['Ninguna','Log','Rangos'],'Ninguna',l=>{S3.tr=l;render3main()});mk($('#im3'),['Media','Mediana','Eliminar pares'],'Media',l=>{S3.im=l;render3main()});mk($('#fl3'),['Solo umbral','p < α','Bonferroni'],'Solo umbral',l=>{S3.fl=l;render3main()});mk($('#ly3'),['Fruchterman–Reingold','ForceAtlas2'],'Fruchterman–Reingold',l=>{S3.ly=l;layoutInit()});
+bind('n3',v=>{S3.n=v;render3main(true)},f0);bind('co',v=>{S3.co=v;render3main(true)},f2);bind('th3',v=>{S3.thr=v;render3main()},f2);bind('na',v=>{S3.na=v;render3main()},f0);bind('la',v=>{S3.lam=v;render3main()},f2);
+// ---- ① red = grafo = matriz
+const TOY={A:[[0,.8,.4,0],[.8,0,0,.6],[.4,0,0,0],[0,.6,0,0]]};
+function toyUI(){const M=TOY.A,nm='ABCD';let h='<table><tr><th></th>'+[...nm].map(c=>`<th>${c}</th>`).join('')+'</tr>';for(let i=0;i<4;i++){h+=`<tr><th>${nm[i]}</th>`;for(let j=0;j<4;j++)h+=i===j?'<td class="text-slate-600">—</td>':`<td><input type="number" step=".1" min="0" max="1" value="${M[i][j]}" data-i="${i}" data-j="${j}" style="width:3.6rem"></td>`;h+='</tr>'}$('#mx').innerHTML=h+'</table><p class="text-xs text-slate-400 mt-1">Matriz simétrica de pesos (0 = sin enlace). Cada cifra ≠ 0 es una arista del grafo.</p>';
+ $('#mx').querySelectorAll('input').forEach(e=>e.oninput=()=>{const i=+e.dataset.i,j=+e.dataset.j,v=clamp(parseFloat(e.value)||0,0,1);M[i][j]=M[j][i]=v;const o=$('#mx').querySelector(`input[data-i="${j}"][data-j="${i}"]`);if(o)o.value=v;drawToy()})}
+function drawToy(){const{x:c,w,h}=CV.c3t;c.clearRect(0,0,w,h);const M=TOY.A,P=[[.25,.25],[.75,.25],[.25,.75],[.75,.75]].map(p=>[p[0]*w,p[1]*h]);for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)if(M[i][j]>0){c.strokeStyle=`rgba(167,139,250,${.35+.6*M[i][j]})`;c.lineWidth=1+5*M[i][j];c.beginPath();c.moveTo(...P[i]);c.lineTo(...P[j]);c.stroke();txt(c,M[i][j].toFixed(1),(P[i][0]+P[j][0])/2+4,(P[i][1]+P[j][1])/2-4,'#c4b5fd','10px system-ui')}
+ P.forEach((p,i)=>{c.fillStyle='#22d3ee';c.beginPath();c.arc(p[0],p[1],14,0,2*Math.PI);c.fill();txt(c,'ABCD'[i],p[0],p[1]+4,'#0a1020','bold 13px system-ui','center')})}
+// ---- ③ correlaciones indirectas
+const IND={ni:.6};bind('ni',v=>{IND.ni=v;drawInd()},f2);
+function drawInd(){const{x:c,w,h}=CV.c3c;c.clearRect(0,0,w,h);const r=RNG(G.seed*29+1),n=300,A=[],B=[],C=[];for(let i=0;i<n;i++){const a=r.g();A.push(a);B.push(a+IND.ni*r.g());C.push(a+IND.ni*r.g())}
+ const rab=pearson(A,B).r,rac=pearson(A,C).r,rbc=pearson(B,C).r,pbc=(rbc-rab*rac)/Math.sqrt((1-rab*rab)*(1-rac*rac));
+ const draw=(ox,title,es)=>{const P=[[ox+.5*w/2,16],[ox+.12*w/2,h-24],[ox+.88*w/2,h-24]];txt(c,title,ox+w/4,12,'#94a3b8','10px system-ui','center');es.forEach(([a,b,v])=>{c.strokeStyle=Math.abs(v)<.15?'rgba(100,116,139,.35)':`rgba(52,211,153,${.3+.6*Math.abs(v)})`;c.lineWidth=Math.abs(v)<.15?1:1+4*Math.abs(v);c.setLineDash(Math.abs(v)<.15?[4,4]:[]);c.beginPath();c.moveTo(...P[a]);c.lineTo(...P[b]);c.stroke();c.setLineDash([]);txt(c,fm(v,2),(P[a][0]+P[b][0])/2+4,(P[a][1]+P[b][1])/2,'#e2e8f0','10px system-ui')});P.forEach((p,i)=>{c.fillStyle='#a78bfa';c.beginPath();c.arc(p[0],p[1],11,0,2*Math.PI);c.fill();txt(c,'ABC'[i],p[0],p[1]+4,'#0a1020','bold 12px system-ui','center')})};
+ draw(0,'Correlación r',[[0,1,rab],[0,2,rac],[1,2,rbc]]);draw(w/2,'Correlación parcial (controlando A)',[[0,1,rab],[0,2,rac],[1,2,pbc]]);
+ $('#t3c').innerHTML=`B y C no se influyen: ambas dependen de A. Aun así r(B,C) = <b>${fm(rbc)}</b>. Al controlar A, la correlación parcial cae a <b>${fm(pbc)}</b>: el enlace B–C era <b>indirecto</b>.`}
+// ---- ④ grupos desequilibrados y bootstrapping
+const BT={B:200,m:10,t:null};bind('bb',v=>{BT.B=v;clearTimeout(BT.t);BT.t=setTimeout(drawBoot,120)},f0);bind('bm',v=>{BT.m=v;clearTimeout(BT.t);BT.t=setTimeout(drawBoot,120)},f0);
+function genGroups(){const r=RNG(G.seed*71+9),sizes=[120,10,20,40],X=[],gid=[];sizes.forEach((sz,g)=>{for(let i=0;i<sz;i++){const f=[r.g(),r.g(),r.g(),r.g()],row=[];for(let j=0;j<PV3;j++){const mo=Math.floor(j/6),co=mo===g?.8:.05;row.push(Math.sqrt(co)*f[mo]+Math.sqrt(1-co)*r.g())}X.push(row);gid.push(g)}});return{X,gid,sizes}}
+function fastCorr(rows){const n=rows.length,p=PV3,m=new Float64Array(p),s=new Float64Array(p);rows.forEach(r=>{for(let j=0;j<p;j++)m[j]+=r[j]/n});rows.forEach(r=>{for(let j=0;j<p;j++)s[j]+=(r[j]-m[j])**2});const Z=rows.map(r=>r.map((v,j)=>(v-m[j])/Math.sqrt(s[j]||1))),C=Array.from({length:p},()=>new Float64Array(p));for(let i=0;i<n;i++){const z=Z[i];for(let a=0;a<p;a++){const za=z[a];for(let b=a;b<p;b++)C[a][b]+=za*z[b]}}for(let a=0;a<p;a++)for(let b=a;b<p;b++)C[b][a]=C[a][b];return C}
+function drawBoot(){const{x:c,w,h}=CV.c3d;c.clearRect(0,0,w,h);const D=genGroups(),r=RNG(G.seed*3+17),R1=fastCorr(D.X),idx=D.sizes.map((_,g)=>D.gid.map((q,i)=>q===g?i:-1).filter(i=>i>=0)),acc=Array.from({length:PV3},()=>new Float64Array(PV3));
+ for(let b=0;b<BT.B;b++){const rows=[];idx.forEach(ix=>{for(let k=0;k<BT.m;k++)rows.push(D.X[ix[Math.floor(r.u()*ix.length)]])});const C=fastCorr(rows);for(let i=0;i<PV3;i++)for(let j=0;j<PV3;j++)acc[i][j]+=C[i][j]/BT.B}
+ const s=Math.min((w/2-18)/PV3,(h-34)/PV3),modMean=(C,mo)=>{let t=0,k=0;for(let i=mo*6;i<mo*6+6;i++)for(let j=i+1;j<mo*6+6;j++){t+=C[i][j];k++}return t/k};
+ [[R1,0,'① Todos los sujetos (n = '+D.X.length+')'],[acc,1,'② Bootstrapping (B = '+BT.B+', m = '+BT.m+' por grupo)']].forEach(([C,k,t])=>{const ox=6+k*(w/2);txt(c,t,ox,12,'#94a3b8','9px system-ui');for(let i=0;i<PV3;i++)for(let j=0;j<PV3;j++){c.fillStyle=i===j?'#1e293b':colorRB(C[i][j]);c.fillRect(ox+j*s,18+i*s,s-.5,s-.5)}});
+ const gnm=['Estables (120)','Neumonía (10)','UCI (20)','Exitus (40)'];let t='<b>Correlación media dentro de cada módulo</b> (cada grupo tiene su módulo):<br>';for(let mo=0;mo<4;mo++)t+=`${gnm[mo]}: ① ${fm(modMean(R1,mo))} · ② ${fm(modMean(acc,mo))}<br>`;
+ $('#t3d').innerHTML=t+'En ① domina el grupo grande y los demás módulos casi desaparecen; en ② cada grupo pesa lo mismo.'}
+function render3(nd){render3main(nd);toyUI();drawToy();drawInd();drawBoot()}
+// bucle de disposición
+(function loop(){if(S3.pos&&CV.c3b){for(let k=0;k<2;k++)layoutStep();drawNet()}requestAnimationFrame(loop)})();
+
+// ====================== panel 4: estadística (I) ======================
+const DISTS=['Normal','Asimétrica (log-normal)','Uniforme','Bimodal','Colas pesadas (t₃)','Con atípicos'];
+function stdz(a){const m=mean(a),s=sd(a);return a.map(v=>(v-m)/s)}
+function genD(kind,n,r){const a=[];for(let i=0;i<n;i++){let v;if(kind==='Normal')v=r.g();else if(kind.startsWith('Asim'))v=Math.exp(.8*r.g());else if(kind==='Uniforme')v=r.u();else if(kind==='Bimodal')v=(r.u()<.5?-1.6:1.6)+.7*r.g();else if(kind.startsWith('Colas')){const c=r.g()**2+r.g()**2+r.g()**2;v=r.g()/Math.sqrt(c/3)}else v=r.u()<.07?4*r.g()+(r.u()<.5?-6:6):r.g();a.push(v)}return a}
+const dn_={k:'Normal',n:30};
+mk($('#dn'),DISTS,'Normal',l=>{dn_.k=l;drawNorm()});bind('n4',v=>{dn_.n=v;drawNorm()},f0);
+function drawNorm(){const r=R(11),x=genD(dn_.k,dn_.n,r),m=mean(x),s=sd(x),sw=shapiroWilk(x),li=lilliefors(x,300);
+ {const{x:c,w,h}=CV.c4a;c.clearRect(0,0,w,h);const L=30,T=10,pw=w-L-8,ph=h-T-22,lo=m-4*s,hi=m+4*s,nb=Math.max(8,Math.min(30,Math.round(Math.sqrt(x.length)*1.6))),H=hist(x,Math.min(lo,Math.min(...x)),Math.max(hi,Math.max(...x)),nb),a0=Math.min(lo,Math.min(...x)),a1=Math.max(hi,Math.max(...x)),bw=(a1-a0)/nb,ym=Math.max(...H,x.length*bw/(s*Math.sqrt(2*Math.PI))*1.0)*1.1,X=v=>L+pw*(v-a0)/(a1-a0),Y=v=>T+ph*(1-v/ym);axes(c,L,T,pw,ph,'valor');
+  H.forEach((v,i)=>{c.fillStyle='rgba(56,189,248,.5)';c.fillRect(X(a0+i*bw)+1,Y(v),pw/nb-2,ph*v/ym)});c.strokeStyle='#fbbf24';c.lineWidth=2;c.beginPath();for(let v=a0;v<=a1;v+=(a1-a0)/120){const y=x.length*bw*Math.exp(-Math.pow((v-m)/s,2)/2)/(s*Math.sqrt(2*Math.PI));v>a0?c.lineTo(X(v),Y(y)):c.moveTo(X(v),Y(y))}c.stroke();c.lineWidth=1;txt(c,'histograma y normal ajustada',L+4,T+10,'#fbbf24','9px system-ui')}
+ {const{x:c,w,h}=CV.c4b;c.clearRect(0,0,w,h);const L=30,T=10,pw=w-L-8,ph=h-T-22,z=[...x].sort((p,q)=>p-q).map(v=>(v-m)/s),q=z.map((_,i)=>nppf((i+.5)/z.length)),lim=Math.max(3,...q.map(Math.abs)),X=v=>L+pw*(v+lim)/(2*lim),Y=v=>T+ph*(1-(clamp(v,-lim,lim)+lim)/(2*lim));axes(c,L,T,pw,ph,'cuantiles teóricos','observados');c.strokeStyle='#fbbf24';c.beginPath();c.moveTo(X(-lim),Y(-lim));c.lineTo(X(lim),Y(lim));c.stroke();c.fillStyle='#38bdf8';z.forEach((v,i)=>{c.beginPath();c.arc(X(q[i]),Y(v),2.2,0,2*Math.PI);c.fill()});txt(c,'gráfico Q–Q: sobre la recta ⇒ normal',L+4,T+10,'#94a3b8','9px system-ui')}
+ const al=G.alpha,rec=dn_.n<50?'Shapiro–Wilk':'Lilliefors',dec=p=>p<al?'<span class="text-red-400">se rechaza normalidad</span>':'<span class="text-emerald-400">no se rechaza</span>';
+ $('#t4n').innerHTML=`<b${rec==='Shapiro–Wilk'?' class="text-emerald-400"':''}>Shapiro–Wilk</b>: W = ${fm(sw.stat,3)}, p = ${pf(sw.p)} → ${dec(sw.p)}<br><b${rec==='Lilliefors'?' class="text-emerald-400"':''}>Lilliefors</b>: D = ${fm(li.stat,3)}, p = ${pf(li.p)} → ${dec(li.p)}<br><span class="text-xs text-slate-400">Recomendado con n = ${dn_.n}: ${rec}. H₀: la muestra procede de una distribución normal. Con n pequeño los tests apenas detectan nada; con n grande rechazan por desviaciones mínimas: apóyate también en el histograma y el Q–Q.</span>`}
+// ---- homocedasticidad
+const dh_={k:'Normal',rs:1.5,n:30};
+mk($('#dh'),['Normal','Asimétrica (log-normal)'],'Normal',l=>{dh_.k=l;drawHomo()});bind('rs4',v=>{dh_.rs=v;drawHomo()},f1);bind('n4h',v=>{dh_.n=v;drawHomo()},f0);
+function strip(c,L,T,pw,ph,groups,cols,lo,hi,r){const X=v=>L+pw*(v-lo)/(hi-lo);groups.forEach((g,k)=>{const y0=T+ph*(k+.5)/groups.length,jit=ph/groups.length*.35;g.forEach(v=>{c.fillStyle=cols[k]+'bb';c.beginPath();c.arc(X(v),y0+(r.u()-.5)*2*jit,2.3,0,2*Math.PI);c.fill()});const s=[...g].sort((a,b)=>a-b),q=p=>s[Math.floor(p*(s.length-1))];c.strokeStyle='#e2e8f0';c.lineWidth=1.5;c.strokeRect(X(q(.25)),y0-jit-3,X(q(.75))-X(q(.25)),2*jit+6);c.beginPath();c.moveTo(X(q(.5)),y0-jit-3);c.lineTo(X(q(.5)),y0+jit+3);c.stroke();c.lineWidth=1})}
+function drawHomo(){const r=R(21),A=stdz(genD(dh_.k,dh_.n,r)),B=stdz(genD(dh_.k,dh_.n,r)).map(v=>v*dh_.rs),{x:c,w,h}=CV.c4c;c.clearRect(0,0,w,h);const lo=Math.min(...A,...B),hi=Math.max(...A,...B),L=30,T=6,pw=w-L-8,ph=h-T-6;strip(c,L,T,pw,ph,[A,B],['#38bdf8','#f472b6'],lo,hi,RNG(5));txt(c,'A',8,T+ph*.25,'#38bdf8','bold 12px system-ui');txt(c,'B',8,T+ph*.75,'#f472b6','bold 12px system-ui');
+ const bt=bartlett([A,B]),lv=levene([A,B],'mean'),bf=levene([A,B],'median'),al=G.alpha,d=p=>p<al?'<span class="text-red-400">varianzas distintas</span>':'<span class="text-emerald-400">iguales (no se rechaza)</span>';
+ $('#t4h').innerHTML=`DE de A = ${fm(sd(A))}; DE de B = ${fm(sd(B))}. H₀: las varianzas son iguales.<br>Bartlett: p = ${pf(bt.p)} → ${d(bt.p)} · Levene: p = ${pf(lv.p)} → ${d(lv.p)} · Brown–Forsythe: p = ${pf(bf.p)} → ${d(bf.p)}${dh_.k!=='Normal'&&dh_.rs===1?'<br><b class="text-amber-300">Mismas varianzas y, sin embargo, Bartlett puede rechazar: es muy sensible a la no normalidad.</b>':''}`}
+// ---- comparación de grupos
+const C4={k:'Normal',pair:false,test:'t de Welch',d:.5,n:30,sr:1,rho:.6,cnt:0,res:null};
+const TESTS_I=['t de Welch','t de Student','U de Mann–Whitney'],TESTS_P=['t pareado','Wilcoxon'];
+mk($('#d4c'),['Normal','Asimétrica (log-normal)','Colas pesadas (t₃)'],'Normal',l=>{C4.k=l;C4.cnt++;drawCmp()});
+mk($('#p4c'),['Independientes','Pareadas'],'Independientes',l=>{C4.pair=l==='Pareadas';C4.test=C4.pair?'t pareado':'t de Welch';mkTests();$('#rpw').style.display=C4.pair?'':'none';C4.cnt++;drawCmp()});
+function mkTests(){mk($('#t4c'),C4.pair?TESTS_P:TESTS_I,C4.test,l=>{C4.test=l;drawCmp()})}mkTests();$('#rpw').style.display='none';
+bind('ef',v=>{C4.d=v;drawCmp()},f2);bind('n4c',v=>{C4.n=v;drawCmp()},f0);bind('sr',v=>{C4.sr=v;drawCmp()},f1);bind('rp',v=>{C4.rho=v;drawCmp()},f2);
+function sample4(r){const n=C4.n,gen=()=>stdz(genD(C4.k,Math.max(n,200),r));let A,B;
+ if(!C4.pair){const a=genD(C4.k,n,r),b=genD(C4.k,n,r),ref=genD(C4.k,4000,RNG(3)),m=mean(ref),s=sd(ref);A=a.map(v=>(v-m)/s);B=b.map(v=>(v-m)/s*C4.sr+C4.d)}
+ else{const ref=genD(C4.k,4000,RNG(3)),m=mean(ref),s=sd(ref),z=genD(C4.k,n,r),e1=genD(C4.k,n,r),e2=genD(C4.k,n,r),q=Math.sqrt(C4.rho),p=Math.sqrt(1-C4.rho);A=z.map((v,i)=>(q*(v-m)/s+p*(e1[i]-m)/s));B=z.map((v,i)=>(q*(v-m)/s+p*(e2[i]-m)/s)*C4.sr+C4.d)}return[A,B]}
+function runTest(A,B,t){return t==='t de Welch'?tWelch(A,B):t==='t de Student'?tStudent(A,B):t==='U de Mann–Whitney'?mannWhitney(A,B):t==='t pareado'?tPaired(A,B):wilcoxon(A,B)}
+function drawCmp(){const r=R(31+C4.cnt),[A,B]=sample4(r),{x:c,w,h}=CV.c4d;c.clearRect(0,0,w,h);const lo=Math.min(...A,...B),hi=Math.max(...A,...B),L=30,T=6,pw=w-L-8,ph=h-T-6,X=v=>L+pw*(v-lo)/(hi-lo);
+ strip(c,L,T,pw,ph,[A,B],['#38bdf8','#f472b6'],lo,hi,RNG(9));if(C4.pair&&A.length<=40){c.strokeStyle='rgba(148,163,184,.25)';A.forEach((v,i)=>{c.beginPath();c.moveTo(X(v),T+ph*.25);c.lineTo(X(B[i]),T+ph*.75);c.stroke()})}
+ [[mean(A),T+ph*.25,'#38bdf8'],[mean(B),T+ph*.75,'#f472b6']].forEach(([m,y,col])=>{c.fillStyle=col;c.beginPath();c.moveTo(X(m),y-12);c.lineTo(X(m)-5,y-20);c.lineTo(X(m)+5,y-20);c.fill()});txt(c,'A',8,T+ph*.25,'#38bdf8','bold 12px system-ui');txt(c,'B',8,T+ph*.75,'#f472b6','bold 12px system-ui');
+ const res=runTest(A,B,C4.test),dco=C4.pair?mean(A.map((v,i)=>v-B[i]))/sd(A.map((v,i)=>v-B[i])):cohenD(B,A),al=G.alpha;C4.res=res;
+ $('#t4t').innerHTML=`<b>${C4.test}</b>: ${res.stat!=null?'estadístico = '+fm(res.stat,2)+' · ':''}<b>p = ${pf(res.p)}</b> → ${res.p<al?'<span class="text-red-400">se rechaza H₀: hay diferencia</span>':'<span class="text-emerald-400">no se rechaza H₀</span>'} · tamaño del efecto observado d = ${fm(Math.abs(dco))}. ${C4.d===0&&res.p<al?'<b class="text-amber-300">H₀ es cierta: este es un falso positivo (error tipo I).</b>':C4.d>0&&res.p>=al?'<b class="text-amber-300">Hay diferencia real y no se detecta (error tipo II).</b>':''}`;if(!C4.big)drawPhist(null)}
+$('#e1').onclick=()=>{C4.cnt++;C4.big=false;drawCmp()};
+$('#e1k').onclick=()=>{const r=R(777+C4.cnt++),ps=[];for(let i=0;i<1000;i++){const[A,B]=sample4(r);ps.push(runTest(A,B,C4.test).p)}C4.big=true;drawPhist(ps)};
+function drawPhist(ps){const{x:c,w,h}=CV.c4e;c.clearRect(0,0,w,h);const L=34,T=14,pw=w-L-8,ph=h-T-24,nb=20;axes(c,L,T,pw,ph,'p-valor');if(!ps){txt(c,'Pulsa «1000 experimentos» para ver la distribución de p',L+8,T+ph/2,'#64748b','11px system-ui');return}
+ const H=hist(ps,0,1,nb),ym=Math.max(...H)*1.1,al=G.alpha;H.forEach((v,i)=>{c.fillStyle=(i+1)/nb<=al+1e-9?'rgba(248,113,113,.8)':'rgba(56,189,248,.55)';c.fillRect(L+pw*i/nb+1,T+ph*(1-v/ym),pw/nb-2,ph*v/ym)});c.strokeStyle='#facc15';c.beginPath();c.moveTo(L+pw*al,T);c.lineTo(L+pw*al,T+ph);c.stroke();txt(c,'α',L+pw*al+3,T+10,'#facc15','10px system-ui');[0,.5,1].forEach(v=>txt(c,v,L+pw*v-4,T+ph+12,'#64748b','9px system-ui'));
+ const rate=ps.filter(p=>p<al).length/ps.length;$('#t4t').innerHTML=`1000 experimentos con ${C4.test}, n = ${C4.n}, d = ${fm(C4.d)}: <b>p < α en el ${(rate*100).toFixed(1).replace('.',',')} %</b> → ${C4.d===0?'son <b>falsos positivos</b> (error tipo I ≈ α): p se reparte de forma uniforme bajo H₀.':'esa es la <b>potencia</b> (probabilidad de detectar el efecto); el resto son errores tipo II.'}`}
+// ---- muchos tests (genes)
+const MT={m:1000,pi:10,d:1,n:12};bind('mg',v=>{MT.m=v;clearTimeout(MT.t);MT.t=setTimeout(drawMulti,100)},f0);bind('pi',v=>{MT.pi=v;clearTimeout(MT.t);MT.t=setTimeout(drawMulti,100)},f0);bind('d4',v=>{MT.d=v;clearTimeout(MT.t);MT.t=setTimeout(drawMulti,100)},f1);bind('n4m',v=>{MT.n=v;clearTimeout(MT.t);MT.t=setTimeout(drawMulti,100)},f0);
+function drawMulti(){const r=R(41),m=MT.m,ps=[],ef=[],tr=[];for(let g=0;g<m;g++){const diff=r.u()<MT.pi/100,a=[],b=[];for(let i=0;i<MT.n;i++){a.push(r.g());b.push(r.g()+(diff?MT.d:0))}const t=tStudent(b,a);ps.push(t.p);ef.push(mean(b)-mean(a));tr.push(diff)}
+ const al=G.alpha,q=bhAdjust(ps),cnt=f=>{let s=0,fp=0;ps.forEach((p,i)=>{if(f(p,i)){s++;if(!tr[i])fp++}});return[s,fp]},raw=cnt(p=>p<al),bon=cnt(p=>p<al/m),bh=cnt((p,i)=>q[i]<al),nul=tr.filter(x=>!x).length;
+ {const{x:c,w,h}=CV.c4f;c.clearRect(0,0,w,h);const L=32,T=10,pw=w-L-8,ph=h-T-24,xm=Math.max(1.5,...ef.map(Math.abs)),ym=Math.max(4,...ps.map(p=>-Math.log10(Math.max(p,1e-300)))),X=v=>L+pw*(v+xm)/(2*xm),Y=v=>T+ph*(1-v/ym);axes(c,L,T,pw,ph,'diferencia de medias','−log₁₀ p');
+  [[al,'#facc15','α'],[al/m,'#f87171','Bonferroni']].forEach(([t,col,l])=>{const y=Y(-Math.log10(t));if(y>T){c.strokeStyle=col;c.setLineDash([4,3]);c.beginPath();c.moveTo(L,y);c.lineTo(L+pw,y);c.stroke();c.setLineDash([]);txt(c,l,L+pw-52,y-3,col,'9px system-ui')}});
+  ps.forEach((p,i)=>{c.fillStyle=tr[i]?'rgba(244,114,182,.75)':'rgba(56,189,248,.5)';c.beginPath();c.arc(X(ef[i]),Y(-Math.log10(Math.max(p,1e-300))),2,0,2*Math.PI);c.fill()});txt(c,'● genes diferentes   ● genes nulos',L+6,T+10,'#94a3b8','9px system-ui')}
+ const fd=(a)=>a[0]?(a[1]/a[0]*100).toFixed(0)+' %':'—';$('#o4m').innerHTML=[[raw[0],`significativos con p < α (${raw[1]} falsos; esperados ≈ ${(nul*al).toFixed(0)})`],[bon[0],`con Bonferroni p < α/m (${bon[1]} falsos)`],[bh[0],`con FDR (Benjamini–Hochberg) (${bh[1]} falsos)`],[fd(raw),'proporción de falsos entre los «hallazgos» (sin corregir)']].map(a=>`<div><b>${a[0]}</b><small>${a[1]}</small></div>`).join('');
+ $('#t4m').innerHTML=MT.pi===0?`Ningún gen difiere realmente, pero <b>${raw[0]} salen «significativos»</b> (≈ m·α = ${(m*al).toFixed(0)}). Por eso hay que corregir por múltiples comparaciones.`:`Sin corregir, ${raw[1]} de los ${raw[0]} hallazgos son falsos. Bonferroni es muy conservador (pierde potencia); FDR controla la proporción de falsos descubrimientos.`}
+// ---- árbol de decisión
+const DT={root:['¿Qué quieres hacer?',[['Comparar grupos','cmp'],['Medir relación entre variables','rel']]],cmp:['¿Las muestras son pareadas (mismos sujetos medidos dos veces)?',[['Sí, pareadas','cmpP'],['No, independientes','cmpI']]],
+ cmpI:['¿Ambas muestras son normales (y de varianzas parecidas)?',[['Sí','R:<b>t de Student</b> (o <b>Welch</b> si las varianzas difieren). Con más de 2 grupos: ANOVA.'],['No','R:<b>U de Mann–Whitney</b> (no paramétrico). Con más de 2 grupos: Kruskal–Wallis.']]],
+ cmpP:['¿Las diferencias son normales?',[['Sí','R:<b>t de Student pareado</b>.'],['No','R:<b>Wilcoxon</b> de rangos con signo (no paramétrico).']]],
+ rel:['¿Qué tipo de variables?',[['Continuas','relC'],['Ordinales o con relación monótona','R:<b>Spearman</b> (con rangos; robusto a atípicos y a no normalidad).'],['Categóricas','R:<b>χ² de asociación</b> (tabla de contingencia); V de Cramér para la fuerza.']]],relC:['¿Relación lineal y datos aprox. normales, sin atípicos?',[['Sí','R:<b>Pearson</b>.'],['No','R:<b>Spearman</b>.']]]};
+function dtShow(k){const n=DT[k];$('#t4d').innerHTML='<b>'+n[0]+'</b>';mk($('#dt'),['↺ Empezar',...n[1].map(o=>o[0])],null,l=>{if(l==='↺ Empezar'){dtShow('root');return}const o=n[1].find(q=>q[0]===l);if(o[1].startsWith('R:')){$('#t4d').innerHTML='✅ Test recomendado: '+o[1].slice(2);mk($('#dt'),['↺ Empezar'],null,()=>dtShow('root'))}else dtShow(o[1])})}
+function render4(){drawNorm();drawHomo();drawCmp();drawMulti()}
+
+// ====================== panel 5: correlación y asociación ======================
+const S5={rho:.5,n:30,ou:0,sh:'Lineal',pts:null,drag:-1};
+mk($('#sh5'),['Lineal','Monótona','Cuadrática'],'Lineal',l=>{S5.sh=l;gen5()});bind('rho',v=>{S5.rho=v;gen5()},f2);bind('n5',v=>{S5.n=v;gen5()},f0);bind('ou',v=>{S5.ou=v;gen5()},f0);
+function gen5(){const r=R(51),P=[];for(let i=0;i<S5.n;i++){const x=r.g(),z=S5.rho*x+Math.sqrt(1-S5.rho**2)*r.g();let y=S5.sh==='Lineal'?z:S5.sh==='Monótona'?Math.exp(1.1*z)/1.6:x*x*1.0-1+.5*r.g();P.push([x,y])}
+ for(let k=0;k<S5.ou;k++){const sg=k%2?1:-1;P.push([3.2*sg*(1-.1*k),-3.4*sg*(1+.1*k)+ (S5.sh==='Cuadrática'?2:0)])}S5.pts=P;draw5()}
+function ext5(){const xs=S5.pts.map(p=>p[0]),ys=S5.pts.map(p=>p[1]);return[Math.min(-3.8,...xs)-.2,Math.max(3.8,...xs)+.2,Math.min(-3.8,...ys)-.2,Math.max(3.8,...ys)+.2]}
+function draw5(){const{x:c,w,h}=CV.c5a;c.clearRect(0,0,w,h);const[x0,x1,y0,y1]=ext5(),L=34,T=8,pw=w-L-8,ph=h-T-24,X=v=>L+pw*(v-x0)/(x1-x0),Y=v=>T+ph*(1-(v-y0)/(y1-y0));axes(c,L,T,pw,ph,'X','Y');const xs=S5.pts.map(p=>p[0]),ys=S5.pts.map(p=>p[1]),pe=pearson(xs,ys),sp=spearman(xs,ys);
+ const mx=mean(xs),my=mean(ys);let sxy=0,sxx=0;xs.forEach((v,i)=>{sxy+=(v-mx)*(ys[i]-my);sxx+=(v-mx)**2});const b=sxy/sxx,a=my-b*mx;c.strokeStyle='#fbbf24';c.lineWidth=1.8;c.beginPath();c.moveTo(X(x0),Y(a+b*x0));c.lineTo(X(x1),Y(a+b*x1));c.stroke();c.lineWidth=1;
+ S5.pts.forEach((p,i)=>{const out=i>=S5.n;c.fillStyle=out?'#f87171':'#38bdf8';c.beginPath();c.arc(X(p[0]),Y(p[1]),out?5:3.4,0,2*Math.PI);c.fill()});txt(c,'arrastra un punto',L+6,T+12,'#64748b','10px system-ui');
+ const al=G.alpha;$('#o5a').innerHTML=[[fm(pe.r,3),`Pearson r (p ${pe.p<1e-4?'< 0,0001':'= '+pf(pe.p)})`],[fm(sp.r,3),`Spearman ρ (p ${sp.p<1e-4?'< 0,0001':'= '+pf(sp.p)})`],[`[${fm(pe.lo,2)}, ${fm(pe.hi,2)}]`,'IC 95 % de r (Fisher)'],[(pe.r**2*100).toFixed(0)+' %','varianza compartida r²']].map(a=>`<div><b>${a[0]}</b><small>${a[1]}</small></div>`).join('');
+ let t=`H₀: no hay correlación (ρ = 0). Pearson: p ${pe.p<al?'< α → se rechaza H₀':'≥ α → no se rechaza'}. `;if(S5.sh==='Cuadrática')t+='<b class="text-amber-300">Hay una dependencia fuerte (U) y, sin embargo, r ≈ 0: Pearson solo mide relación lineal.</b>';else if(S5.ou>0)t+=`<b class="text-amber-300">Los atípicos (rojos) arrastran a Pearson (${fm(pe.r)}) más que a Spearman (${fm(sp.r)}).</b>`;else if(S5.sh==='Monótona')t+='Relación monótona no lineal: Spearman la capta mejor que Pearson.';else if(pe.p<al&&Math.abs(pe.r)<.3)t+='Significativa pero débil: «significativo» no significa «fuerte».';t+=' Correlación no implica causalidad.';$('#t5a').innerHTML=t}
+(function(){const c=$('#c5a');const pos=e=>{const r=c.getBoundingClientRect(),[x0,x1,y0,y1]=ext5(),L=34,T=8,pw=r.width-L-8,ph=r.height-T-24;return[x0+(e.clientX-r.left-L)/pw*(x1-x0),y1-(e.clientY-r.top-T)/ph*(y1-y0),pw,ph,x1-x0,y1-y0]};
+ c.addEventListener('pointerdown',e=>{const[px,py,pw,ph,dx,dy]=pos(e);let bd=1e9,bi=-1;S5.pts.forEach((p,i)=>{const d=Math.hypot((p[0]-px)/dx*pw,(p[1]-py)/dy*ph);if(d<bd){bd=d;bi=i}});if(bd<20){S5.drag=bi;c.setPointerCapture&&c.setPointerCapture(e.pointerId)}});
+ c.addEventListener('pointermove',e=>{if(S5.drag<0)return;const[px,py]=pos(e);S5.pts[S5.drag]=[clamp(px,-5,5),clamp(py,-6,8)];draw5()});c.addEventListener('pointerup',()=>S5.drag=-1)})();
+// ---- Anscombe
+const ANS=[[[10,8,13,9,11,14,6,4,12,7,5],[8.04,6.95,7.58,8.81,8.33,9.96,7.24,4.26,10.84,4.82,5.68]],[[10,8,13,9,11,14,6,4,12,7,5],[9.14,8.14,8.74,8.77,9.26,8.10,6.13,3.10,9.13,7.26,4.74]],[[10,8,13,9,11,14,6,4,12,7,5],[7.46,6.77,12.74,7.11,7.81,8.84,6.08,5.39,8.15,6.42,5.73]],[[8,8,8,8,8,8,8,19,8,8,8],[6.58,5.76,7.71,8.84,8.47,7.04,5.25,12.50,5.56,7.91,6.89]]];
+const AN={k:0};mk($('#an'),['I','II','III','IV'],'I',l=>{AN.k='I II III IV'.split(' ').indexOf(l);drawAns()});
+function drawAns(){const{x:c,w,h}=CV.c5b;c.clearRect(0,0,w,h);const[xs,ys]=ANS[AN.k],L=36,T=8,pw=w-L-8,ph=h-T-26,X=v=>L+pw*(v-2)/18,Y=v=>T+ph*(1-(v-2)/12);axes(c,L,T,pw,ph,'x','y');for(let k=0;k<=4;k++){txt(c,2+k*4.5|0,X(2+k*4.5)-4,T+ph+12,'#64748b','9px system-ui')}
+ const pe=pearson(xs,ys),mx=mean(xs),my=mean(ys);let sxy=0,sxx=0;xs.forEach((v,i)=>{sxy+=(v-mx)*(ys[i]-my);sxx+=(v-mx)**2});const b=sxy/sxx,a=my-b*mx;c.strokeStyle='#fbbf24';c.lineWidth=1.8;c.beginPath();c.moveTo(X(3),Y(a+b*3));c.lineTo(X(20),Y(a+b*20));c.stroke();c.lineWidth=1;xs.forEach((v,i)=>{c.fillStyle='#38bdf8';c.beginPath();c.arc(X(v),Y(ys[i]),4,0,2*Math.PI);c.fill()});
+ $('#t5b').innerHTML=`Conjunto ${'I II III IV'.split(' ')[AN.k]}: media x = ${fm(mx)} · media y = ${fm(my)} · r = <b>${fm(pe.r,3)}</b> · recta y = ${fm(a)} + ${fm(b)}x. Los cuatro conjuntos tienen las mismas cifras, pero solo en uno tiene sentido una recta: <b>representa siempre los datos</b>.`}
+// ---- tamaño muestral y r crítico
+const N5={r:.3};bind('ro',v=>{N5.r=v;drawCrit()},f2);
+const rcrit=(n,al)=>{const t=tppf(1-al/2,n-2);return t/Math.sqrt(n-2+t*t)};
+function drawCrit(){const{x:c,w,h}=CV.c5c;c.clearRect(0,0,w,h);const L=36,T=10,pw=w-L-8,ph=h-T-26,al=G.alpha,lx=n=>Math.log10(n),X=n=>L+pw*(lx(n)-lx(4))/(lx(1000)-lx(4)),Y=r=>T+ph*(1-r);axes(c,L,T,pw,ph,'tamaño muestral n (escala log)','|r| crítico');[4,10,30,100,300,1000].forEach(n=>txt(c,n,X(n)-8,T+ph+12,'#64748b','9px system-ui'));[0,.5,1].forEach(v=>txt(c,v,12,Y(v)+3,'#64748b','9px system-ui'));
+ c.fillStyle='rgba(52,211,153,.12)';c.beginPath();c.moveTo(X(4),Y(1));for(let k=0;k<=120;k++){const n=Math.pow(10,lx(4)+(lx(1000)-lx(4))*k/120);c.lineTo(X(n),Y(rcrit(Math.round(n),al)))}c.lineTo(X(1000),Y(1));c.fill();c.strokeStyle='#34d399';c.lineWidth=2;c.beginPath();for(let k=0;k<=120;k++){const n=Math.pow(10,lx(4)+(lx(1000)-lx(4))*k/120),y=Y(rcrit(Math.round(n),al));k?c.lineTo(X(n),y):c.moveTo(X(n),y)}c.stroke();c.lineWidth=1;txt(c,'zona significativa (p < α)',L+pw*.45,T+22,'#34d399','10px system-ui');
+ c.strokeStyle='#fbbf24';c.setLineDash([4,4]);c.beginPath();c.moveTo(L,Y(N5.r));c.lineTo(L+pw,Y(N5.r));c.stroke();c.setLineDash([]);let nmin=4;while(nmin<5000&&rcrit(nmin,al)>N5.r)nmin++;if(nmin<=1000){c.fillStyle='#fbbf24';c.beginPath();c.arc(X(nmin),Y(N5.r),5,0,2*Math.PI);c.fill()}
+ $('#t5c').innerHTML=nmin<=5000?`Con r = ${fm(N5.r)} basta n ≥ <b>${nmin}</b> para p < α. Pero r² = ${(N5.r**2*100).toFixed(1).replace('.',',')} %: la relación explica poca varianza aunque sea «significativa». Con n grande, casi cualquier r ≠ 0 lo es.`:'Ni con n = 5000 sería significativa.'}
+// ---- χ² de asociación
+const CT={T:[[23,56,12],[77,36,21]],rn:['Hombres','Mujeres'],cn:['Rubio','Moreno','Pelirrojo']};
+function ctUI(){let h='<table><tr><th></th>'+CT.cn.map(c=>`<th>${c}</th>`).join('')+'</tr>';CT.T.forEach((r,i)=>{h+=`<tr><th>${CT.rn[i]}</th>`+r.map((v,j)=>`<td><input type="number" min="0" step="1" value="${v}" data-i="${i}" data-j="${j}" style="width:4.6rem"></td>`).join('')+'</tr>'});$('#ct').innerHTML=h+'</table><p class="text-xs text-slate-400 mt-1">Frecuencias observadas. H₀: las dos variables son independientes.</p>';$('#ct').querySelectorAll('input').forEach(e=>e.oninput=()=>{CT.T[+e.dataset.i][+e.dataset.j]=Math.max(0,parseInt(e.value)||0);drawChi()})}
+function drawChi(){const{x:c,w,h}=CV.c5d;c.clearRect(0,0,w,h);const res=chi2ind(CT.T),L=30,T=18,pw=w-L-8,ph=h-T-22;axes(c,L,T,pw,ph);txt(c,'proporción de hombres y mujeres en cada categoría',L,10,'#94a3b8','9px system-ui');CT.cn.forEach((n,j)=>{const col=CT.T.map(r=>r[j]),tot=col.reduce((p,q)=>p+q,0)||1,bw=pw/3-14,bx=L+8+j*pw/3;let y=T+ph;col.forEach((v,i)=>{const hh=ph*v/tot;c.fillStyle=i?'rgba(244,114,182,.8)':'rgba(56,189,248,.8)';c.fillRect(bx,y-hh,bw,hh);txt(c,Math.round(v/tot*100)+'%',bx+bw/2,y-hh/2+3,'#0a1020','10px system-ui','center');y-=hh});txt(c,n,bx+bw/2,T+ph+13,'#e2e8f0','10px system-ui','center')});
+ const al=G.alpha;$('#t5d').innerHTML=`χ² = <b>${fm(res.stat,2)}</b> · gl = ${res.df} · <b>p = ${pf(res.p)}</b> → ${res.p<al?'<span class="text-red-400">se rechaza la independencia: hay asociación</span>':'<span class="text-emerald-400">no se rechaza la independencia</span>'} · V de Cramér = ${fm(res.V)} (fuerza, sin signo). N = ${res.N}.${Math.min(...res.E.flat())<5?' <span class="text-amber-300">Hay frecuencias esperadas < 5: el χ² es poco fiable.</span>':''}`}
+function render5(){gen5();drawAns();drawCrit();ctUI();drawChi()}
+
+// ====================== panel 6: preguntas del temario ======================
+const QB=[
+['Señales','¿Qué es una señal biomédica?',['Una variable física que varía (normalmente con el tiempo) y refleja un proceso fisiológico','Cualquier fotografía de un órgano','Un valor constante medido una sola vez','El resultado de un test estadístico'],0,'Una señal es la variación de una cantidad física respecto a una variable independiente, y la biomédica refleja un proceso fisiológico.'],
+['Señales','Una imagen se diferencia de una señal en que depende de…',['Dos variables espaciales','El tiempo únicamente','La frecuencia cardiaca','Un solo número'],0,'Imagen: dos variables espaciales. Vídeo: dos espaciales más el tiempo.'],
+['Señales','Un vídeo biomédico es…',['Una imagen que cambia con el tiempo (dos variables espaciales y el tiempo)','Una señal con una sola variable','Una señal estocástica','Una tabla de datos'],0,'Es una secuencia de imágenes: depende de x, y y t.'],
+['Señales','Una señal que se describe con una fórmula y se repite exactamente cada T es…',['Determinista periódica','Determinista transitoria','Estocástica estacionaria','Estocástica no estacionaria'],0,'Determinista: se describe con una fórmula; periódica: se repite cada T.'],
+['Señales','La suma de dos sinusoides cuyas frecuencias no son múltiplos enteros es…',['Cuasi-periódica','Periódica','Transitoria','Estocástica'],0,'Parece repetirse pero nunca coincide exactamente: cuasi-periódica (determinista).'],
+['Señales','Una señal cuya media y varianza cambian con el tiempo es…',['Estocástica no estacionaria','Determinista periódica','Estocástica estacionaria','Determinista transitoria'],0,'Estocástica: solo se describe estadísticamente; no estacionaria: sus propiedades cambian.'],
+['Señales','¿Cómo se considera el ECG real?',['Estocástico, pero «casi determinista»','Totalmente determinista','Completamente aleatorio','Una imagen'],0,'Todas las señales biológicas reales son estocásticas; el ECG es casi determinista y el EEG, poco determinista.'],
+['Señales','La acelerometría es una señal de fuente…',['Mecánica','Eléctrica','Bioquímica','Magnética'],0,'Las señales mecánicas incluyen movimiento, presión o fuerza.'],
+['Señales','La concentración de glucosa en sangre es una señal…',['Bioquímica','Eléctrica','Mecánica','Óptica'],0,'Las señales bioquímicas miden concentraciones: glucosa, hormonas, electrolitos, gases…'],
+['Señales','Los biopotenciales (ECG, EEG, EMG) se originan en…',['El potencial de acción de las células excitables','El flujo sanguíneo','La temperatura corporal','La respiración'],0,'El potencial de acción es el origen de todos los biopotenciales.'],
+['EEG y retina','El EEG de superficie se registra…',['Con electrodos en el cuero cabelludo','Dentro del córtex con electrodos profundos','En la retina','En la sangre'],0,'sEEG es intracortical, ECoG sobre el córtex y EEG sobre el cuero cabelludo.'],
+['EEG y retina','El ritmo alfa (8–13 Hz) aparece sobre todo…',['En vigilia relajada con ojos cerrados','En sueño profundo','Durante una crisis epiléptica','En REM'],0,'Alfa: vigilia relajada con ojos cerrados. Delta (< 4 Hz) domina el sueño profundo.'],
+['EEG y retina','Las ondas delta de gran amplitud caracterizan…',['La fase N3 (sueño profundo)','La vigilia','La fase REM','La fase N1'],0,'N3 se identifica por ondas lentas (< 4 Hz) de más de 75 µV.'],
+['EEG y retina','Los husos de sueño y los complejos K aparecen en…',['N2','N1','N3','Vigilia'],0,'N2: sueño ligero estable con husos (≈ 13 Hz) y complejos K.'],
+['EEG y retina','El EEG de la fase REM se parece al de…',['La vigilia (baja amplitud, frecuencias mixtas)','N3','La fase N2','Una señal periódica'],0,'REM: actividad de baja amplitud similar a la vigilia, de ahí «sueño paradójico».'],
+['EEG y retina','Sensibilidad es…',['TP / (TP + FN)','TN / (TN + FP)','TP / (TP + FP)','(TP + TN) / N'],0,'Es la proporción de enfermos que el clasificador detecta (recall).'],
+['EEG y retina','Con una enfermedad rara (1 %), un clasificador que dice siempre «sano» tiene…',['Exactitud ≈ 99 % y sensibilidad 0 %','Exactitud 50 %','Especificidad 0 %','κ = 1'],0,'La exactitud engaña con clases desequilibradas: hay que mirar sensibilidad, precisión, F1 o κ.'],
+['EEG y retina','El coeficiente kappa de Cohen mide…',['El acuerdo corregido por el azar','El área bajo la curva ROC','La proporción de verdaderos positivos','La varianza explicada'],0,'κ = (acuerdo observado − esperado por azar)/(1 − esperado).'],
+['EEG y retina','En el análisis automático de retinografías, la primera etapa suele ser…',['Valorar la calidad de la imagen','Gradar la retinopatía','Segmentar los exudados','Medir la glucosa'],0,'Primero se descartan imágenes no gradables; después disco/fóvea, lesiones y gradación.'],
+['Redes','En una red de correlación, un nodo es…',['Una variable (p. ej. un gen)','Un sujeto','Un test estadístico','Un grupo de pacientes'],0,'Nodo = variable; enlace = correlación entre dos variables.'],
+['Redes','La correlación parcial permite…',['Eliminar correlaciones indirectas o espurias mediadas por otras variables','Aumentar la correlación','Imputar datos','Normalizar los datos'],0,'Mide la relación entre dos variables controlando el resto.'],
+['Redes','El «bootstrapping» en redes sirve para…',['Equilibrar grupos de tamaños muy distintos y dar robustez','Dibujar la red','Eliminar valores perdidos','Calcular el p-valor'],0,'Se remuestrea de forma equilibrada por grupo y se promedian las correlaciones.'],
+['Redes','Con pocos sujetos y muchas variables…',['Aparecen enlaces espurios por azar','Las redes son más fiables','Pearson es exacto','No hay valores perdidos'],0,'Con n pequeño, variables independientes muestran correlaciones grandes por casualidad.'],
+['Redes','Fruchterman–Reingold y ForceAtlas2 son…',['Algoritmos de disposición (layout) de grafos','Tests de normalidad','Métodos de imputación','Medidas de correlación'],0,'Sitúan los nodos simulando fuerzas de atracción y repulsión.'],
+['Redes','Antes de calcular la correlación hay que tratar…',['Los valores perdidos (imputación) y, si hace falta, transformar los datos','Solo el nombre de las variables','Nada','Únicamente las imágenes'],0,'Pasos: imputación → transformación → correlación → umbral → visualización.'],
+['Estadística','Un p-valor pequeño significa…',['Que los datos serían poco probables si H₀ fuese cierta','Que H₀ es falsa con certeza','Que el efecto es grande','Que la probabilidad de H₀ es p'],0,'p = P(datos tan extremos | H₀). No es la probabilidad de que H₀ sea cierta ni mide el tamaño del efecto.'],
+['Estadística','Con α = 0,05 se rechaza H₀ cuando…',['p < 0,05','p > 0,05','p = 1','El estadístico es negativo'],0,'α es el umbral de significación.'],
+['Estadística','Con n < 50 se suele recomendar para la normalidad…',['Shapiro–Wilk','Lilliefors','Bartlett','Wilcoxon'],0,'Shapiro–Wilk para n pequeña; Lilliefors (Kolmogorov–Smirnov corregido) para n grande.'],
+['Estadística','¿Qué test de homocedasticidad es muy sensible a la falta de normalidad?',['Bartlett','Levene','Brown–Forsythe','Shapiro–Wilk'],0,'Bartlett asume normalidad; Levene y Brown–Forsythe son más robustos.'],
+['Estadística','Dos muestras independientes, no normales: ¿qué test?',['U de Mann–Whitney','t de Student','t pareado','Pearson'],0,'No paramétrico para muestras independientes.'],
+['Estadística','Medidas pareadas (antes/después) con diferencias no normales: ¿qué test?',['Wilcoxon','t de Student independiente','χ²','Mann–Whitney'],0,'Wilcoxon de rangos con signo es la alternativa no paramétrica al t pareado.'],
+['Estadística','Con 1000 tests y H₀ cierta en todos, α = 0,05 produce ≈…',['50 falsos positivos','0 falsos positivos','5 falsos positivos','500 falsos positivos'],0,'m·α = 50. Por eso se corrige (Bonferroni, FDR).'],
+['Estadística','Con n muy grande…',['Diferencias mínimas pueden salir significativas','Los tests pierden potencia','Siempre se acepta H₀','El p-valor no existe'],0,'La significación depende del tamaño muestral: hay que mirar también el tamaño del efecto.'],
+['Estadística','Un error de tipo I es…',['Rechazar H₀ siendo cierta (falso positivo)','No rechazar H₀ siendo falsa','Calcular mal la media','Usar un test no paramétrico'],0,'Su probabilidad es α. El error tipo II (falso negativo) se relaciona con la potencia.'],
+['Correlación','La hipótesis nula de un test de correlación es…',['No hay correlación (ρ = 0)','Las variables están totalmente relacionadas','La correlación es 1','Las varianzas son iguales'],0,'Se rechaza si p < α: entonces la correlación probablemente no es nula.'],
+['Correlación','r = 0,12 con p < 0,001 (n = 2000) significa…',['Relación probablemente no nula pero débil (r² ≈ 1,4 %)','Relación muy fuerte','No hay relación','Causalidad'],0,'Un p pequeño no implica relación fuerte: depende de n.'],
+['Correlación','Spearman frente a Pearson…',['Spearman usa rangos y capta relaciones monótonas, robusto a atípicos','Spearman solo sirve para variables categóricas','Pearson no es sensible a atípicos','Son idénticos siempre'],0,'Pearson mide relación lineal; Spearman, monótona.'],
+['Correlación','El test χ² de asociación se usa para…',['Variables categóricas (tabla de contingencia)','Variables continuas normales','Comparar medias','Medir normalidad'],0,'H₀: las variables son independientes.'],
+['Correlación','El cuarteto de Anscombe enseña que…',['Hay que representar los datos: estadísticas iguales pueden ocultar patrones distintos','Pearson siempre es válido','Los atípicos no importan','La correlación implica causalidad'],0,'Cuatro conjuntos con la misma media, varianza y r tienen formas muy diferentes.'],
+['Correlación','Correlación entre dos variables significa…',['Que varían juntas, no que una cause la otra','Que una causa la otra','Que son independientes','Que tienen la misma media'],0,'Correlación no implica causalidad: pueden existir factores de confusión.']];
+const QS={tag:'Todos',order:[],i:0,sc:0,done:false,tot:0};
+function qOrder(){const idx=QB.map((q,k)=>k).filter(k=>QS.tag==='Todos'||QB[k][0]===QS.tag);QS.order=idx.sort(()=>Math.random()-.5);QS.i=0;QS.sc=0;QS.tot=0}
+mk($('#qt'),['Todos','Señales','EEG y retina','Redes','Estadística','Correlación'],'Todos',l=>{QS.tag=l;qOrder();showQ()});
+function showQ(){if(QS.i>=QS.order.length){const n=QS.order.length;$('#qz').innerHTML=`<p class="text-sm">Has acertado <b class="text-emerald-400">${QS.sc} de ${n}</b>. ${QS.sc>=.85*n?'¡Excelente!':QS.sc>=.6*n?'Bien: repasa los temas donde has fallado.':'Vuelve a explorar los paneles y repite.'}</p>`;$('#qn').textContent='↺ Repetir';$('#qs').textContent='';return}
+ const q=QB[QS.order[QS.i]],ops=q[2].map((o,k)=>[o,k]).sort(()=>Math.random()-.5);QS.done=false;$('#qs').textContent=`· ${QS.i+1}/${QS.order.length} · aciertos ${QS.sc}`;$('#qz').innerHTML=`<p class="text-xs text-slate-500">${q[0]}</p><p class="text-sm mb-2">${q[1]}</p>`;
+ ops.forEach(([o,k])=>{const b=document.createElement('button');b.className='b q';b.textContent=o;b.onclick=()=>{if(QS.done)return;QS.done=true;if(k===q[3])QS.sc++;[...$('#qz').querySelectorAll('.q')].forEach((e,j)=>{if(ops[j][1]===q[3])e.classList.add('ok');else if(ops[j][1]===k)e.classList.add('ko')});$('#qs').textContent=`· ${QS.i+1}/${QS.order.length} · aciertos ${QS.sc}`;const p=document.createElement('p');p.className='text-xs text-slate-300 mt-1';p.innerHTML=(k===q[3]?'✅ ':'❌ ')+q[4];$('#qz').appendChild(p)};$('#qz').appendChild(b)});
+ $('#qn').textContent=QS.i===QS.order.length-1?'Ver resultado ▶':'Siguiente pregunta ▶'}
+$('#qn').onclick=()=>{if(QS.i>=QS.order.length){qOrder();showQ();return}QS.i++;showQ()};
+
+// ====================== arranque ======================
+const CIDS=['c1a','c1b','c1c','c2a','c2b','c2c','c2d','c2e','c2f','c2g','c3t','c3a','c3b','c3c','c3d','c4a','c4b','c4c','c4d','c4e','c4f','c5a','c5b','c5c','c5d'];
+function renderAll(nd){render1(nd);render2();render3(nd);render4();render5()}
+CIDS.forEach(setup);s1Ans();s1UI();gNew();renderAll(true);qOrder();showQ();dtShow('root');
+let rzT;addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(()=>{CIDS.forEach(setup);renderAll(false)},150)});
+
+
+</script>
+<script>
+/* NeuroLab UVa: fondo de nodos, enlaces al índice y logos (independiente del resto de la app) */
+(function(){
+var base=/\/apps\/[^\/]*$/i.test(location.pathname)?'../':'';
+document.querySelectorAll('.nl-idx').forEach(function(a){a.href=base+'index.html'});
+document.querySelectorAll('#nl-foot img').forEach(function(im){var f=im.getAttribute('data-f');im.src=base+f;
+ im.onerror=function(){if(!im.dataset.t){im.dataset.t=1;im.src=(base?'':'../')+f}else{im.onerror=null;var sp=document.createElement('span');sp.textContent=im.alt;im.replaceWith(sp)}}});
+var c=document.getElementById('nl-bg');if(!c||!c.getContext)return;var x=c.getContext('2d'),W=0,H=0,P=[],last=0,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function build(){W=c.width=innerWidth;H=c.height=innerHeight;var n=Math.min(60,Math.floor(W*H/20000));P=[];for(var i=0;i<n;i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.4+1})}
+function draw(k){x.clearRect(0,0,W,H);for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx*k;p.y+=p.vy*k;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;x.beginPath();x.arc(p.x,p.y,p.r,0,6.2832);x.fillStyle='rgba(56,189,248,.4)';x.fill();
+ for(var j=i+1;j<P.length;j++){var q=P[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){x.beginPath();x.moveTo(p.x,p.y);x.lineTo(q.x,q.y);x.strokeStyle='rgba(99,102,241,'+((1-d/120)*.18)+')';x.lineWidth=.8;x.stroke()}}}}
+function frame(t){requestAnimationFrame(frame);if(document.hidden||t-last<33)return;var k=Math.min(3,(t-last)/16.7);last=t;draw(k)}
+build();draw(0);if(!still)requestAnimationFrame(frame);
+addEventListener('resize',function(){if(Math.abs(innerWidth-W)>2||Math.abs(innerHeight-H)>150){build();draw(0)}else{c.width=W=innerWidth;c.height=H=innerHeight}});
+})();
+</script>
+</body></html>
